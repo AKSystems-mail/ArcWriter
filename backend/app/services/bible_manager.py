@@ -7,9 +7,14 @@ class BibleManager:
         "heros_journey": "# Project Bible\n\n## Title\n(Insert Project Title)\n\n## Genre\n(Insert Project Genre)\n\n## Logline\n(Insert Logline)\n\n## Characters\n(Insert Characters)\n\n## The Hero's Journey\n1. Ordinary World\n2. Call to Adventure\n3. Refusal of the Call\n4. Meeting the Mentor\n5. Crossing the Threshold\n6. Tests, Allies, Enemies\n7. Approach to the Inmost Cave\n8. Ordeal\n9. Reward (Seizing the Sword)\n10. The Road Back\n11. Resurrection\n12. Return with the Elixir\n"
     }
 
-    def __init__(self, project_id: str):
+    def __init__(self, universe_name: str, project_id: str):
+        self.universe_name = universe_name
         self.project_id = project_id
-        self.file_path = f"project_bible_{project_id}.md"
+        # Define the base directory for universes relative to the backend app
+        self.base_dir = "universes"
+        self.universe_path = os.path.join(self.base_dir, self.universe_name)
+        self.project_path = os.path.join(self.universe_path, self.project_id)
+        self.file_path = os.path.join(self.project_path, "project_bible.md")
 
     def initialize_bible(self, template_type: str = "save_the_cat"):
         if template_type not in self.TEMPLATES:
