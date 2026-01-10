@@ -1,0 +1,10 @@
+INFO:     Started server process [186664]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)
+Loaded Personas: ['studio_exec', 'auteur', 'script_doctor']
+Generating Poster with prompt: Title: My Movie. Style: Noir
+Using reference image for consistency: http://ref.img/1.jpg
+INFO:     127.0.0.1:60164 - "POST /api/assets/generate HTTP/1.1" 200 OK
+Generating Teaser for segment: Hero walks into the sunset....
+INFO:     127.0.0.1:60178 - "POST /api/assets/generate HTTP/1.1" 200 OK

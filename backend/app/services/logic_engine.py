@@ -1,0 +1,153 @@
+from typing import Dict, List, Any, Tuple
+import json
+from app.services.llm_service import LLMService # Import LLMService
+
+class LogicEngine:
+    def __init__(self):
+        self.llm = LLMService()
+
+    def analyze_scene(self, scene_text: str, stakes_context: str = "") -> Dict[str, Any]:
+        """
+        Analyzes a scene using Game Theory to identify plot holes and compare
+        script outcome with Nash Equilibrium.
+        """
+        
+        # 1. Extract Payoff Matrix (Mock LLM Call)
+        analysis_data = self._mock_llm_extract_payoff(scene_text, stakes_context)
+        
+        # 2. Calculate Nash Equilibrium
+        equilibria = self._calculate_nash_equilibrium(analysis_data["payoff_matrix"])
+        
+        # 3. Compare Script Outcome to Equilibrium
+        script_outcome = tuple(analysis_data["actual_outcome"]) # e.g., ("Confess", "Silent")
+        
+        is_rational = script_outcome in equilibria
+        
+        # 4. Calculate Rationality Score and Critique
+        if is_rational:
+            rationality_score = 95
+            critique_message = "The characters acted rationally according to their incentives. The scene logic is solid."
+        else:
+            rationality_score = 45
+            critique_message = (
+                f"The outcome {script_outcome} deviates from the Nash Equilibrium {equilibria}. "
+                "One or both characters are acting against their best interests without clear motivation."
+            )
+
+        return {
+            "rationality_score": rationality_score,
+            "critique_message": critique_message,
+            "payoff_matrix": analysis_data["payoff_matrix"],
+            "nash_equilibria": [list(eq) for eq in equilibria],
+            "script_outcome": list(script_outcome)
+        }
+
+    def _mock_llm_extract_payoff(self, scene_text: str, stakes_context: str) -> Dict[str, Any]:
+        """
+        Mock LLM response extracting players, strategies, and payoffs.
+        Simulating a Prisoner's Dilemma scenario for demonstration.
+        """
+        # In a real implementation, this would call self.llm.generate_json(...)
+        # using a system prompt to parse the text.
+        
+        return {
+            "players": ["Protagonist", "Antagonist"],
+            "strategies": ["Cooperate", "Defect"],
+            "payoff_matrix": {
+                # Format: Player A Strategy -> { Player B Strategy -> [Payoff A, Payoff B] }
+                "Cooperate": {
+                    "Cooperate": [3, 3], # Reward
+                    "Defect": [0, 5]     # Sucker / Temptation
+                },
+                "Defect": {
+                    "Cooperate": [5, 0], # Temptation / Sucker
+                    "Defect": [1, 1]     # Punishment
+                }
+            },
+            # We'll simulate that the script outcome varies based on the text length for variety in testing
+            "actual_outcome": ["Cooperate", "Cooperate"] if len(scene_text) % 2 == 0 else ["Defect", "Defect"]
+        }
+
+    def _calculate_nash_equilibrium(self, matrix: Dict[str, Dict[str, List[int]]]) -> List[Tuple[str, str]]:
+        """
+        Calculates Pure Strategy Nash Equilibria for a 2-player 2-strategy game.
+        """
+        # Flatten the matrix structure for easier analysis
+        strategies = list(matrix.keys())
+        if len(strategies) != 2:
+            return [] # Simplified for 2x2
+            
+        s1, s2 = strategies[0], strategies[1]
+        
+        # Payoffs [A_payoff, B_payoff]
+        # matrix[A_strat][B_strat]
+        
+        # Best response for Player A against B's strategies
+        # If B chooses s1: A compares matrix[s1][s1][0] vs matrix[s2][s1][0]
+        a_best_response_to_b_s1 = []
+        if matrix[s1][s1][0] >= matrix[s2][s1][0]:
+            a_best_response_to_b_s1.append(s1)
+        if matrix[s2][s1][0] >= matrix[s1][s1][0]:
+            a_best_response_to_b_s1.append(s2)
+            
+        # If B chooses s2: A compares matrix[s1][s2][0] vs matrix[s2][s2][0]
+        a_best_response_to_b_s2 = []
+        if matrix[s1][s2][0] >= matrix[s2][s2][0]:
+            a_best_response_to_b_s2.append(s1)
+        if matrix[s2][s2][0] >= matrix[s1][s2][0]:
+            a_best_response_to_b_s2.append(s2)
+
+        # Best response for Player B against A's strategies
+        # If A chooses s1: B compares matrix[s1][s1][1] vs matrix[s1][s2][1]
+        b_best_response_to_a_s1 = []
+        if matrix[s1][s1][1] >= matrix[s1][s2][1]:
+            b_best_response_to_a_s1.append(s1)
+        if matrix[s1][s2][1] >= matrix[s1][s1][1]:
+            b_best_response_to_a_s1.append(s2)
+            
+        # If A chooses s2: B compares matrix[s2][s1][1] vs matrix[s2][s2][1]
+        b_best_response_to_a_s2 = []
+        if matrix[s2][s1][1] >= matrix[s2][s2][1]:
+            b_best_response_to_a_s2.append(s1)
+        if matrix[s2][s2][1] >= matrix[s2][s1][1]:
+            b_best_response_to_a_s2.append(s2)
+            
+        # Find intersections (Mutual Best Responses)
+        equilibria = []
+        
+        # Check (s1, s1)
+        if s1 in a_best_response_to_b_s1 and s1 in b_best_response_to_a_s1:
+            equilibria.append((s1, s1))
+            
+        # Check (s1, s2)
+        if s1 in a_best_response_to_b_s2 and s2 in b_best_response_to_a_s1:
+            equilibria.append((s1, s2))
+            
+        # Check (s2, s1)
+        if s2 in a_best_response_to_b_s1 and s1 in b_best_response_to_a_s2:
+            equilibria.append((s2, s1))
+            
+        # Check (s2, s2)
+        if s2 in a_best_response_to_b_s2 and s2 in b_best_response_to_a_s2:
+            equilibria.append((s2, s2))
+            
+        return equilibria
+
+    def analyze_scene_logic(self, scene_text: str) -> dict:
+        """Alias for analyze_scene to maintain compatibility"""
+        return self.analyze_scene(scene_text)
+
+    def critique_scene(self, scene_text: str, persona_prompt: str, bible_context: str) -> Dict[str, Any]:
+        """
+        Generates a critique and a rationality score using a specific system prompt (Persona).
+        """
+        system_instruction = "You are an AI assistant tasked with critiquing movie scripts and providing helpful feedback based on the provided persona and context."
+        user_prompt = f"{persona_prompt}\nContext: {bible_context}\nAnalyze this scene:\n\n{scene_text}"
+        
+        llm_critique = self.llm.generate_text(system_instruction=system_instruction, user_prompt=user_prompt)
+        
+        # Integrate the rationality score from analyze_scene
+        analysis_result = self.analyze_scene(scene_text)
+        rationality_score = analysis_result.get("rationality_score", 0) # Default to 0 if not found
+
+        return {"critique": llm_critique, "score": rationality_score}
