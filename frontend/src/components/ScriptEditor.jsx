@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { formatLine } from '../utils/formatUtils';
-import CritiqueSidebar from './CritiqueSidebar'; // Import the new component
+import CritiqueSidebar from './CritiqueSidebar';
+import { db } from '../firebase'; // Import firebase db instance
+import { doc, setDoc, getDoc } from 'firebase/firestore'; // Import firestore functions
 
 // Simple ID generator
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -14,12 +16,82 @@ const ScriptEditor = () => {
   const [focusedBlockId, setFocusedBlockId] = useState(null);
   const [aiFeedbackMessages, setAiFeedbackMessages] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [logicScore, setLogicScore] = useState<number | null>(null); // New state for logic score
+  const [logicScore, setLogicScore] = useState<number | null>(null);
+
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isSaved, setIsSaved] = useState<boolean>(true); // Assume saved initially
+  const lastSavedBlocksRef = useRef(blocks); // To compare changes for auto-save
 
   const blockRefs = useRef({});
 
+  // Helper to get Firestore document reference for the current script
+  const getDocumentRef = useCallback(() => {
+    // TODO: Replace with dynamic user/universe/project IDs
+    const userId = "testuser";
+    const universeName = "default"; 
+    const projectId = "operation_blackout"; // This project ID is used in backend for BibleManager
+    return doc(db, `users/${userId}/universes/${universeName}/projects/${projectId}/script/content`);
+  }, []);
+
+  // Save function
+  const saveScriptToFirestore = useCallback(async (currentBlocks) => {
+    setIsSaving(true);
+    setIsSaved(false); // Indicate that saving is in progress
+    try {
+      const scriptRef = getDocumentRef();
+      await setDoc(scriptRef, { blocks: currentBlocks });
+      lastSavedBlocksRef.current = currentBlocks; // Update last saved state
+      setIsSaved(true);
+      console.log("Script saved to Firestore!");
+    } catch (error) {
+      console.error("Error saving script to Firestore:", error);
+      setIsSaved(false); // Indicate save failed
+    } finally {
+      setIsSaving(false);
+    }
+  }, [getDocumentRef]);
+
+  // Load function
+  const loadScriptFromFirestore = useCallback(async () => {
+    try {
+      const scriptRef = getDocumentRef();
+      const docSnap = await getDoc(scriptRef);
+      if (docSnap.exists()) {
+        const loadedBlocks = docSnap.data().blocks;
+        setBlocks(loadedBlocks);
+        lastSavedBlocksRef.current = loadedBlocks; // Initialize last saved state
+        setIsSaved(true);
+        console.log("Script loaded from Firestore!");
+      } else {
+        console.log("No script found in Firestore, starting new.");
+      }
+    } catch (error) {
+      console.error("Error loading script from Firestore:", error);
+      // Optionally, set an error message in UI
+    }
+  }, [getDocumentRef]);
+
+  // Initial load effect
+  useEffect(() => {
+    loadScriptFromFirestore();
+  }, [loadScriptFromFirestore]);
+
+  // Auto-save effect
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      // Deep comparison to check if blocks have actually changed
+      if (JSON.stringify(blocks) !== JSON.stringify(lastSavedBlocksRef.current)) {
+        console.log("Changes detected, auto-saving...");
+        saveScriptToFirestore(blocks);
+      }
+    }, 5000); // Save every 5 seconds
+
+    return () => clearInterval(intervalId); // Cleanup interval on unmount
+  }, [blocks, saveScriptToFirestore]); // Re-run effect if blocks or save function changes
+
   const updateBlock = (id, updates) => {
     setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+    setIsSaved(false); // Mark as unsaved on change
   };
 
   const handleTextChange = (id, text, type) => {
@@ -42,6 +114,7 @@ const ScriptEditor = () => {
       const newBlocks = [...blocks];
       newBlocks.splice(index + 1, 0, newBlock);
       setBlocks(newBlocks);
+      setIsSaved(false); // Mark as unsaved on new block
       
       setTimeout(() => {
         if (blockRefs.current[newBlock.id]) {
@@ -54,6 +127,7 @@ const ScriptEditor = () => {
        e.preventDefault();
        const newBlocks = blocks.filter(b => b.id !== blocks[index].id);
        setBlocks(newBlocks);
+       setIsSaved(false); // Mark as unsaved on block deletion
        setTimeout(() => {
          const prevBlock = blocks[index - 1];
          if (prevBlock && blockRefs.current[prevBlock.id]) {
@@ -78,15 +152,20 @@ const ScriptEditor = () => {
     setAiFeedbackMessages((prev) => [...prev, `[USER] Analyze scene as ${persona}...`]);
     setLogicScore(null); // Reset score when new analysis starts
 
+    // Ensure script is saved before analyzing if there are unsaved changes
+    if (!isSaved) {
+        await saveScriptToFirestore(blocks);
+    }
+
     const scriptText = blocks.map(block => block.text).join('\n');
 
     try {
-      const response = await fetch('http://localhost:8000/critique', { // Assuming backend runs on 8000
+      const response = await fetch('http://localhost:8000/critique', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ persona, scene_text: scriptText }),
+        body: JSON.stringify({ persona, scene_text: scriptText }), // Removed universe_name and project_id for now as CritiqueSidebar does not pass them
       });
 
       if (!response.ok) {
@@ -96,20 +175,31 @@ const ScriptEditor = () => {
 
       const data = await response.json();
       setAiFeedbackMessages((prev) => [...prev, `[AI] ${data.critique}`]);
-      setLogicScore(data.score); // Set the logic score
+      setLogicScore(data.score);
     } catch (error) {
       console.error("Error analyzing scene:", error);
       setAiFeedbackMessages((prev) => [...prev, `[ERROR] ${error.message || 'An unknown error occurred.'}`]);
-      setLogicScore(null); // Reset or set to null on error
+      setLogicScore(null);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [blocks]); // Recreate if blocks change
+  }, [blocks, isSaved, saveScriptToFirestore]);
 
   const activeFormat = blocks.find(b => b.id === focusedBlockId)?.type || 'Action';
 
   return (
     <div className="flex h-screen bg-gray-900 overflow-hidden">
+        {/* Saved Indicator */}
+        <div className="absolute top-4 right-4 z-50 p-2 text-sm font-semibold rounded-md bg-gray-700 text-gray-300">
+            {isSaving ? (
+                <span className="text-yellow-400">Saving...</span>
+            ) : isSaved ? (
+                <span className="text-green-400">Saved</span>
+            ) : (
+                <span className="text-red-400">Unsaved Changes</span>
+            )}
+        </div>
+
       <div className="flex-1 flex flex-col"> 
         <div className="flex-1 overflow-y-auto p-8 flex justify-center bg-gray-800" onClick={() => {
           if (blocks.length > 0) {
