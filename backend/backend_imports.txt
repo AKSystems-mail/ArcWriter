@@ -1,0 +1,13 @@
+./app/services/asset_studio.py:from backend.app.services.storage_utils import upload_to_firebase_storage # Import the utility
+./venv/lib/python3.14/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py:            # According to the spec, the backend MUST be loaded from backend-path.
+./venv/lib/python3.14/site-packages/google/api/context.proto:  // side channel from backend to client.
+./venv/lib/python3.14/site-packages/googleapiclient/discovery_cache/documents/discoveryengine.v1alpha.json:"description": "Data to copy from backend response to the next backend requests. Custom data is returned to Scotty in the agent_state field, which Scotty will then provide in subsequent upload notifications.",
+./venv/lib/python3.14/site-packages/googleapiclient/discovery_cache/documents/serviceconsumermanagement.v1.json:"description": "A list of full type names or extension IDs of extensions allowed in grpc side channel from backend to client.",
+./venv/lib/python3.14/site-packages/googleapiclient/discovery_cache/documents/serviceconsumermanagement.v1beta1.json:"description": "A list of full type names or extension IDs of extensions allowed in grpc side channel from backend to client.",
+./venv/lib/python3.14/site-packages/googleapiclient/discovery_cache/documents/servicemanagement.v1.json:"description": "A list of full type names or extension IDs of extensions allowed in grpc side channel from backend to client.",
+./venv/lib/python3.14/site-packages/googleapiclient/discovery_cache/documents/servicenetworking.v1.json:"description": "A list of full type names or extension IDs of extensions allowed in grpc side channel from backend to client.",
+./venv/lib/python3.14/site-packages/googleapiclient/discovery_cache/documents/servicenetworking.v1beta.json:"description": "A list of full type names or extension IDs of extensions allowed in grpc side channel from backend to client.",
+./venv/lib/python3.14/site-packages/googleapiclient/discovery_cache/documents/serviceusage.v1.json:"description": "A list of full type names or extension IDs of extensions allowed in grpc side channel from backend to client.",
+./venv/lib/python3.14/site-packages/googleapiclient/discovery_cache/documents/serviceusage.v1beta1.json:"description": "A list of full type names or extension IDs of extensions allowed in grpc side channel from backend to client.",
+./backend_usage.txt:./app/services/asset_studio.py:from backend.app.services.storage_utils import upload_to_firebase_storage # Import the utility
+grep: ./backend_imports.txt: input file is also the output

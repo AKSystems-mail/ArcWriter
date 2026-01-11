@@ -32,7 +32,7 @@ const BeatSheetForm = () => {
   const handleSave = async () => {
     setSaving(true);
     setMessage('');
-    
+
     // Aggregate beats into a formatted string
     const content = SAVE_THE_CAT_BEATS.map((beat, index) => {
       return `${index + 1}. ${beat.name}\n${beats[beat.name] || '(No content)'}`;
@@ -62,43 +62,44 @@ const BeatSheetForm = () => {
   };
 
   return (
-    <div className="bg-gray-800 p-8 rounded-xl shadow-xl max-w-4xl mx-auto">
-      <h2 className="text-3xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
-        Beat Sheet <span className="text-arc-teal text-lg font-normal ml-2">(Save the Cat)</span>
-      </h2>
+    <div className="bg-gray-900/40 backdrop-blur-md p-10 rounded-[2.5rem] border border-gray-800 shadow-2xl max-w-5xl mx-auto mb-20 animate-fade-in-delayed">
+      <div className="flex justify-between items-center mb-10 border-b border-gray-800 pb-8">
+        <h2 className="text-4xl font-black text-white tracking-tighter">
+          Beat Sheet
+        </h2>
+        <span className="text-xs font-black uppercase tracking-[0.4em] text-arc-teal">Save the Cat Framework</span>
+      </div>
 
-      <div className="space-y-6">
+      <div className="space-y-12">
         {SAVE_THE_CAT_BEATS.map((beat) => (
           <div key={beat.name} className="relative group">
-            <div className="flex items-baseline justify-between mb-2">
-              <label className="text-arc-orange font-semibold text-lg">{beat.name}</label>
-              {/* Tooltip Icon/Text */}
-              <span className="text-gray-500 text-xs cursor-help border border-gray-600 rounded-full w-5 h-5 flex items-center justify-center hover:bg-gray-700">?</span>
-            </div>
-            
-            {/* Tooltip Content */}
-            <div className="hidden group-hover:block absolute top-0 right-8 w-64 bg-black/90 text-white text-sm p-3 rounded shadow-lg z-10 border border-gray-600 pointer-events-none">
-              {beat.description}
+            <div className="flex items-center gap-3 mb-4">
+              <span className="h-2 w-2 bg-arc-orange rounded-full group-hover:scale-150 transition-transform"></span>
+              <label className="text-white font-bold text-xl tracking-tight">{beat.name}</label>
             </div>
 
             <textarea
-              className="w-full bg-gray-900 border border-gray-700 rounded p-4 text-white focus:outline-none focus:border-arc-teal transition-colors min-h-[100px]"
-              placeholder={`Describe the ${beat.name}...`}
+              className="w-full bg-gray-800/30 border border-gray-700 rounded-2xl p-6 text-white font-courier text-lg focus:outline-none focus:border-arc-teal focus:ring-1 focus:ring-arc-teal transition-all min-h-[150px] shadow-inner leading-relaxed"
+              placeholder={`Outline your ${beat.name}...`}
               value={beats[beat.name]}
               onChange={(e) => handleChange(beat.name, e.target.value)}
             />
+
+            <p className="mt-3 text-gray-500 text-sm font-light italic px-2">
+              {beat.description}
+            </p>
           </div>
         ))}
       </div>
 
-      <div className="mt-8 pt-6 border-t border-gray-700 flex items-center justify-between">
-        <span className="text-green-400 font-medium">{message}</span>
+      <div className="mt-16 pt-10 border-t border-gray-800 flex items-center justify-between">
+        <span className="text-arc-teal font-black uppercase tracking-widest text-xs animate-pulse">{message}</span>
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`px-6 py-3 rounded-lg font-bold text-black transition-all transform hover:scale-105 ${saving ? 'bg-gray-500 cursor-not-allowed' : 'bg-arc-teal hover:bg-teal-400 shadow-[0_0_15px_rgba(0,206,201,0.5)]'}`}
+          className={`px-10 py-4 rounded-xl font-black text-white transition-all transform active:scale-95 ${saving ? 'bg-gray-700 cursor-not-allowed' : 'bg-arc-teal hover:bg-opacity-90 shadow-xl shadow-arc-teal/20'}`}
         >
-          {saving ? 'Saving...' : 'Save to Bible'}
+          {saving ? 'SYNCING...' : 'SAVE TO BIBLE'}
         </button>
       </div>
     </div>

@@ -1,23 +1,96 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends, Header, Request # Added Request for webhook
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import json
 import os
-import shutil # For deleting directories
+import shutil
+from fastapi.responses import StreamingResponse
+import stripe # Import stripe
+from firebase_functions import https_fn
+from firebase_admin import firestore # Explicitly import firestore for transaction in get_current_user
 
-# Import local services
-from app.services.logic_engine import LogicEngine
-from app.services.rag_service import RagService
-from app.services.asset_studio import AssetStudio
-from app.services.deck_assembler import PitchDeckAssembler
-from app.services.bible_manager import BibleManager 
+# Lazy Service Registry
+class ServiceRegistry:
+    def __init__(self):
+        self._logic_engine = None
+        self._rag_service = None
+        self._asset_studio = None
+        self._deck_assembler = None
+        self._pdf_service = None
+        self._user_service = None
+        self._stripe_service = None
+
+    @property
+    def logic_engine(self):
+        if self._logic_engine is None:
+            from app.services.logic_engine import LogicEngine
+            self._logic_engine = LogicEngine()
+        return self._logic_engine
+
+    @property
+    def rag_service(self):
+        if self._rag_service is None:
+            from app.services.rag_service import RagService
+            self._rag_service = RagService()
+        return self._rag_service
+
+    @property
+    def asset_studio(self):
+        if self._asset_studio is None:
+            from app.services.asset_studio import AssetStudio
+            self._asset_studio = AssetStudio()
+        return self._asset_studio
+
+    @property
+    def deck_assembler(self):
+        if self._deck_assembler is None:
+            from app.services.deck_assembler import PitchDeckAssembler
+            self._deck_assembler = PitchDeckAssembler()
+        return self._deck_assembler
+
+    @property
+    def pdf_service(self):
+        if self._pdf_service is None:
+            from app.services.pdf_service import PDFService
+            self._pdf_service = PDFService()
+        return self._pdf_service
+
+    @property
+    def user_service(self):
+        if self._user_service is None:
+            from app.services.user_service import UserService
+            self._user_service = UserService()
+        return self._user_service
+
+    @property
+    def stripe_service(self):
+        if self._stripe_service is None:
+            from app.services.stripe_service import StripeService
+            self._stripe_service = StripeService(self.user_service)
+        return self._stripe_service
+
+services = ServiceRegistry()
+
+from app.utils.firebase_auth_utils import verify_token, get_firestore_db, initialize_firebase_admin
+
+# Initialize Firebase Admin SDK at application startup
+initialize_firebase_admin()
 
 app = FastAPI(title="Arc Studio API")
 
+# Export as Firebase Function
+@https_fn.on_request(
+    memory=512,
+    timeout_sec=60,
+    min_instances=0
+)
+def api(req: https_fn.Request) -> https_fn.Response:
+    return https_fn.as_asgi(app)(req)
+
 # Define base directory for universes
 UNIVERSE_BASE_DIR = "universes"
-os.makedirs(UNIVERSE_BASE_DIR, exist_ok=True) # Ensure universe base directory exists
+os.makedirs(UNIVERSE_BASE_DIR, exist_ok=True)
 
 # Load Personas
 PERSONAS = {}
@@ -37,26 +110,58 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Services - NOTE: bible_manager is now initialized per project in endpoints
-logic_engine = LogicEngine()
-rag_service = RagService()
-asset_studio = AssetStudio()
-deck_assembler = PitchDeckAssembler()
+from app.services.bible_manager import BibleManager
+
+# Dependency to get current user from Firebase Auth token
+async def get_current_user(authorization: str = Header(...)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authentication scheme. Token required.")
+    
+    id_token = authorization.split("Bearer ")[1]
+    decoded_token = await verify_token(id_token)
+    
+    if decoded_token is None:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials.")
+    
+    user_id = decoded_token['uid']
+    
+    # Check if user exists in Firestore, create if not
+    db = get_firestore_db()
+    user_ref = db.collection('users').document(user_id)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists:
+        user_ref.set({
+            'plan': 'free',
+            'credits': 0,
+            'created_at': firestore.SERVER_TIMESTAMP,
+            'email': decoded_token.get('email', 'unknown@example.com') # Store email from token
+        })
+        print(f"New user {user_id} created in Firestore.")
+    
+    return user_id
+
+# Credit costs for assets
+ASSET_CREDIT_COSTS = {
+    'character_concepts': 5,
+    'poster': 10,
+    'teaser': 20,
+    'character': 1 # For single character anchor, if it ever has a cost
+}
 
 class SceneRequest(BaseModel):
     scene_text: str
     persona: Optional[str] = "script_doctor"
-    # Added universe_name and project_id to SceneRequest for future use
     universe_name: Optional[str] = "default" 
     project_id: Optional[str] = "operation_blackout" 
 
 class BibleRequest(BaseModel):
-    universe_name: str # Added universe_name
+    universe_name: str
     project_id: str
     bible_text: str
 
 class BibleUpdateRequest(BaseModel):
-    universe_name: str # Added universe_name
+    universe_name: str
     project_id: str 
     section_header: str
     content: str
@@ -69,9 +174,11 @@ class AssetRequest(BaseModel):
     logline: Optional[str] = None
     beat: Optional[str] = None
     reference_image_url: Optional[str] = None
+    tagline: Optional[str] = None
+    genre: Optional[str] = None
 
 class ContextRequest(BaseModel): 
-    universe_name: str # Added universe_name
+    universe_name: str
     project_id: str
 
 # New Pydantic models for Universe and Project management
@@ -87,6 +194,22 @@ class CreateProjectRequest(BaseModel):
 class ProjectResponse(BaseModel):
     id: str
     name: str
+    logline: Optional[str] = None
+    genre: Optional[str] = None
+    character_anchor_url: Optional[str] = None
+    poster_url: Optional[str] = None
+    teaser_url: Optional[str] = None
+    script_page_count: Optional[int] = None
+
+class UpdateProjectConfigRequest(BaseModel):
+    title: Optional[str] = None
+    logline: Optional[str] = None
+    genre: Optional[str] = None
+    character_anchor_url: Optional[str] = None
+    poster_url: Optional[str] = None
+    teaser_url: Optional[str] = None
+    script_page_count: Optional[int] = None
+    # Add other fields as needed for updates
 
 @app.get("/")
 async def root():
@@ -94,16 +217,18 @@ async def root():
 
 # --- Universe Management Endpoints ---
 @app.get("/api/universes", response_model=List[UniverseResponse])
-async def list_universes():
+async def list_universes(user_id: str = Depends(get_current_user)): # Secured endpoint
     universes = []
+    # In a real app, you would filter universes by user_id
     for entry in os.listdir(UNIVERSE_BASE_DIR):
         if os.path.isdir(os.path.join(UNIVERSE_BASE_DIR, entry)):
             universes.append(UniverseResponse(name=entry))
     return universes
 
 @app.post("/api/universe/create", response_model=UniverseResponse, status_code=status.HTTP_201_CREATED)
-async def create_universe(request: CreateUniverseRequest):
+async def create_universe(request: CreateUniverseRequest, user_id: str = Depends(get_current_user)): # Secured endpoint
     universe_path = os.path.join(UNIVERSE_BASE_DIR, request.universe_name)
+    # In a real app, you would associate this universe with the user_id
     if os.path.exists(universe_path):
         raise HTTPException(status_code=409, detail=f"Universe '{request.universe_name}' already exists.")
     os.makedirs(universe_path)
@@ -111,7 +236,7 @@ async def create_universe(request: CreateUniverseRequest):
 
 # --- Project Management Endpoints ---
 @app.get("/api/universe/{universe_name}/projects", response_model=List[ProjectResponse])
-async def list_projects_in_universe(universe_name: str):
+async def list_projects_in_universe(universe_name: str, user_id: str = Depends(get_current_user)): # Secured endpoint
     universe_path = os.path.join(UNIVERSE_BASE_DIR, universe_name)
     if not os.path.isdir(universe_path):
         raise HTTPException(status_code=404, detail=f"Universe '{universe_name}' not found.")
@@ -120,13 +245,41 @@ async def list_projects_in_universe(universe_name: str):
     for entry in os.listdir(universe_path):
         project_path = os.path.join(universe_path, entry)
         if os.path.isdir(project_path):
-            # For now, project_id is the folder name and name is the folder name.
-            # In a real app, project metadata might be stored in a file inside the folder.
-            projects.append(ProjectResponse(id=entry, name=entry)) 
+            bm = BibleManager(universe_name=universe_name, project_id=entry)
+            project_config = bm.get_project_data()
+            projects.append(ProjectResponse(
+                id=entry, 
+                name=project_config.get('title', entry), # Use title from config, fallback to id
+                logline=project_config.get('logline'),
+                genre=project_config.get('genre'),
+                character_anchor_url=project_config.get('character_anchor_url'),
+                poster_url=project_config.get('poster_url'),
+                teaser_url=project_config.get('teaser_url'),
+                script_page_count=project_config.get('script_page_count')
+            )) 
     return projects
 
+@app.get("/api/project/{universe_name}/{project_id}", response_model=ProjectResponse)
+async def get_project_details(universe_name: str, project_id: str, user_id: str = Depends(get_current_user)):
+    bm = BibleManager(universe_name=universe_name, project_id=project_id)
+    if not os.path.exists(bm.project_path):
+        raise HTTPException(status_code=404, detail=f"Project '{project_id}' in universe '{universe_name}' not found.")
+    
+    project_config = bm.get_project_data()
+    return ProjectResponse(
+        id=project_id,
+        name=project_config.get('title', project_id),
+        logline=project_config.get('logline'),
+        genre=project_config.get('genre'),
+        character_anchor_url=project_config.get('character_anchor_url'),
+        poster_url=project_config.get('poster_url'),
+        teaser_url=project_config.get('teaser_url'),
+        script_page_count=project_config.get('script_page_count')
+    )
+
+
 @app.post("/api/universe/{universe_name}/project/create", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-async def create_project_in_universe(universe_name: str, request: CreateProjectRequest):
+async def create_project_in_universe(universe_name: str, request: CreateProjectRequest, user_id: str = Depends(get_current_user)): # Secured endpoint
     universe_path = os.path.join(UNIVERSE_BASE_DIR, universe_name)
     if not os.path.isdir(universe_path):
         raise HTTPException(status_code=404, detail=f"Universe '{universe_name}' not found.")
@@ -135,24 +288,45 @@ async def create_project_in_universe(universe_name: str, request: CreateProjectR
     if os.path.exists(project_path):
         raise HTTPException(status_code=409, detail=f"Project '{request.project_name}' already exists in universe '{universe_name}'.")
     
-    os.makedirs(project_path)
-    # Initialize a default project_bible.md for the new project
+    # Initialize bible and config
     bm = BibleManager(universe_name=universe_name, project_id=request.project_name)
-    bm.initialize_bible("save_the_cat") # Initialize with default template
+    bm.initialize_bible("save_the_cat")
     
-    return ProjectResponse(id=request.project_name, name=request.project_name)
+    project_config = bm.get_project_data()
+    return ProjectResponse(
+        id=request.project_name, 
+        name=project_config.get('title', request.project_name),
+        logline=project_config.get('logline'),
+        genre=project_config.get('genre'),
+        character_anchor_url=project_config.get('character_anchor_url'),
+        poster_url=project_config.get('poster_url'),
+        teaser_url=project_config.get('teaser_url'),
+        script_page_count=project_config.get('script_page_count')
+    )
 
-# --- Existing Endpoints (updated to use universe_name) ---
+@app.post("/api/project/{universe_name}/{project_id}/update_config")
+async def update_project_config(universe_name: str, project_id: str, config_update: UpdateProjectConfigRequest, user_id: str = Depends(get_current_user)):
+    bm = BibleManager(universe_name=universe_name, project_id=project_id)
+    if not os.path.exists(bm.project_path):
+        raise HTTPException(status_code=404, detail=f"Project '{project_id}' not found.")
+    
+    update_data = config_update.dict(exclude_unset=True)
+    bm.update_project_data(update_data)
+    return {"status": "success", "message": "Project configuration updated."}
+
+# --- Existing Endpoints (updated to use user_id) ---
 
 @app.post("/api/analyze")
-async def analyze_scene(request: SceneRequest):
+async def analyze_scene(request: SceneRequest, user_id: str = Depends(get_current_user)): # Secured endpoint
+    # Cost for analysis could be added here
     if not request.scene_text:
         raise HTTPException(status_code=400, detail="No scene text provided")
-    result = logic_engine.analyze_scene_logic(request.scene_text)
+    result = services.logic_engine.analyze_scene_logic(request.scene_text)
     return result
 
 @app.post("/api/critique")
-async def critique_scene(request: SceneRequest):
+async def critique_scene(request: SceneRequest, user_id: str = Depends(get_current_user)): # Secured endpoint
+    # Cost for critique could be added here
     if not request.scene_text:
         raise HTTPException(status_code=400, detail="No scene text provided")
     
@@ -162,14 +336,13 @@ async def critique_scene(request: SceneRequest):
     
     persona_prompt = PERSONAS.get(persona_key, "You are a helpful assistant.")
     
-    # Using universe_name and project_id from request, defaulting if not provided
     bible_manager = BibleManager(
         universe_name=request.universe_name, 
         project_id=request.project_id
     ) 
     bible_context = bible_manager.get_context_string()
 
-    critique_result = logic_engine.critique_scene(
+    critique_result = services.logic_engine.critique_scene(
         scene_text=request.scene_text, 
         persona_prompt=persona_prompt, 
         bible_context=bible_context
@@ -181,18 +354,19 @@ async def critique_scene(request: SceneRequest):
     }
 
 @app.post("/api/bible/index")
-async def index_bible(request: BibleRequest):
+async def index_bible(request: BibleRequest, user_id: str = Depends(get_current_user)): # Secured endpoint
+    # Cost for indexing could be added here
     bm = BibleManager(universe_name=request.universe_name, project_id=request.project_id)
-    # Ensure project path exists before writing bible content
     os.makedirs(bm.project_path, exist_ok=True) 
-    bm.initialize_bible("save_the_cat") # Initialize with default template (or update logic if template is part of request)
-    bm.update_section("## Project Bible", request.bible_text) # Overwrite initial if request has content
+    # bm.initialize_bible("save_the_cat") # Config is already initialized when project is created
+    bm.update_section("## Project Bible", request.bible_text)
     
-    rag_service.index_bible(request.project_id, request.bible_text)
+    services.rag_service.index_bible(request.project_id, request.bible_text)
     return {"status": "success"}
 
 @app.post("/api/bible/update")
-async def update_bible(request: BibleUpdateRequest):
+async def update_bible(request: BibleUpdateRequest, user_id: str = Depends(get_current_user)): # Secured endpoint
+    # Cost for updating bible could be added here
     try:
         bm = BibleManager(universe_name=request.universe_name, project_id=request.project_id)
         bm.update_section(request.section_header, request.content)
@@ -203,7 +377,8 @@ async def update_bible(request: BibleUpdateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/bible/context")
-async def get_bible_context(request: ContextRequest):
+async def get_bible_context(request: ContextRequest, user_id: str = Depends(get_current_user)): # Secured endpoint
+    # Cost for getting context could be added here
     try:
         bm = BibleManager(universe_name=request.universe_name, project_id=request.project_id)
         context_string = bm.get_context_string()
@@ -214,22 +389,98 @@ async def get_bible_context(request: ContextRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/assets/generate")
-async def generate_asset(request: AssetRequest):
-    if request.type == 'character':
-        url = asset_studio.generate_character_anchor(request.description)
-    elif request.type == 'poster':
-        prompt_parts = []
-        if request.title: prompt_parts.append(f"Title: {request.title}")
-        if request.style: prompt_parts.append(f"Style: {request.style}")
-        if request.logline: prompt_parts.append(f"Logline: {request.logline}")
-        prompt = ". ".join(prompt_parts)
-        url = asset_studio.generate_poster(prompt, request.reference_image_url)
-    elif request.type == 'teaser':
-        script_segment = request.beat if request.beat else "No script segment provided"
-        url = asset_studio.generate_teaser(script_segment)
+async def generate_asset(request: AssetRequest, user_id: str = Depends(get_current_user)): # Secured endpoint
+    asset_type = request.type
+    cost = ASSET_CREDIT_COSTS.get(asset_type, 0) # Get cost for the asset type
+    await services.user_service.deduct_credits(user_id, cost) # Deduct credits
+
+    bm = BibleManager(universe_name="default", project_id="operation_blackout") # Placeholder
+    # In a real app, universe_name and project_id would come from the request
+    # or the user's current context. For now, use hardcoded values.
+
+    if asset_type == 'character':
+        url = services.asset_studio.generate_character_anchor(request.description)
+        # Update project config with character anchor URL
+        bm.update_project_data({"character_anchor_url": url})
+        return {"url": url}
+    elif asset_type == 'character_concepts':
+        urls = services.asset_studio.generate_character_concepts(request.description, visual_style="cinematic")
+        # For character concepts, we don't immediately save to project_config as it's a selection process
+        return {"urls": urls}
+    elif asset_type == 'poster':
+        if not request.title or not request.tagline:
+            raise HTTPException(status_code=400, detail="Title and Tagline are required for poster generation.")
+        
+        url = services.asset_studio.generate_poster(
+            title=request.title,
+            tagline=request.tagline,
+            anchor_image_url=request.reference_image_url,
+            genre=request.genre or "Sci-Fi"
+        )
+        # Update project config with poster URL
+        bm.update_project_data({"poster_url": url})
+        return {"url": url}
+    elif asset_type == 'teaser':
+        if not request.beat:
+            raise HTTPException(status_code=400, detail="Scene description (beat) is required for teaser generation.")
+        
+        job_id = services.asset_studio.generate_teaser(
+            scene_description=request.beat,
+            anchor_image_url=request.reference_image_url
+        )
+        # Teaser URL is updated via webhook later, not directly here
+        return {"job_id": job_id}
     else:
         raise HTTPException(status_code=400, detail="Invalid asset type")
-    return {"url": url}
+
+@app.get("/api/assets/check_video_status/{job_id}")
+async def check_video_status(job_id: str, user_id: str = Depends(get_current_user)): # Secured endpoint
+    status_info = services.asset_studio.check_video_status(job_id)
+    # If video is completed, update project config
+    if status_info["status"] == "completed" and status_info.get("video_url"):
+        bm = BibleManager(universe_name="default", project_id="operation_blackout") # Placeholder
+        bm.update_project_data({"teaser_url": status_info["video_url"]})
+    return status_info
+
+@app.get("/api/pitchdeck/download/{universe_name}/{project_id}")
+async def download_pitch_deck(universe_name: str, project_id: str, user_id: str = Depends(get_current_user)): # Secured endpoint
+    bm = BibleManager(universe_name=universe_name, project_id=project_id)
+    project_data = bm.get_project_data()
+    pdf_buffer = services.pdf_service.compile_pitch_deck(universe_name, project_id, project_data)
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=\"{project_id}_pitch_deck.pdf\""}
+    )
+
+# --- Stripe Endpoints ---
+@app.post("/api/stripe/create-checkout-session/{plan_type}")
+async def create_checkout_session(plan_type: str, user_id: str = Depends(get_current_user)):
+    if plan_type == "subscription":
+        checkout_url = await services.stripe_service.create_checkout_session(user_id, mode='subscription')
+    elif plan_type == "pack":
+        checkout_url = await services.stripe_service.create_checkout_session(user_id, mode='payment')
+    else:
+        raise HTTPException(status_code=400, detail="Invalid plan type. Must be 'subscription' or 'pack'.")
+    return {"checkout_url": checkout_url}
+
+@app.post("/api/stripe/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get('stripe-signature')
+
+    if sig_header is None:
+        raise HTTPException(status_code=400, detail="Stripe-Signature header missing")
+
+    try:
+        event_data = await services.stripe_service.handle_webhook_event(payload, sig_header)
+        return event_data
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error handling Stripe webhook: {e}")
+        raise HTTPException(status_code=500, detail="Error processing webhook event")
 
 if __name__ == "__main__":
     import uvicorn

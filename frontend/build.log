@@ -1,0 +1,13 @@
+
+> arcwriter@0.0.0 build
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 68 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.47 kB │ gzip:   0.31 kB
+dist/assets/index-CV7OK2Pu.css   28.66 kB │ gzip:   5.73 kB
+dist/assets/index-QaaXCPrH.js   487.43 kB │ gzip: 133.13 kB
+✓ built in 3.70s

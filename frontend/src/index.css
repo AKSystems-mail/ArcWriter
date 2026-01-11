@@ -1,21 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-sans text-arc-teal;
+    /* Apply cinematic sans-serif and teal accent to headers */
+  }
+
+  button {
+    @apply bg-arc-orange text-white py-2 px-4 rounded-md hover:opacity-90 transition-opacity;
+    /* Apply orange accent to buttons */
+  }
+}
+
 .font-courier {
   font-family: 'Courier Prime', monospace;
 }
 
+.script-editor-font {
+  /* New class for script editor */
+  @apply font-courier;
+}
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Montserrat', 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
+  color-scheme: dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: #050505;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -25,8 +49,7 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  background-color: #050505;
+  color: white;
   min-height: 100vh;
 }

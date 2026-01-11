@@ -1,7 +1,37 @@
+# Environments
 venv/
-__pycache__/
-*.pyc
 .env
+.venv
+env/
+ENV/
+
+# Python caching
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr
+*.local
+
+# Firebase
+firebase-debug.log*
+.firebase/
+firestore-debug.log*
+
+# IDEs and OS
+.vscode/
+.idea/
 .DS_Store
-firebase-debug.log
-ui-debug.log
+Thumbs.db
+
+# Project specific
+backend/universes/
+*.txt
+!requirements.txt
+!all_files.txt
+!README.md
+!GEMINI.md
+!*deploy_log*.txt

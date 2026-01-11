@@ -1,5 +1,8 @@
 import os
 import re
+import json # Import json
+from typing import Optional, Dict, Any
+from datetime import datetime # Import datetime
 
 class BibleManager:
     TEMPLATES = {
@@ -14,29 +17,74 @@ class BibleManager:
         self.base_dir = "universes"
         self.universe_path = os.path.join(self.base_dir, self.universe_name)
         self.project_path = os.path.join(self.universe_path, self.project_id)
-        self.file_path = os.path.join(self.project_path, "project_bible.md")
+        self.bible_file_path = os.path.join(self.project_path, "project_bible.md")
+        self.config_file_path = os.path.join(self.project_path, "project_config.json")
 
     def initialize_bible(self, template_type: str = "save_the_cat"):
+        # Ensure project directory exists
+        os.makedirs(self.project_path, exist_ok=True)
+
         if template_type not in self.TEMPLATES:
             raise ValueError(f"Unknown template type: {template_type}")
         
+        # Create project_bible.md
         content = self.TEMPLATES[template_type]
-        with open(self.file_path, "w") as f:
+        with open(self.bible_file_path, "w") as f:
             f.write(content)
+        
+        # Create initial project_config.json
+        initial_config = {
+            "title": self.project_id.replace('_', ' ').title(), # Default title from project_id
+            "logline": self._extract_section_content(content, "## Logline"),
+            "genre": self._extract_section_content(content, "## Genre"),
+            "character_anchor_url": None,
+            "poster_url": None,
+            "teaser_url": None,
+            "script_page_count": 0,
+            "created_at": datetime.utcnow().isoformat() # Store creation time
+        }
+        self._write_project_config(initial_config)
+        
         return content
 
-    def update_section(self, header: str, new_content: str):
-        if not os.path.exists(self.file_path):
-            raise FileNotFoundError(f"Bible file not found at {self.file_path}")
+    def _read_project_config(self) -> Dict[str, Any]:
+        """Reads the project_config.json file."""
+        if os.path.exists(self.config_file_path):
+            with open(self.config_file_path, "r") as f:
+                return json.load(f)
+        return {}
 
-        with open(self.file_path, "r") as f:
+    def _write_project_config(self, config_data: Dict[str, Any]):
+        """Writes data to the project_config.json file."""
+        with open(self.config_file_path, "w") as f:
+            json.dump(config_data, f, indent=4)
+
+    def get_project_data(self) -> Dict[str, Any]:
+        """Retrieves structured project data from project_config.json."""
+        config_data = self._read_project_config()
+        # Ensure 'title' is always present, derived from project_id if not explicitly set
+        if 'title' not in config_data or not config_data['title']:
+            config_data['title'] = self.project_id.replace('_', ' ').title()
+        return config_data
+
+    def update_project_data(self, data: Dict[str, Any]):
+        """Updates specific fields in the project_config.json."""
+        current_config = self._read_project_config()
+        current_config.update(data)
+        self._write_project_config(current_config)
+
+    def update_section(self, header: str, new_content: str):
+        if not os.path.exists(self.bible_file_path):
+            raise FileNotFoundError(f"Bible file not found at {self.bible_file_path}")
+
+        with open(self.bible_file_path, "r") as f:
             content = f.read()
 
         header_pattern = re.escape(header)
         parts = re.split(f"(^{header_pattern}.*$)", content, maxsplit=1, flags=re.MULTILINE)
         
         if len(parts) < 3:
-             with open(self.file_path, "a") as f:
+             with open(self.bible_file_path, "a") as f:
                  f.write(f"\n\n{header}\n{new_content}")
              return
 
@@ -52,14 +100,14 @@ class BibleManager:
             new_rest = rest.rstrip() + "\n\n" + new_content + "\n"
 
         final_content = parts[0] + parts[1] + new_rest
-        with open(self.file_path, "w") as f:
+        with open(self.bible_file_path, "w") as f:
             f.write(final_content)
 
     def get_context_string(self) -> str:
-        if not os.path.exists(self.file_path):
+        if not os.path.exists(self.bible_file_path):
             return "Title: Unknown, Genre: Unknown, Beats: "
 
-        with open(self.file_path, "r") as f:
+        with open(self.bible_file_path, "r") as f:
             content = f.read()
 
         title = self._extract_section_content(content, "## Title") or "Unknown"

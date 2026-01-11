@@ -1,0 +1,1 @@
+/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/firebase_functions/__init__.py

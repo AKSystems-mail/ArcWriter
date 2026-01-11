@@ -1,1 +1,12 @@
-google-genai
+google-generativeai
+google-cloud-storage
+google-cloud-aiplatform
+reportlab
+firebase-admin
+stripe
+fastapi
+firebase-functions
+python-dotenv
+uvicorn
+jinja2
+python-multipart

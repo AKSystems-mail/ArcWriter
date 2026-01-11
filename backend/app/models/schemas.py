@@ -12,6 +12,14 @@ class Character(BaseModel):
     description: Optional[str] = None
     archetype: Optional[str] = None
 
+class User(BaseModel):
+    id: str # Firebase UID
+    email: str
+    subscription_status: str = "inactive" # active / inactive
+    studio_credits: int = 0
+    next_billing_date: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 class Universe(BaseModel):
     id: str = Field(default_factory=generate_id)
     name: str
@@ -35,6 +43,10 @@ class Project(BaseModel):
     genre: str
     project_bible_content: str = Field(..., description="Markdown content of the project bible")
     scripts: List[Script] = Field(default_factory=list)
+    character_anchor_url: Optional[str] = None # New field
+    poster_url: Optional[str] = None # New field
+    teaser_url: Optional[str] = None # New field
+    script_page_count: int = 0 # New field
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Scene(BaseModel):
