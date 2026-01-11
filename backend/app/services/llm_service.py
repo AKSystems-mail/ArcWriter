@@ -16,10 +16,22 @@ class LLMService:
         """
         Generates JSON output from the LLM.
         """
-        # This will be implemented similarly to generate_text but with JSON specific output handling.
-        # For now, it remains a mock to focus on generate_text first.
-        logger.info(f"Generating JSON with system prompt: {system_instruction[:50]}...")
-        return {"mock": "response", "prompt": prompt, "system_instruction": system_instruction}
+        try:
+            full_prompt = [
+                {"role": "user", "parts": [system_instruction if system_instruction else "You are a helpful assistant that outputs JSON."]},
+                {"role": "user", "parts": [prompt + "\n\nEnsure the response is valid JSON format without markdown code blocks."]}
+            ]
+
+            response = self.model.generate_content(
+                full_prompt,
+                generation_config=genai.GenerationConfig(temperature=0.7, response_mime_type="application/json"),
+                request_options={"timeout": 60}
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            logger.error(f"Error generating JSON: {e}")
+            # Fallback for structured parsing failure or API errors
+            return {"error": str(e), "result": {}}
 
     def generate_text(self, system_instruction: str, user_prompt: str, timeout: int = 60) -> str:
         """

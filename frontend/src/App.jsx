@@ -10,6 +10,7 @@ import UniverseDashboard from './pages/UniverseDashboard';
 import PitchDeckGallery from './components/PitchDeckGallery';
 import LoginScreen from './pages/LoginScreen';
 import LandingPage from './pages/LandingPage';
+import OnboardingWizard from './pages/OnboardingWizard';
 import './index.css';
 
 // A simple protected route wrapper
@@ -58,7 +59,15 @@ function App() {
                         path="/onboarding"
                         element={
                             <ProtectedRoute>
-                                <OnboardingScreen />
+                                <OnboardingWizard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/wizard"
+                        element={
+                            <ProtectedRoute>
+                                <OnboardingWizard />
                             </ProtectedRoute>
                         }
                     />

@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException, status, Depends, Header, Request # A
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
+from datetime import datetime
+import uuid
 import json
 import os
 import shutil
@@ -165,6 +167,16 @@ class BibleUpdateRequest(BaseModel):
     project_id: str 
     section_header: str
     content: str
+class PitchRequest(BaseModel):
+    pitch: str
+
+class SetupRequest(BaseModel):
+    mode: str
+    pitch: str
+    vibe: str
+    persona: str
+    metadata: Dict[str, Any]
+    poster_url: Optional[str] = None
 
 class AssetRequest(BaseModel):
     type: str 
@@ -481,6 +493,75 @@ async def stripe_webhook(request: Request):
     except Exception as e:
         print(f"Error handling Stripe webhook: {e}")
         raise HTTPException(status_code=500, detail="Error processing webhook event")
+
+# --- Onboarding Wizard Endpoints ---
+
+@app.post("/api/onboarding/analyze_pitch")
+async def analyze_pitch(request: PitchRequest, user_id: str = Depends(get_current_user)):
+    """
+    Step 2: Generate metadata from pitch.
+    """
+    metadata = services.logic_engine.generate_project_metadata(request.pitch)
+    return metadata
+
+@app.post("/api/onboarding/finalize")
+async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_current_user)):
+    """
+    Step 4: Create Universe, Project, Bible, and return project_id.
+    """
+    # 1. Generate Universe/Project names
+    # For now, we'll auto-generate a slug from the logline or random, 
+    # but let's assume we want a clean name. 
+    # Since we don't have a title in the request, we might need to generate one or use a placeholder.
+    # Let's ask the LLM for a title if it's not in metadata, or just use "My First Project"
+    
+    # Simple Logic: default to "My First Universe" and a sanitized title from metadata if available
+    universe_name = f"user_{user_id}_universe"
+    
+    # Ensure universe exists
+    universe_path = os.path.join(UNIVERSE_BASE_DIR, universe_name)
+    os.makedirs(universe_path, exist_ok=True)
+    
+    # Generate a project ID
+    project_id = f"project_{uuid.uuid4().hex[:8]}"
+    
+    # 2. Initialize Project
+    bm = BibleManager(universe_name=universe_name, project_id=project_id)
+    bm.initialize_bible("save_the_cat") # Default structure
+    
+    # 3. Save Metadata to Bible/Config
+    project_data = {
+        "title": request.metadata.get("title", "Untitled Project"), # Use generated title or default
+        "logline": request.metadata.get("logline", ""),
+        "genre": request.metadata.get("genre", ""),
+        "structure": request.metadata.get("structure_suggestion", ""),
+        "vibe": request.vibe,
+        "producer_persona": request.persona, 
+        "poster_url": request.poster_url,
+        "created_at": str(datetime.now())
+    }
+    
+    bm.update_project_data(project_data)
+    
+    # 4. Add initial Bible content
+    initial_content = f"""
+# Project Bible
+
+**Logline**: {project_data['logline']}
+**Genre**: {project_data['genre']}
+**Structure**: {project_data['structure']}
+**Vibe**: {project_data['vibe']}
+
+## Initial Thoughts
+{request.pitch}
+    """
+    bm.update_section("## Project Bible", initial_content)
+
+    return {
+        "universe_name": universe_name,
+        "project_id": project_id,
+        "mode": request.mode
+    }
 
 if __name__ == "__main__":
     import uvicorn

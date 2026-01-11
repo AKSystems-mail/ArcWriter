@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import LogicScore from './LogicScore'; // Import LogicScore component
+import LogicScore from './LogicScore';
+import SceneSeismograph from './SceneSeismograph';
 
 interface CritiqueSidebarProps {
     onAnalyzeScene: (persona: string) => void;
     messages: string[];
     isAnalyzing: boolean;
-    score: number | null; // Add score prop
+    score: number | null;
+    dynamics?: {
+        power_shift_score: number;
+        tension_peaks: (number | string)[];
+        verdict: string;
+    } | null;
+    totalLines?: number;
 }
 
-const CritiqueSidebar: React.FC<CritiqueSidebarProps> = ({ onAnalyzeScene, messages, isAnalyzing, score }) => {
+const CritiqueSidebar: React.FC<CritiqueSidebarProps> = ({ onAnalyzeScene, messages, isAnalyzing, score, dynamics, totalLines }) => {
     const [selectedPersona, setSelectedPersona] = useState<string>('Studio Exec');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -29,13 +36,24 @@ const CritiqueSidebar: React.FC<CritiqueSidebarProps> = ({ onAnalyzeScene, messa
     }, [messages]);
 
     return (
-        <div className="w-80 bg-gray-800 text-white p-4 flex flex-col h-full border-l border-gray-700">
+        <div className="w-80 bg-gray-800 text-white p-4 flex flex-col h-full border-l border-gray-700 overflow-y-auto custom-scrollbar">
             <h2 className="text-xl font-bold mb-4">Producer's Corner</h2>
 
             {/* Logic Score Display */}
             <div className="mb-4">
                 <LogicScore score={score} />
             </div>
+
+            {/* Scene Dynamics Graph */}
+            {dynamics && (
+                <div className="mb-6 animate-fade-in">
+                    <SceneSeismograph tensionPeaks={dynamics.tension_peaks} totalLines={totalLines} />
+                    <div className="flex justify-between mt-2 text-xs text-gray-400 px-1">
+                        <span>Power Shift: <span className="text-white font-bold">{dynamics.power_shift_score}%</span></span>
+                        <span className="uppercase tracking-wider">{dynamics.verdict}</span>
+                    </div>
+                </div>
+            )}
 
             <div className="mb-4">
                 <label htmlFor="persona-select" className="block text-sm font-medium text-gray-300 mb-2">

@@ -12,14 +12,16 @@ const ScriptEditor = () => {
     { id: generateId(), type: 'Scene Heading', text: 'INT. STARTING POINT - DAY' },
     { id: generateId(), type: 'Action', text: '' }
   ]);
-  
-  const [focusedBlockId, setFocusedBlockId] = useState(null);
-  const [aiFeedbackMessages, setAiFeedbackMessages] = useState<string[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [logicScore, setLogicScore] = useState<number | null>(null);
 
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [isSaved, setIsSaved] = useState<boolean>(true); // Assume saved initially
+  const [focusedBlockId, setFocusedBlockId] = useState(null);
+  const [aiFeedbackMessages, setAiFeedbackMessages] = useState([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [logicScore, setLogicScore] = useState(null);
+  const [analysisOverlays, setAnalysisOverlays] = useState({}); // Map of line index to overlay type
+  const [sceneDynamics, setSceneDynamics] = useState(null); // Full dynamics object
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(true); // Assume saved initially
   const lastSavedBlocksRef = useRef(blocks); // To compare changes for auto-save
 
   const blockRefs = useRef({});
@@ -28,7 +30,7 @@ const ScriptEditor = () => {
   const getDocumentRef = useCallback(() => {
     // TODO: Replace with dynamic user/universe/project IDs
     const userId = "testuser";
-    const universeName = "default"; 
+    const universeName = "default";
     const projectId = "operation_blackout"; // This project ID is used in backend for BibleManager
     return doc(db, `users/${userId}/universes/${universeName}/projects/${projectId}/script/content`);
   }, []);
@@ -115,25 +117,25 @@ const ScriptEditor = () => {
       newBlocks.splice(index + 1, 0, newBlock);
       setBlocks(newBlocks);
       setIsSaved(false); // Mark as unsaved on new block
-      
+
       setTimeout(() => {
         if (blockRefs.current[newBlock.id]) {
           blockRefs.current[newBlock.id].focus();
         }
       }, 0);
     }
-    
+
     if (e.key === 'Backspace' && blocks[index].text === '' && blocks.length > 1) {
-       e.preventDefault();
-       const newBlocks = blocks.filter(b => b.id !== blocks[index].id);
-       setBlocks(newBlocks);
-       setIsSaved(false); // Mark as unsaved on block deletion
-       setTimeout(() => {
-         const prevBlock = blocks[index - 1];
-         if (prevBlock && blockRefs.current[prevBlock.id]) {
-           blockRefs.current[prevBlock.id].focus();
-         }
-       }, 0);
+      e.preventDefault();
+      const newBlocks = blocks.filter(b => b.id !== blocks[index].id);
+      setBlocks(newBlocks);
+      setIsSaved(false); // Mark as unsaved on block deletion
+      setTimeout(() => {
+        const prevBlock = blocks[index - 1];
+        if (prevBlock && blockRefs.current[prevBlock.id]) {
+          blockRefs.current[prevBlock.id].focus();
+        }
+      }, 0);
     }
   };
 
@@ -147,14 +149,14 @@ const ScriptEditor = () => {
     }
   };
 
-  const handleAnalyzeSceneRequest = useCallback(async (persona: string) => {
+  const handleAnalyzeSceneRequest = useCallback(async (persona) => {
     setIsAnalyzing(true);
     setAiFeedbackMessages((prev) => [...prev, `[USER] Analyze scene as ${persona}...`]);
     setLogicScore(null); // Reset score when new analysis starts
 
     // Ensure script is saved before analyzing if there are unsaved changes
     if (!isSaved) {
-        await saveScriptToFirestore(blocks);
+      await saveScriptToFirestore(blocks);
     }
 
     const scriptText = blocks.map(block => block.text).join('\n');
@@ -176,6 +178,34 @@ const ScriptEditor = () => {
       const data = await response.json();
       setAiFeedbackMessages((prev) => [...prev, `[AI] ${data.critique}`]);
       setLogicScore(data.score);
+
+      // Handle Rhythm Map if present
+      if (data.rhythm_map) {
+        // data.rhythm_map is { line_index: 'type' } where index is 1-based from the text sent to LLM
+        // However, our blocks are the source of truth.
+        // The LLM received `blocks.map(b => b.text).join('\n')`.
+        // So line numbers correspond to block indices + 1 (assuming 1 block = 1 line which is roughly true for script format logic here, mainly strictly true)
+        // Actually, if a block has newlines, this breaks. 
+        // For MVP script editor where 1 block = 1 paragraph/line, this works.
+
+        const newOverlays = {};
+        // Convert 1-based lines to 0-based block indices
+        Object.entries(data.rhythm_map).forEach(([lineNum, type]) => {
+          const index = parseInt(lineNum) - 1;
+          if (index >= 0 && index < blocks.length) {
+            const category = type; // 'on_the_nose', 'high_tension', 'emotional_weight'
+            if (category === 'on_the_nose') newOverlays[index] = 'overlay-blue';
+            else if (category === 'high_tension') newOverlays[index] = 'overlay-orange';
+            else if (category === 'emotional_weight') newOverlays[index] = 'overlay-purple';
+          }
+        });
+        setAnalysisOverlays(newOverlays);
+        setSceneDynamics({
+          power_shift_score: data.power_shift_score,
+          tension_peaks: data.tension_peaks,
+          verdict: data.verdict
+        });
+      }
     } catch (error) {
       console.error("Error analyzing scene:", error);
       setAiFeedbackMessages((prev) => [...prev, `[ERROR] ${error.message || 'An unknown error occurred.'}`]);
@@ -189,18 +219,18 @@ const ScriptEditor = () => {
 
   return (
     <div className="flex h-screen bg-gray-900 overflow-hidden">
-        {/* Saved Indicator */}
-        <div className="absolute top-4 right-4 z-50 p-2 text-sm font-semibold rounded-md bg-gray-700 text-gray-300">
-            {isSaving ? (
-                <span className="text-yellow-400">Saving...</span>
-            ) : isSaved ? (
-                <span className="text-green-400">Saved</span>
-            ) : (
-                <span className="text-red-400">Unsaved Changes</span>
-            )}
-        </div>
+      {/* Saved Indicator */}
+      <div className="absolute top-4 right-4 z-50 p-2 text-sm font-semibold rounded-md bg-gray-700 text-gray-300">
+        {isSaving ? (
+          <span className="text-yellow-400">Saving...</span>
+        ) : isSaved ? (
+          <span className="text-green-400">Saved</span>
+        ) : (
+          <span className="text-red-400">Unsaved Changes</span>
+        )}
+      </div>
 
-      <div className="flex-1 flex flex-col"> 
+      <div className="flex-1 flex flex-col">
         <div className="flex-1 overflow-y-auto p-8 flex justify-center bg-gray-800" onClick={() => {
           if (blocks.length > 0) {
           }
@@ -216,7 +246,8 @@ const ScriptEditor = () => {
                   onChange={(e) => handleTextChange(block.id, e.target.value, block.type)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   onFocus={() => setFocusedBlockId(block.id)}
-                  className={`overflow-hidden ${className}`}
+
+                  className={`overflow-hidden ${className} ${analysisOverlays[index] || ''} transition-colors duration-500`}
                   placeholder={block.type === 'Scene Heading' ? 'INT. LOCATION - TIME' : ''}
                   rows={1}
                   style={{ height: 'auto', minHeight: '1.5em' }}
@@ -231,41 +262,48 @@ const ScriptEditor = () => {
         </div>
 
         <div className="h-16 bg-obsidian-black border-t border-gray-700 flex items-center justify-center gap-4 px-4 z-50">
-          <FormatButton 
-            label="Scene Heading" 
-            shortcut="1" 
-            isActive={activeFormat === 'Scene Heading'} 
+          <FormatButton
+            label="Scene Heading"
+            shortcut="1"
+            isActive={activeFormat === 'Scene Heading'}
             onClick={() => handleFormatChange('Scene Heading')}
           />
-          <FormatButton 
-            label="Action" 
-            shortcut="2" 
-            isActive={activeFormat === 'Action'} 
+          <FormatButton
+            label="Action"
+            shortcut="2"
+            isActive={activeFormat === 'Action'}
             onClick={() => handleFormatChange('Action')}
           />
-          <FormatButton 
-            label="Character" 
-            shortcut="3" 
-            isActive={activeFormat === 'Character'} 
+          <FormatButton
+            label="Character"
+            shortcut="3"
+            isActive={activeFormat === 'Character'}
             onClick={() => handleFormatChange('Character')}
           />
-          <FormatButton 
-            label="Dialogue" 
-            shortcut="4" 
-            isActive={activeFormat === 'Dialogue'} 
+          <FormatButton
+            label="Dialogue"
+            shortcut="4"
+            isActive={activeFormat === 'Dialogue'}
             onClick={() => handleFormatChange('Dialogue')}
           />
           <div className="w-px h-8 bg-gray-700 mx-2"></div>
-           <FormatButton 
-            label="Parenthetical" 
-            shortcut="5" 
-            isActive={activeFormat === 'Parenthetical'} 
+          <FormatButton
+            label="Parenthetical"
+            shortcut="5"
+            isActive={activeFormat === 'Parenthetical'}
             onClick={() => handleFormatChange('Parenthetical')}
           />
         </div>
       </div>
-      
-      <CritiqueSidebar onAnalyzeScene={handleAnalyzeSceneRequest} messages={aiFeedbackMessages} isAnalyzing={isAnalyzing} score={logicScore} />
+
+      <CritiqueSidebar
+        onAnalyzeScene={handleAnalyzeSceneRequest}
+        messages={aiFeedbackMessages}
+        isAnalyzing={isAnalyzing}
+        score={logicScore}
+        dynamics={sceneDynamics}
+        totalLines={blocks.length}
+      />
     </div>
   );
 };
@@ -275,8 +313,8 @@ const FormatButton = ({ label, shortcut, isActive, onClick }) => (
     onMouseDown={(e) => { e.preventDefault(); onClick(); }}
     className={`
       relative px-4 py-2 rounded-md font-medium text-sm transition-all duration-200
-      ${isActive 
-        ? 'bg-arc-teal text-black shadow-[0_0_10px_rgba(0,206,201,0.4)]' 
+      ${isActive
+        ? 'bg-arc-teal text-black shadow-[0_0_10px_rgba(0,206,201,0.4)]'
         : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
       }
     `}

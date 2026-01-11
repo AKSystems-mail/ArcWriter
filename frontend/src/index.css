@@ -53,3 +53,22 @@ body {
   color: white;
   min-height: 100vh;
 }
+
+/* Rhythm Analysis Overlays */
+.overlay-blue {
+  background-color: rgba(59, 130, 246, 0.15);
+  /* Low Subtext / On the Nose */
+  border-left: 3px solid #3b82f6;
+}
+
+.overlay-orange {
+  background-color: rgba(249, 115, 22, 0.15);
+  /* High Tension / Push */
+  border-left: 3px solid #f97316;
+}
+
+.overlay-purple {
+  background-color: rgba(168, 85, 247, 0.15);
+  /* Emotional Weight / Pull */
+  border-left: 3px solid #a855f7;
+}

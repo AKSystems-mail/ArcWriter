@@ -1,6 +1,7 @@
 from typing import Dict, List, Any, Tuple
 import json
 from app.services.llm_service import LLMService # Import LLMService
+from app.services.game_library import identify_game_archetype, generate_logic_critique
 
 class LogicEngine:
     def __init__(self):
@@ -33,10 +34,23 @@ class LogicEngine:
                 f"The outcome {script_outcome} deviates from the Nash Equilibrium {equilibria}. "
                 "One or both characters are acting against their best interests without clear motivation."
             )
+        
+        # Identify Game Archetype
+        game_archetype = identify_game_archetype(analysis_data["payoff_matrix"])
+        
+        # Generate Deterministic Critique based on Archetype
+        # We assume the first character (Player A) is the protagonist
+        protagonist_move = script_outcome[0]
+        # We need to find the equilibrium move for the protagonist.
+        # equilibria is a list of tuples [('Defect', 'Defect')]
+        # We pass the full equilibrium list to the helper
+        logic_critique = generate_logic_critique(game_archetype, protagonist_move, equilibria)
 
         return {
             "rationality_score": rationality_score,
             "critique_message": critique_message,
+            "game_archetype": game_archetype,
+            "logic_critique": logic_critique,
             "payoff_matrix": analysis_data["payoff_matrix"],
             "nash_equilibria": [list(eq) for eq in equilibria],
             "script_outcome": list(script_outcome)
@@ -151,3 +165,36 @@ class LogicEngine:
         rationality_score = analysis_result.get("rationality_score", 0) # Default to 0 if not found
 
         return {"critique": llm_critique, "score": rationality_score}
+
+    def generate_project_metadata(self, pitch: str) -> Dict[str, Any]:
+        """
+        Generates metadata (Genre, Logline, Structure) from a raw elevator pitch.
+        """
+        system_instruction = (
+            "You are a legendary Hollywood script consultant. "
+            "Analyze the user's raw idea and distill it into professional project metadata. "
+            "Return JSON with keys: 'genre' (str), 'logline' (str, punchy 1-sentence), 'structure_suggestion' (str, e.g. 'Hero's Journey', 'Three Act', 'Non-linear')."
+        )
+        user_prompt = f"Here is my idea: {pitch}"
+        
+        return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+
+    def analyze_scene_dynamics(self, scene_text: str) -> Dict[str, Any]:
+        """
+        Analyzes the emotional rhythm, power dynamics, and subtext of a scene.
+        """
+        system_instruction = (
+            "You are a master dramatic editor. Analyze the text for 'Push and Pull' based on these criteria:\n"
+            "1. Power Dynamics: Who holds the power at the start? Who holds it at the end? Does it shift?\n"
+            "2. Subtext Gap: Are the characters saying exactly what they mean (Bad) or is there a gap (Good)?\n"
+            "3. Pacing: Contrast between short, sharp dialogue (Push) and pauses/monologues (Pull).\n\n"
+            "Return a JSON object with:\n"
+            "- 'power_shift_score' (integer 0-100: How much did the dynamic change?)\n"
+            "- 'tension_peaks' (List of line numbers (1-indexed based on input) where tension is highest)\n"
+            "- 'verdict' (string, e.g., 'Static Scene' or 'Dynamic Scene')\n"
+            "- 'analysis_summary' (string: Brief explanation of the dynamics)\n"
+            "- 'rhythm_map' (Dictionary where keys are line numbers (1-indexed) and values are categories: 'on_the_nose' (Low Subtext/Blue), 'high_tension' (Push/Orange), 'emotional_weight' (Pull/Purple). Only include lines that fit these categories.)"
+        )
+        user_prompt = f"Analyze this scene line by line. Treat the first line of text as line 1.\n\n{scene_text}"
+        
+        return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
