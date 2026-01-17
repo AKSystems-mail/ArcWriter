@@ -145,7 +145,7 @@ function App() {
                         }
                     />
                     <Route
-                        path="/editor"
+                        path="/project/:projectId/editor"
                         element={
                             <ProtectedRoute>
                                 <ScriptEditorPage />

@@ -693,3 +693,174 @@ INFO:     127.0.0.1:43124 - "GET /api/user/me HTTP/1.1" 200 OK
 INFO:     127.0.0.1:43130 - "GET /api/project/universe_VInnSYPXVEd4CY0AtsHrnrRgkA32/project_4a3c850b HTTP/1.1" 200 OK
 INFO:     127.0.0.1:43138 - "GET /api/user/me HTTP/1.1" 200 OK
 INFO:     127.0.0.1:43150 - "GET /api/project/universe_VInnSYPXVEd4CY0AtsHrnrRgkA32/project_4a3c850b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37400 - "POST /api/projects/initialize HTTP/1.1" 200 OK
+User VInnSYPXVEd4CY0AtsHrnrRgkA32 credits deducted by 10. New balance roughly: 99989
+Generating Poster with prompt: A movie poster for a Mystery film titled Who Shot John?. Central character: [Reference Image]. Text: Who Shot John? in Mystery font at top, A 1940s Black schoolteacher in the rural South risks everything to uncover the truth behind her student's father's murder, facing prejudice and danger at every turn. at bottom. Overall visual style: indie.
+INFO:     127.0.0.1:47596 - "POST /api/assets/generate HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/google/api_core/grpc_helpers.py", line 75, in error_remapped_callable
+    return callable_(*args, **kwargs)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/grpc/_interceptor.py", line 276, in __call__
+    response, ignored_call = self._with_call(
+                             ~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<4 lines>...
+        compression=compression,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/grpc/_interceptor.py", line 331, in _with_call
+    return call.result(), call
+           ~~~~~~~~~~~^^
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/grpc/_channel.py", line 438, in result
+    raise self
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/grpc/_interceptor.py", line 314, in continuation
+    response, call = self._thunk(new_method).with_call(
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<4 lines>...
+        compression=new_compression,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/grpc/_channel.py", line 1180, in with_call
+    return _end_unary_response_blocking(state, call, True, None)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/grpc/_channel.py", line 996, in _end_unary_response_blocking
+    raise _InactiveRpcError(state)  # pytype: disable=not-instantiable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+grpc._channel._InactiveRpcError: <_InactiveRpcError of RPC that terminated with:
+	status = StatusCode.PERMISSION_DENIED
+	details = "Permission 'aiplatform.endpoints.predict' denied on resource '//aiplatform.googleapis.com/projects/arc-studio-box/locations/us-central1/publishers/google/models/imagegeneration@006' (or it may not exist)."
+	debug_error_string = "UNKNOWN:Error received from peer ipv6:%5B2607:f8b0:4002:c10::5f%5D:443 {grpc_message:"Permission \'aiplatform.endpoints.predict\' denied on resource \'//aiplatform.googleapis.com/projects/arc-studio-box/locations/us-central1/publishers/google/models/imagegeneration@006\' (or it may not exist).", grpc_status:7}"
+>
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/fastapi/applications.py", line 1135, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/fastapi/routing.py", line 115, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/fastapi/routing.py", line 101, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/fastapi/routing.py", line 355, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/fastapi/routing.py", line 243, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/main.py", line 422, in generate_asset
+    elif asset_type == 'poster':
+              ^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+            tagline=request.tagline,
+    
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/app/services/asset_studio.py", line 104, in generate_poster
+    response = self.imagen_model.generate_images(
+        prompt=prompt,
+    ...<3 lines>...
+        # For now, we'll just use the prompt.
+    )
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/vertexai/vision_models/_vision_models.py", line 1112, in generate_images
+    return self._generate_images(
+           ~~~~~~~~~~~~~~~~~~~~~^
+        prompt=prompt,
+        ^^^^^^^^^^^^^^
+    ...<9 lines>...
+        person_generation=person_generation,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/vertexai/vision_models/_vision_models.py", line 1034, in _generate_images
+    response = self._endpoint.predict(
+        instances=[instance],
+        parameters=parameters,
+    )
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/google/cloud/aiplatform/models.py", line 2540, in predict
+    prediction_response = self._prediction_client.predict(
+        endpoint=self._gca_resource.name,
+    ...<2 lines>...
+        timeout=timeout,
+    )
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/google/cloud/aiplatform_v1/services/prediction_service/client.py", line 1014, in predict
+    response = rpc(
+        request,
+    ...<2 lines>...
+        metadata=metadata,
+    )
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.PermissionDenied: 403 Permission 'aiplatform.endpoints.predict' denied on resource '//aiplatform.googleapis.com/projects/arc-studio-box/locations/us-central1/publishers/google/models/imagegeneration@006' (or it may not exist). [reason: "IAM_PERMISSION_DENIED"
+domain: "aiplatform.googleapis.com"
+metadata {
+  key: "resource"
+  value: "projects/arc-studio-box/locations/us-central1/publishers/google/models/imagegeneration@006"
+}
+metadata {
+  key: "permission"
+  value: "aiplatform.endpoints.predict"
+}
+]
+INFO:     127.0.0.1:44378 - "POST /api/onboarding/finalize HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44386 - "GET /api/project/universe_VInnSYPXVEd4CY0AtsHrnrRgkA32/project_50ba0e55 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44390 - "GET /api/user/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44400 - "GET /api/project/universe_VInnSYPXVEd4CY0AtsHrnrRgkA32/project_50ba0e55 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44408 - "GET /api/user/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44418 - "GET /api/project/universe_VInnSYPXVEd4CY0AtsHrnrRgkA32/project_50ba0e55 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44434 - "GET /api/user/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44442 - "GET /api/project/universe_VInnSYPXVEd4CY0AtsHrnrRgkA32/project_50ba0e55 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60888 - "POST /api/bible/update HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56410 - "GET /api/project/universe_VInnSYPXVEd4CY0AtsHrnrRgkA32/project_50ba0e55 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56420 - "GET /api/user/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56422 - "GET /api/project/universe_VInnSYPXVEd4CY0AtsHrnrRgkA32/project_50ba0e55 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56434 - "GET /api/user/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56450 - "GET /api/project/universe_VInnSYPXVEd4CY0AtsHrnrRgkA32/project_50ba0e55 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56452 - "GET /api/user/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56460 - "GET /api/project/universe_VInnSYPXVEd4CY0AtsHrnrRgkA32/project_50ba0e55 HTTP/1.1" 200 OK

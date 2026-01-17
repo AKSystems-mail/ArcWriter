@@ -174,8 +174,13 @@ const OnboardingWizard = () => {
             });
             const result = await response.json();
 
-            // Redirect to Architect (Script Editor) directly
-            navigate('/architect', { state: { project_id: result.project_id, universe_id: result.universe_id } });
+            // Redirect to Script Editor with the new project ID
+            navigate(`/project/${result.project_id}/editor`, {
+                state: {
+                    project_id: result.project_id,
+                    universe_id: result.universe_id
+                }
+            });
         } catch (error) {
             console.error("Error finalizing:", error);
         } finally {
@@ -266,7 +271,7 @@ const OnboardingWizard = () => {
                         {loading ? "Analyzing..." : "Upload PDF"}
                     </button>
                     {data.uploaded_file_name && (
-                         <div className="flex items-center gap-2 justify-center mt-2">
+                        <div className="flex items-center gap-2 justify-center mt-2">
                             <input
                                 type="checkbox"
                                 id="is_script"

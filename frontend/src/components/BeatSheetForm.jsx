@@ -82,7 +82,7 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
       if (response.ok) {
         setMessage('Beat Sheet saved to Bible successfully!');
         setTimeout(() => {
-          navigate('/editor', {
+          navigate(`/project/${projectId}/editor`, {
             state: {
               universe_id: universeId,
               project_id: projectId

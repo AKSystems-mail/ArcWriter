@@ -32,3 +32,7 @@
 10:28:24 AM [vite] hmr update /src/components/ScriptEditor.jsx, /src/index.css
 11:33:26 AM [vite] hmr update /src/components/ScriptEditor.jsx, /src/index.css
 11:34:42 AM [vite] hmr update /src/components/ScriptEditor.jsx, /src/index.css
+12:19:15 PM [vite] hmr update /src/App.jsx, /src/index.css
+12:19:40 PM [vite] hmr update /src/pages/OnboardingWizard.jsx, /src/index.css
+12:19:53 PM [vite] hmr update /src/components/BeatSheetForm.jsx, /src/index.css
+12:20:10 PM [vite] hmr update /src/pages/ScriptEditorPage.jsx, /src/index.css
