@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase';
 
 const SAVE_THE_CAT_BEATS = [
   { name: 'Opening Image', description: 'A visual that represents the struggle & tone of the story. A snapshot of the main character\'s problem before the adventure begins.' },
@@ -18,10 +20,31 @@ const SAVE_THE_CAT_BEATS = [
   { name: 'Final Image', description: 'A mirror to the Opening Image, showing just how much the main character (and their world) has changed.' },
 ];
 
-const BeatSheetForm = () => {
+const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
+  const navigate = useNavigate();
+  const getBeatValue = (initial, beatName) => {
+    if (!initial) return '';
+    const snake = beatName.toLowerCase().replace(/ /g, '_').replace(/-/g, '_');
+    const altSnake = snake === 'set_up' ? 'setup' : (snake === 'setup' ? 'set_up' : snake);
+    return initial[beatName] || initial[snake] || initial[altSnake] || '';
+  };
+
   const [beats, setBeats] = useState(
-    SAVE_THE_CAT_BEATS.reduce((acc, beat) => ({ ...acc, [beat.name]: '' }), {})
+    SAVE_THE_CAT_BEATS.reduce((acc, beat) => ({
+      ...acc,
+      [beat.name]: getBeatValue(initialBeats, beat.name)
+    }), {})
   );
+
+  React.useEffect(() => {
+    if (initialBeats) {
+      setBeats(SAVE_THE_CAT_BEATS.reduce((acc, beat) => ({
+        ...acc,
+        [beat.name]: getBeatValue(initialBeats, beat.name)
+      }), {}));
+    }
+  }, [initialBeats]);
+
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -39,10 +62,18 @@ const BeatSheetForm = () => {
     }).join('\n\n');
 
     try {
-      const response = await fetch('http://localhost:5000/api/bible/update', {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Authentication required");
+
+      const response = await fetch('/api/bible/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
+          universe_name: universeId,
+          project_id: projectId,
           section_header: '## Beat Sheet (Save the Cat)',
           content: content
         }),
@@ -50,12 +81,22 @@ const BeatSheetForm = () => {
 
       if (response.ok) {
         setMessage('Beat Sheet saved to Bible successfully!');
+        setTimeout(() => {
+          navigate('/editor', {
+            state: {
+              universe_id: universeId,
+              project_id: projectId
+            }
+          });
+        }, 1000);
       } else {
-        setMessage('Failed to save.');
+        const err = await response.json();
+        console.error("Save failed:", err);
+        setMessage(`Failed to save: ${err.detail || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Save error:', error);
-      setMessage('Error saving to backend.');
+      setMessage(`Error: ${error.message}`);
     } finally {
       setSaving(false);
     }

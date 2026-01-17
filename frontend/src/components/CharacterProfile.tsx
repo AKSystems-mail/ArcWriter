@@ -3,12 +3,16 @@ import { auth } from '../firebase'; // Import auth from firebase.js
 import PricingModal from './PricingModal'; // Import PricingModal
 
 interface CharacterProfileProps {
-    // Add any props if needed, e.g., initial data for the character
+    initialCharacters?: Array<{
+        name: string;
+        role: string;
+        description: string;
+    }>;
 }
 
 const CHARACTER_CONCEPTS_COST = 5;
 
-const CharacterProfile: React.FC<CharacterProfileProps> = () => {
+const CharacterProfile: React.FC<CharacterProfileProps> = ({ initialCharacters }) => {
     const [name, setName] = useState<string>('');
     const [role, setRole] = useState<string>('');
     const [archetype, setArchetype] = useState<string>('');
@@ -20,6 +24,18 @@ const CharacterProfile: React.FC<CharacterProfileProps> = () => {
     const [userCredits, setUserCredits] = useState<number | null>(null);
     const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
     const [isPricingModalOpen, setIsPricingModalOpen] = useState<boolean>(false);
+
+    // Load initial character data if available
+    useEffect(() => {
+        if (initialCharacters && initialCharacters.length > 0) {
+            const firstChar = initialCharacters[0];
+            setName(firstChar.name || '');
+            setRole(firstChar.role || '');
+            setPhysicalDescription(firstChar.description || '');
+            // Archetype is not explicitly in the distilled notes usually, but we could infer or leave blank
+        }
+    }, [initialCharacters]);
+
     const fetchUserData = async () => {
         const currentUser = auth.currentUser;
         if (!currentUser) {
@@ -29,7 +45,7 @@ const CharacterProfile: React.FC<CharacterProfileProps> = () => {
         }
         try {
             const idToken = await currentUser.getIdToken();
-            const response = await fetch('http://localhost:5000/api/user/me', {
+            const response = await fetch('/api/user/me', {
                 headers: {
                     'Authorization': `Bearer ${idToken}`,
                 },
@@ -77,7 +93,7 @@ const CharacterProfile: React.FC<CharacterProfileProps> = () => {
             const idToken = await auth.currentUser?.getIdToken();
             if (!idToken) throw new Error("Authentication token not found.");
 
-            const response = await fetch('http://localhost:5000/api/assets/generate', {
+            const response = await fetch('/api/assets/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

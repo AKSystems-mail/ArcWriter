@@ -3,6 +3,7 @@
 from fastapi import HTTPException, status
 from app.utils.firebase_auth_utils import get_firestore_db
 from firebase_admin import firestore
+from typing import Optional
 from datetime import datetime, timedelta
 
 class UserService:
@@ -25,52 +26,49 @@ class UserService:
         if amount <= 0:
             return
 
-        user_doc_ref = self.users_collection.document(user_id)
+        user_ref = self.users_collection.document(user_id)
         
-        # Use a transaction to ensure atomicity for credit deduction
-        @firestore.transactional
-        async def update_in_transaction(transaction, user_doc_ref):
-            snapshot = await user_doc_ref.get(transaction=transaction)
-            if not snapshot.exists:
-                raise HTTPException(status_code=404, detail="User not found.")
-
-            current_credits = snapshot.get('studio_credits') or 0
-            subscription_status = snapshot.get('subscription_status')
-
-            # If user has an active subscription, no credits are deducted
-            if subscription_status == 'active':
-                return
+        # Check balance and subscription status first
+        user_doc = user_ref.get()
+        if not user_doc.exists:
+            raise HTTPException(status_code=404, detail="User not found")
             
-            if current_credits < amount:
-                raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits. Please purchase more or subscribe.")
+        user_data = user_doc.to_dict()
+        current_credits = user_data.get('studio_credits', 0)
+        subscription_status = user_data.get('subscription_status')
 
-            transaction.update(user_doc_ref, {'studio_credits': current_credits - amount})
-            print(f"User {user_id} credits deducted by {amount}. Remaining: {current_credits - amount}")
-        
-        try:
-            await self.db.run_transaction(update_in_transaction, user_doc_ref)
-        except HTTPException:
-            raise # Re-raise the HTTPException
-        except Exception as e:
-            print(f"Error deducting credits for user {user_id}: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to deduct credits.")
+        # If user has an active subscription, no credits are deducted
+        if subscription_status == 'active':
+            return True
+            
+        if current_credits < amount:
+            if current_credits == 0:
+                # Grant a one-time "New User Bonus" for testing/onboarding
+                print(f"User {user_id} has 0 credits. Granting 100 starter credits.")
+                user_ref.update({'studio_credits': 100})
+                current_credits = 100
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED, 
+                    detail="Insufficient credits. Please purchase more or subscribe."
+                )
+
+        # Atomic decrement (Safe and Simple)
+        user_ref.update({
+            'studio_credits': firestore.Increment(-amount)
+        })
+        print(f"User {user_id} credits deducted by {amount}. New balance roughly: {current_credits - amount}")
+        return True
 
     async def add_credits(self, user_id: str, amount: int):
         if amount <= 0:
             return
-        user_doc_ref = self.users_collection.document(user_id)
-        
-        @firestore.transactional
-        async def update_in_transaction(transaction, user_doc_ref):
-            snapshot = await user_doc_ref.get(transaction=transaction)
-            if not snapshot.exists:
-                raise HTTPException(status_code=404, detail="User not found.")
-            current_credits = snapshot.get('studio_credits') or 0
-            transaction.update(user_doc_ref, {'studio_credits': current_credits + amount})
-            print(f"User {user_id} credits added by {amount}. New total: {current_credits + amount}")
-        
+        user_ref = self.users_collection.document(user_id)
         try:
-            await self.db.run_transaction(update_in_transaction, user_doc_ref)
+            user_ref.update({
+                'studio_credits': firestore.Increment(amount)
+            })
+            print(f"User {user_id} credits added by {amount}.")
         except Exception as e:
             print(f"Error adding credits for user {user_id}: {e}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to add credits.")

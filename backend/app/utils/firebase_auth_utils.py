@@ -11,16 +11,33 @@ import os
 def initialize_firebase_admin():
     if not firebase_admin._apps:
         try:
-            cred = credentials.ApplicationDefault()
-            firebase_admin.initialize_app(cred)
+            cred_path = "serviceAccountKey.json"
+            if os.path.exists(cred_path):
+                cred = credentials.Certificate(cred_path)
+                print(f"Found service account key at {cred_path}")
+            else:
+                cred = credentials.ApplicationDefault()
+                print("Using Application Default Credentials")
+
+            bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET")
+            if not bucket_name:
+                # Try to infer it from project ID
+                project_id = os.getenv("FIREBASE_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
+                if project_id:
+                    bucket_name = f"{project_id}.firebasestorage.app"
+            
+            config = {}
+            if bucket_name:
+                config['storageBucket'] = bucket_name
+                print(f"Configuring Firebase Admin with storage bucket: {bucket_name}")
+
+            firebase_admin.initialize_app(cred, config)
             print("Firebase Admin SDK initialized successfully.")
         except Exception as e:
             print(f"Error initializing Firebase Admin SDK: {e}")
             print("Ensure GOOGLE_APPLICATION_CREDENTIALS environment variable is set "
-                  "and points to your Firebase service account key file.")
-            raise Exception(f"Failed to initialize Firebase Admin SDK: {e}. "
-                            "Ensure GOOGLE_APPLICATION_CREDENTIALS environment variable is set "
-                            "and points to your Firebase service account key file.")
+                  "and points to your Firebase service account key file, or place serviceAccountKey.json in the root.")
+            raise Exception(f"Failed to initialize Firebase Admin SDK: {e}")
 
 def get_firestore_db():
     initialize_firebase_admin()
@@ -34,3 +51,38 @@ async def verify_token(id_token: str):
     except Exception as e:
         print(f"Error verifying Firebase ID token: {e}")
         return None
+
+from fastapi import Header, HTTPException, status
+
+async def get_current_user(authorization: str = Header(...)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authentication scheme. Token required.")
+    
+    id_token = authorization.split("Bearer ")[1]
+    decoded_token = await verify_token(id_token)
+    
+    if decoded_token is None:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials.")
+    
+    user_id = decoded_token['uid']
+    
+    # Check if user exists in Firestore, create if not
+    db = get_firestore_db()
+    user_ref = db.collection('users').document(user_id)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists:
+        try:
+            user_ref.set({
+                'plan': 'free',
+                'studio_credits': 0,
+                'created_at': firestore.SERVER_TIMESTAMP,
+                'email': decoded_token.get('email', 'unknown@example.com') # Store email from token
+            })
+            print(f"New user {user_id} created in Firestore.")
+        except Exception as e:
+            # If set fails, we still return the user_id but maybe log it? 
+            # It might fail if we don't have permissions or something weird.
+            print(f"Error creating user doc: {e}")
+    
+    return user_id

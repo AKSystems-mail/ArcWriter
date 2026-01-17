@@ -15,7 +15,7 @@ const LoginScreen: React.FC = () => {
             if (user) {
                 // User is signed in, redirect to dashboard or home
                 console.log("User already signed in:", user.uid);
-                navigate('/universes'); // Or your main app route
+                navigate('/app'); // Redirect to Traffic Controller
             }
         });
         return () => unsubscribe(); // Cleanup subscription
@@ -43,7 +43,7 @@ const LoginScreen: React.FC = () => {
             //     body: JSON.stringify({ userId: result.user.uid })
             // });
 
-            navigate('/universes'); // Navigate to main app route after successful login
+            navigate('/app'); // Navigate to Traffic Controller after successful login
         } catch (err: any) {
             console.error("Error during Google Sign-In:", err);
             setError(err.message);

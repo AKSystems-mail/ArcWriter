@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, Wand2, Film, User, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ArrowRight, Wand2, Film, User, CheckCircle2, FileUp } from 'lucide-react';
 import { auth } from '../firebase'; // Import auth
 
 const OnboardingWizard = () => {
@@ -8,6 +8,7 @@ const OnboardingWizard = () => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [animateOut, setAnimateOut] = useState(false);
+    const fileInputRef = React.useRef(null);
 
     // State Machine
     const [data, setData] = useState({
@@ -17,6 +18,7 @@ const OnboardingWizard = () => {
         vibe: null,
         poster_url: null,
         persona: null,      // 'studio_exec' | 'auteur' | 'script_doctor'
+        is_script: false    // User toggle for uploaded file type
     });
 
     const nextStep = () => {
@@ -27,18 +29,64 @@ const OnboardingWizard = () => {
         }, 300);
     };
 
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setLoading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const response = await fetch('/api/onboarding/analyze_file', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to analyze file');
+            }
+
+            const metadata = await response.json();
+
+            setData(prev => ({
+                ...prev,
+                metadata: metadata,
+                uploaded_file_name: file.name,
+                // If logline exists, use it as pitch to bypass validation or prefill
+                pitch: metadata.logline || prev.pitch
+            }));
+
+            console.log("File analysis complete:", metadata);
+
+        } catch (error) {
+            console.error("Error uploading file:", error);
+            alert(`Error: ${error.message}`);
+        } finally {
+            setLoading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
     const handleModeSelect = (mode) => {
         setData(prev => ({ ...prev, mode }));
         nextStep();
     };
 
-    const handlePitchSubmit = async () => {
+    const handleGenerate = async () => {
         if (!data.pitch.trim()) return;
         setLoading(true);
 
         try {
             const token = await auth.currentUser.getIdToken();
-            const response = await fetch('/api/onboarding/analyze_pitch', {
+            const response = await fetch('/api/projects/initialize', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -46,14 +94,19 @@ const OnboardingWizard = () => {
                 },
                 body: JSON.stringify({ pitch: data.pitch })
             });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to initialize project');
+            }
+
             const metadata = await response.json();
             setData(prev => ({ ...prev, metadata }));
             console.log("Metadata generated:", metadata);
-            // Brief pause to show success checkmark if we implemented it, or just move on
             nextStep();
         } catch (error) {
-            console.error("Error analyzing pitch:", error);
-            // Handle error (maybe show toast)
+            console.error("Error initializing project:", error);
+            alert(`Error: ${error.message}`);
         } finally {
             setLoading(false);
         }
@@ -122,7 +175,7 @@ const OnboardingWizard = () => {
             const result = await response.json();
 
             // Redirect to Architect (Script Editor) directly
-            navigate('/architect', { state: { project_id: result.project_id, universe_name: result.universe_name } });
+            navigate('/architect', { state: { project_id: result.project_id, universe_id: result.universe_id } });
         } catch (error) {
             console.error("Error finalizing:", error);
         } finally {
@@ -178,29 +231,72 @@ const OnboardingWizard = () => {
                 <p className="text-xl text-gray-400">Tell us your story idea in a sentence or two.</p>
             </div>
 
-            <div className="relative">
+            <div className="relative group">
                 <textarea
                     value={data.pitch}
                     onChange={(e) => setData(prev => ({ ...prev, pitch: e.target.value }))}
                     placeholder="In a world where..."
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded-2xl p-6 text-xl text-white placeholder-gray-600 focus:outline-none focus:border-arc-teal min-h-[200px] resize-none backdrop-blur-sm transition-all"
+                    disabled={data.uploaded_file_name}
+                    className={`w-full bg-gray-900/50 border border-gray-700 rounded-2xl p-6 text-xl text-white placeholder-gray-600 focus:outline-none focus:border-arc-teal min-h-[200px] resize-none backdrop-blur-sm transition-all ${data.uploaded_file_name ? 'opacity-50 cursor-not-allowed' : ''}`}
                 />
 
-                <div className="mt-8 flex justify-center">
+                {data.uploaded_file_name && (
+                    <div className="absolute bottom-4 right-4 bg-arc-teal/20 text-arc-teal px-3 py-1 rounded-full text-sm flex items-center gap-2 border border-arc-teal/30 z-20">
+                        <CheckCircle2 className="w-4 h-4" /> {data.uploaded_file_name}
+                    </div>
+                )}
+            </div>
+
+            <div className="mt-8 flex justify-center gap-4">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    accept=".pdf"
+                />
+
+                <div className="flex flex-col gap-2">
                     <button
-                        onClick={handlePitchSubmit}
-                        disabled={!data.pitch.trim() || loading}
-                        className="bg-white text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={loading}
+                        className="bg-gray-800 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-700 transition-colors flex items-center gap-3 disabled:opacity-50 min-w-[200px] justify-center border border-gray-600"
                     >
-                        {loading ? (
-                            <div className="animate-spin w-6 h-6 border-2 border-black border-t-transparent rounded-full" />
-                        ) : (
-                            <>
-                                Generate Magic <ArrowRight className="w-5 h-5" />
-                            </>
-                        )}
+                        <FileUp className="w-5 h-5" />
+                        {loading ? "Analyzing..." : "Upload PDF"}
                     </button>
+                    {data.uploaded_file_name && (
+                         <div className="flex items-center gap-2 justify-center mt-2">
+                            <input
+                                type="checkbox"
+                                id="is_script"
+                                checked={data.is_script}
+                                onChange={(e) => setData(prev => ({ ...prev, is_script: e.target.checked }))}
+                                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-arc-teal focus:ring-arc-teal focus:ring-offset-gray-900"
+                            />
+                            <label htmlFor="is_script" className="text-gray-300 text-sm cursor-pointer select-none">
+                                This is a screenplay (import to editor)
+                            </label>
+                        </div>
+                    )}
                 </div>
+
+                <button
+                    onClick={data.uploaded_file_name ? nextStep : handleGenerate}
+                    disabled={(!data.pitch.trim() && !data.uploaded_file_name) || loading}
+                    className="bg-white text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px] justify-center"
+                >
+                    {loading ? (
+                        <>
+                            <div className="animate-spin w-6 h-6 border-2 border-black border-t-transparent rounded-full" />
+                            <span>Analyzing Story DNA...</span>
+                        </>
+                    ) : (
+                        <>
+                            {data.uploaded_file_name ? "Continue" : "Generate Magic"} <ArrowRight className="w-5 h-5" />
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );
@@ -213,6 +309,8 @@ const OnboardingWizard = () => {
             { id: 'fantasy', name: 'Fantasy', color: 'from-purple-900 to-pink-500' },
             { id: 'horror', name: 'Horror', color: 'from-red-950 to-red-600' },
             { id: 'indie', name: 'Indie Drama', color: 'from-stone-800 to-stone-400' },
+            { id: 'comedy', name: 'Comedy', color: 'from-yellow-400 to-orange-500' },
+            { id: 'romance', name: 'Romance', color: 'from-pink-300 to-rose-400' },
         ];
 
         return (

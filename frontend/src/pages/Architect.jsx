@@ -1,26 +1,60 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import BeatSheetForm from '../components/BeatSheetForm';
 import CharacterProfile from '../components/CharacterProfile';
 import ProjectHeader from '../components/ProjectHeader';
 import MobilePitchDeck from '../components/MobilePitchDeck';
 import { useResponsive } from '../hooks/useResponsive';
+import { auth } from '../firebase';
 
 const Architect = () => {
+    const location = useLocation();
     const { isMobile } = useResponsive();
+    const [projectData, setProjectData] = useState(null);
+    const [formData, setFormData] = useState({});
+    const [loading, setLoading] = useState(true);
 
-    // Placeholder values for universeName and projectId
-    // In a real application, these would come from routing parameters or global state
-    const currentUniverseName = "default";
-    const currentProjectId = "operation_blackout";
+    const universeId = location.state?.universe_id || "default_universe";
+    const projectId = location.state?.project_id || "default_project";
+
+    useEffect(() => {
+        const fetchProject = async () => {
+            try {
+                const token = await auth.currentUser?.getIdToken();
+                if (!token) return;
+
+                const response = await fetch(`/api/project/${universeId}/${projectId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setProjectData(data);
+
+                    // Pre-fill form if beat_sheet_data exists
+                    if (data.beat_sheet_data) {
+                        setFormData(data.beat_sheet_data);
+                    } else if (data.beat_sheet) {
+                        setFormData(data.beat_sheet);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching project:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProject();
+    }, [universeId, projectId]);
 
     // If mobile, show pitch deck instead of editor
     if (isMobile) {
         return (
             <div className="min-h-screen bg-obsidian-black">
                 <MobilePitchDeck
-                    projectTitle="My Awesome Project"
-                    tagline="A story worth telling"
-                    synopsis="Year 2077. The megacity of Neo-Veridia thrives under the iron fist of the omniscient Aethel Corp, a company that controls every aspect of its citizens' lives through advanced neural implants. Kael, a former data architect now living off-grid, stumbles upon a suppressed historical archive revealing Aethel Corp's true origins: a brutal coup that erased the true founding principles of the city."
+                    projectTitle={projectData?.title || "My Awesome Project"}
+                    tagline={projectData?.logline || "A story worth telling"}
+                    synopsis={projectData?.bible_content || "Loading synopsis..."}
                 />
             </div>
         );
@@ -32,9 +66,9 @@ const Architect = () => {
 
             <div className="relative z-10 animate-fade-in">
                 <ProjectHeader
-                    universeName={currentUniverseName}
-                    projectId={currentProjectId}
-                    projectTitle="My Awesome Project"
+                    universeId={universeId}
+                    projectId={projectId}
+                    projectTitle={projectData?.title || "My Awesome Project"}
                 />
             </div>
 
@@ -49,8 +83,20 @@ const Architect = () => {
             </header>
 
             <main className="relative z-10 space-y-12 pb-20 animate-fade-in-delayed" style={{ animationDelay: '0.4s' }}>
-                <BeatSheetForm />
-                <CharacterProfile />
+                {loading ? (
+                    <div className="text-center py-20 text-gray-500">Loading your project structure...</div>
+                ) : (
+                    <BeatSheetForm
+                        initialBeats={projectData?.beat_sheet_data || projectData?.beat_sheet}
+                        universeId={universeId}
+                        projectId={projectId}
+                    />
+                )}
+                <CharacterProfile
+                    initialCharacters={projectData?.characters}
+                    universeId={universeId}
+                    projectId={projectId}
+                />
             </main>
         </div>
     );

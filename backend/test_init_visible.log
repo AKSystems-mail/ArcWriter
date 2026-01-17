@@ -1,0 +1,5 @@
+Found service account key at serviceAccountKey.json
+Configuring Firebase Admin with storage bucket: arc-studio-box.firebasestorage.app
+Firebase Admin SDK initialized successfully.
+Loaded Personas: ['studio_exec', 'auteur', 'script_doctor']
+Imports successful

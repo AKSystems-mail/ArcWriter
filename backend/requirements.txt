@@ -10,3 +10,5 @@ python-dotenv
 uvicorn
 jinja2
 python-multipart
+pypdf
+pdfplumber

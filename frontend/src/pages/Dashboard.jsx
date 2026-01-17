@@ -30,7 +30,12 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-obsidian-black text-white p-8">
       <div className="animate-fade-in">
-        <ProjectHeader projectTitle="My Epic Saga" moodImageSrc="https://images.unsplash.com/photo-1511855231792-c439167389a0?q=80&w=2070&auto=format&fit=crop" />
+        <ProjectHeader
+          universeId="default_universe"
+          projectId="default_project"
+          projectTitle="My Epic Saga"
+          moodImageSrc="https://images.unsplash.com/photo-1511855231792-c439167389a0?q=80&w=2070&auto=format&fit=crop"
+        />
       </div>
 
       <main className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">

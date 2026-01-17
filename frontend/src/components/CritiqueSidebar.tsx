@@ -13,9 +13,20 @@ interface CritiqueSidebarProps {
         verdict: string;
     } | null;
     totalLines?: number;
+    isSaving?: boolean;
+    isSaved?: boolean;
 }
 
-const CritiqueSidebar: React.FC<CritiqueSidebarProps> = ({ onAnalyzeScene, messages, isAnalyzing, score, dynamics, totalLines }) => {
+const CritiqueSidebar: React.FC<CritiqueSidebarProps> = ({ 
+    onAnalyzeScene, 
+    messages, 
+    isAnalyzing, 
+    score, 
+    dynamics, 
+    totalLines,
+    isSaving,
+    isSaved 
+}) => {
     const [selectedPersona, setSelectedPersona] = useState<string>('Studio Exec');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -37,7 +48,18 @@ const CritiqueSidebar: React.FC<CritiqueSidebarProps> = ({ onAnalyzeScene, messa
 
     return (
         <div className="w-80 bg-gray-800 text-white p-4 flex flex-col h-full border-l border-gray-700 overflow-y-auto custom-scrollbar">
-            <h2 className="text-xl font-bold mb-4">Producer's Corner</h2>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Producer's Corner</h2>
+                <div className="text-[10px] font-bold px-2 py-1 rounded bg-gray-900 border border-gray-700 whitespace-nowrap">
+                    {isSaving ? (
+                        <span className="text-yellow-400 animate-pulse">SAVING...</span>
+                    ) : isSaved ? (
+                        <span className="text-green-400">SAVED</span>
+                    ) : (
+                        <span className="text-red-400">UNSAVED</span>
+                    )}
+                </div>
+            </div>
 
             {/* Logic Score Display */}
             <div className="mb-4">

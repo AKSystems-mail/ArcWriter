@@ -8,9 +8,11 @@ import json
 import os
 import shutil
 from fastapi.responses import StreamingResponse
-import stripe # Import stripe
+import google.generativeai as genai
+import vertexai
+from google.oauth2 import service_account
+import stripe
 from firebase_functions import https_fn
-from firebase_admin import firestore # Explicitly import firestore for transaction in get_current_user
 
 # Lazy Service Registry
 class ServiceRegistry:
@@ -74,10 +76,20 @@ class ServiceRegistry:
 
 services = ServiceRegistry()
 
-from app.utils.firebase_auth_utils import verify_token, get_firestore_db, initialize_firebase_admin
+from app.utils.firebase_auth_utils import verify_token, get_firestore_db, initialize_firebase_admin, get_current_user
+from app.routers import onboarding, users, pitchdeck, script
 
 # Initialize Firebase Admin SDK at application startup
 initialize_firebase_admin()
+
+# Initialize Gemini
+api_key = os.getenv('GEMINI_API_KEY')
+if api_key:
+    genai.configure(api_key=api_key.strip())
+
+# Initialize Vertex AI
+vertex_creds = service_account.Credentials.from_service_account_file('serviceAccountKey.json')
+vertexai.init(project=os.getenv('GOOGLE_CLOUD_PROJECT'), location='us-central1', credentials=vertex_creds)
 
 app = FastAPI(title="Arc Studio API")
 
@@ -112,36 +124,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(onboarding.router)
+app.include_router(users.router)
+app.include_router(pitchdeck.router)
+app.include_router(script.router)
+
+from app.routers.onboarding import analyze_pitch, PitchRequest
+
+@app.post("/api/projects/initialize")
+async def initialize_project_legacy(request: PitchRequest, user_id: str = Depends(get_current_user)):
+    return await analyze_pitch(request, user_id)
+
 from app.services.bible_manager import BibleManager
 
-# Dependency to get current user from Firebase Auth token
-async def get_current_user(authorization: str = Header(...)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authentication scheme. Token required.")
-    
-    id_token = authorization.split("Bearer ")[1]
-    decoded_token = await verify_token(id_token)
-    
-    if decoded_token is None:
-        raise HTTPException(status_code=401, detail="Invalid authentication credentials.")
-    
-    user_id = decoded_token['uid']
-    
-    # Check if user exists in Firestore, create if not
-    db = get_firestore_db()
-    user_ref = db.collection('users').document(user_id)
-    user_doc = user_ref.get()
-    
-    if not user_doc.exists:
-        user_ref.set({
-            'plan': 'free',
-            'credits': 0,
-            'created_at': firestore.SERVER_TIMESTAMP,
-            'email': decoded_token.get('email', 'unknown@example.com') # Store email from token
-        })
-        print(f"New user {user_id} created in Firestore.")
-    
-    return user_id
+# get_current_user imported from firebase_auth_utils
 
 # Credit costs for assets
 ASSET_CREDIT_COSTS = {
@@ -167,16 +163,9 @@ class BibleUpdateRequest(BaseModel):
     project_id: str 
     section_header: str
     content: str
-class PitchRequest(BaseModel):
-    pitch: str
+# PitchRequest moved to app.routers.onboarding
 
-class SetupRequest(BaseModel):
-    mode: str
-    pitch: str
-    vibe: str
-    persona: str
-    metadata: Dict[str, Any]
-    poster_url: Optional[str] = None
+# SetupRequest moved to app.routers.onboarding
 
 class AssetRequest(BaseModel):
     type: str 
@@ -188,6 +177,8 @@ class AssetRequest(BaseModel):
     reference_image_url: Optional[str] = None
     tagline: Optional[str] = None
     genre: Optional[str] = None
+    universe_id: Optional[str] = None
+    project_id: Optional[str] = None
 
 class ContextRequest(BaseModel): 
     universe_name: str
@@ -212,6 +203,9 @@ class ProjectResponse(BaseModel):
     poster_url: Optional[str] = None
     teaser_url: Optional[str] = None
     script_page_count: Optional[int] = None
+    beat_sheet: Optional[Dict[str, Any]] = None
+    beat_sheet_data: Optional[Dict[str, Any]] = None
+    characters: Optional[List[Dict[str, Any]]] = None
 
 class UpdateProjectConfigRequest(BaseModel):
     title: Optional[str] = None
@@ -267,7 +261,8 @@ async def list_projects_in_universe(universe_name: str, user_id: str = Depends(g
                 character_anchor_url=project_config.get('character_anchor_url'),
                 poster_url=project_config.get('poster_url'),
                 teaser_url=project_config.get('teaser_url'),
-                script_page_count=project_config.get('script_page_count')
+                script_page_count=project_config.get('script_page_count'),
+                characters=project_config.get('characters')
             )) 
     return projects
 
@@ -286,7 +281,10 @@ async def get_project_details(universe_name: str, project_id: str, user_id: str 
         character_anchor_url=project_config.get('character_anchor_url'),
         poster_url=project_config.get('poster_url'),
         teaser_url=project_config.get('teaser_url'),
-        script_page_count=project_config.get('script_page_count')
+        script_page_count=project_config.get('script_page_count'),
+        beat_sheet=project_config.get('beat_sheet'),
+        beat_sheet_data=project_config.get('beat_sheet_data'),
+        characters=project_config.get('characters')
     )
 
 
@@ -406,14 +404,16 @@ async def generate_asset(request: AssetRequest, user_id: str = Depends(get_curre
     cost = ASSET_CREDIT_COSTS.get(asset_type, 0) # Get cost for the asset type
     await services.user_service.deduct_credits(user_id, cost) # Deduct credits
 
-    bm = BibleManager(universe_name="default", project_id="operation_blackout") # Placeholder
-    # In a real app, universe_name and project_id would come from the request
-    # or the user's current context. For now, use hardcoded values.
-
+    # If universe/project provided, use them; otherwise, don't try to save to bible
+    bm = None
+    if request.universe_id and request.project_id:
+        bm = BibleManager(universe_name=request.universe_id, project_id=request.project_id)
+    
     if asset_type == 'character':
         url = services.asset_studio.generate_character_anchor(request.description)
-        # Update project config with character anchor URL
-        bm.update_project_data({"character_anchor_url": url})
+        # Update project config with character anchor URL if bible manager exists
+        if bm and os.path.exists(bm.project_path):
+            bm.update_project_data({"character_anchor_url": url})
         return {"url": url}
     elif asset_type == 'character_concepts':
         urls = services.asset_studio.generate_character_concepts(request.description, visual_style="cinematic")
@@ -427,10 +427,12 @@ async def generate_asset(request: AssetRequest, user_id: str = Depends(get_curre
             title=request.title,
             tagline=request.tagline,
             anchor_image_url=request.reference_image_url,
-            genre=request.genre or "Sci-Fi"
+            genre=request.genre or "Sci-Fi",
+            style=request.style
         )
-        # Update project config with poster URL
-        bm.update_project_data({"poster_url": url})
+        # Update project config with poster URL if bible manager exists
+        if bm and os.path.exists(bm.project_path):
+            bm.update_project_data({"poster_url": url})
         return {"url": url}
     elif asset_type == 'teaser':
         if not request.beat:
@@ -440,7 +442,6 @@ async def generate_asset(request: AssetRequest, user_id: str = Depends(get_curre
             scene_description=request.beat,
             anchor_image_url=request.reference_image_url
         )
-        # Teaser URL is updated via webhook later, not directly here
         return {"job_id": job_id}
     else:
         raise HTTPException(status_code=400, detail="Invalid asset type")
@@ -496,72 +497,9 @@ async def stripe_webhook(request: Request):
 
 # --- Onboarding Wizard Endpoints ---
 
-@app.post("/api/onboarding/analyze_pitch")
-async def analyze_pitch(request: PitchRequest, user_id: str = Depends(get_current_user)):
-    """
-    Step 2: Generate metadata from pitch.
-    """
-    metadata = services.logic_engine.generate_project_metadata(request.pitch)
-    return metadata
+# /api/onboarding/analyze_pitch moved to app.routers.onboarding
 
-@app.post("/api/onboarding/finalize")
-async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_current_user)):
-    """
-    Step 4: Create Universe, Project, Bible, and return project_id.
-    """
-    # 1. Generate Universe/Project names
-    # For now, we'll auto-generate a slug from the logline or random, 
-    # but let's assume we want a clean name. 
-    # Since we don't have a title in the request, we might need to generate one or use a placeholder.
-    # Let's ask the LLM for a title if it's not in metadata, or just use "My First Project"
-    
-    # Simple Logic: default to "My First Universe" and a sanitized title from metadata if available
-    universe_name = f"user_{user_id}_universe"
-    
-    # Ensure universe exists
-    universe_path = os.path.join(UNIVERSE_BASE_DIR, universe_name)
-    os.makedirs(universe_path, exist_ok=True)
-    
-    # Generate a project ID
-    project_id = f"project_{uuid.uuid4().hex[:8]}"
-    
-    # 2. Initialize Project
-    bm = BibleManager(universe_name=universe_name, project_id=project_id)
-    bm.initialize_bible("save_the_cat") # Default structure
-    
-    # 3. Save Metadata to Bible/Config
-    project_data = {
-        "title": request.metadata.get("title", "Untitled Project"), # Use generated title or default
-        "logline": request.metadata.get("logline", ""),
-        "genre": request.metadata.get("genre", ""),
-        "structure": request.metadata.get("structure_suggestion", ""),
-        "vibe": request.vibe,
-        "producer_persona": request.persona, 
-        "poster_url": request.poster_url,
-        "created_at": str(datetime.now())
-    }
-    
-    bm.update_project_data(project_data)
-    
-    # 4. Add initial Bible content
-    initial_content = f"""
-# Project Bible
-
-**Logline**: {project_data['logline']}
-**Genre**: {project_data['genre']}
-**Structure**: {project_data['structure']}
-**Vibe**: {project_data['vibe']}
-
-## Initial Thoughts
-{request.pitch}
-    """
-    bm.update_section("## Project Bible", initial_content)
-
-    return {
-        "universe_name": universe_name,
-        "project_id": project_id,
-        "mode": request.mode
-    }
+# finalize_onboarding moved to app.routers.onboarding
 
 if __name__ == "__main__":
     import uvicorn

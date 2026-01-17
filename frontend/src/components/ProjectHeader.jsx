@@ -11,7 +11,7 @@ const COMPLETENESS_CRITERIA = {
   teaser: 15,
 };
 
-const ProjectHeader = ({ universeName, projectId, projectTitle, moodImageSrc }) => {
+const ProjectHeader = ({ universeId, projectId, projectTitle, moodImageSrc }) => {
   const [projectData, setProjectData] = useState(null);
   const [completenessPercentage, setCompletenessPercentage] = useState(0);
   const [isConfettiExploding, setIsConfettiExploding] = useState(false);
@@ -22,7 +22,7 @@ const ProjectHeader = ({ universeName, projectId, projectTitle, moodImageSrc }) 
 
     try {
       const idToken = await currentUser.getIdToken();
-      const response = await fetch(`http://localhost:5000/api/project/${universeName}/${projectId}`, {
+      const response = await fetch(`/api/project/${universeId}/${projectId}`, {
         headers: {
           'Authorization': `Bearer ${idToken}`,
         },
@@ -38,10 +38,10 @@ const ProjectHeader = ({ universeName, projectId, projectTitle, moodImageSrc }) 
   };
 
   useEffect(() => {
-    if (universeName && projectId) {
+    if (universeId && projectId) {
       fetchProjectData();
     }
-  }, [universeName, projectId]);
+  }, [universeId, projectId]);
 
   useEffect(() => {
     if (projectData) {
@@ -111,10 +111,46 @@ const ProjectHeader = ({ universeName, projectId, projectTitle, moodImageSrc }) 
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (completenessPercentage / 100) * circumference;
 
-  const handleExportFinalPitchDeck = () => {
-    // This button would trigger the PDF download
-    const downloadUrl = `http://localhost:5000/api/pitchdeck/download/${universeName}/${projectId}`;
-    window.open(downloadUrl, '_blank');
+  const handleExportFinalPitchDeck = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    try {
+      const idToken = await currentUser.getIdToken();
+      // Use the new endpoint created in pitchdeck.py
+      const downloadUrl = `/api/pitchdeck/download/${universeId}/${projectId}`;
+
+      // Since it's a GET request that returns a stream, we can open it in new tab with auth token if needed
+      // But typically for downloads with auth, we fetch it or use a temp signed URL.
+      // For now, let's try opening it in a new window. 
+      // Note: Browsers might block downloads without user interaction or if auth fails.
+      // If the backend needs Bearer auth, just opening window.open won't work easily.
+      // But the requirement says /api/pitchdeck/download/${universeId}/${projectId}.
+
+      // Let's assume the user wants a simple download. 
+      // If we use fetch, we can add the header.
+      const response = await fetch(downloadUrl, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `PitchDeck_${projectId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error("Failed to download pitch deck");
+      }
+    } catch (error) {
+      console.error("Error exporting pitch deck:", error);
+    }
   };
 
   return (

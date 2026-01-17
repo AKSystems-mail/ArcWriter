@@ -173,7 +173,14 @@ class LogicEngine:
         system_instruction = (
             "You are a legendary Hollywood script consultant. "
             "Analyze the user's raw idea and distill it into professional project metadata. "
-            "Return JSON with keys: 'genre' (str), 'logline' (str, punchy 1-sentence), 'structure_suggestion' (str, e.g. 'Hero's Journey', 'Three Act', 'Non-linear')."
+            "Return JSON with keys: 'genre' (str), 'logline' (str, punchy 1-sentence), "
+            "'structure_suggestion' (str, e.g. 'Hero's Journey', 'Three Act', 'Non-linear'), "
+            "'title_ideas' (list of strings), 'title' (str), 'synopsis' (str), "
+            "and a 'beat_sheet' object with these exact keys: "
+            "'opening_image', 'theme_stated', 'setup', 'catalyst', 'debate', "
+            "'break_into_two', 'b_story', 'fun_and_games', 'midpoint', "
+            "'bad_guys_close_in', 'all_is_lost', 'dark_night_of_soul', "
+            "'break_into_three', 'finale', 'final_image'."
         )
         user_prompt = f"Here is my idea: {pitch}"
         
@@ -198,3 +205,80 @@ class LogicEngine:
         user_prompt = f"Analyze this scene line by line. Treat the first line of text as line 1.\n\n{scene_text}"
         
         return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+
+    def reverse_engineer_script(self, script_text: str) -> Dict[str, Any]:
+        """
+        Reverse engineers a Save the Cat beat sheet from a full script.
+        """
+        system_instruction = (
+            "You are a master film analyst. Reverse engineer a professional Save the Cat beat sheet from the provided script text. "
+            "Return a JSON object with keys: 'genre' (str), 'logline' (str), 'title' (str), "
+            "'beat_sheet' (dict with these exact keys: "
+            "'opening_image', 'theme_stated', 'setup', 'catalyst', 'debate', "
+            "'break_into_two', 'b_story', 'fun_and_games', 'midpoint', "
+            "'bad_guys_close_in', 'all_is_lost', 'dark_night_of_soul', "
+            "'break_into_three', 'finale', 'final_image')."
+        )
+        user_prompt = f"Analyze this script and extract the beat sheet:\n\n{script_text[:50000]}" # Limit to 50k chars for a roughly 100pg script context
+        
+        return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+
+    def distill_notes(self, notes_text: str) -> Dict[str, Any]:
+        """
+        Distills core themes, characters, and synopsis from creative notes.
+        """
+        system_instruction = (
+            "You are a creative executive at a top studio. Distill these raw notes into a project vision. "
+            "Return a JSON object with keys: 'genre' (str), 'logline' (str), 'title' (str), 'themes' (list of str), "
+            "'character_descriptions' (list of objects with 'name' and 'role'), 'synopsis' (str), "
+            "and a 'beat_sheet' object with these exact keys: "
+            "'opening_image', 'theme_stated', 'setup', 'catalyst', 'debate', "
+            "'break_into_two', 'b_story', 'fun_and_games', 'midpoint', "
+            "'bad_guys_close_in', 'all_is_lost', 'dark_night_of_soul', "
+            "'break_into_three', 'finale', 'final_image'."
+        )
+        user_prompt = f"Distill these notes:\n\n{notes_text}"
+        
+        return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+
+    def generate_scene_content(self, beat_context: str, characters: List[str], game_theory_type: str) -> List[Dict[str, str]]:
+        """
+        Generates a screenplay scene based on a beat and Game Theory constraints.
+        Returns a list of script blocks compatible with the editor.
+        """
+        system_instruction = (
+            f"You are a screenwriter. Write a scene based on the following Beat. "
+            f"Constraint: The interaction must follow the logic of a [{game_theory_type}] game. "
+            f"The outcome must align with the Nash Equilibrium. "
+            "Format the output as a JSON array of objects, where each object represents a script block "
+            "and has exactly two keys: 'type' (one of: 'Scene Heading', 'Action', 'Character', 'Dialogue', 'Parenthetical') "
+            "and 'text' (the content of the line). "
+            "Ensure the scene is well-paced and idiomatic."
+        )
+        
+        user_prompt = (
+            f"Beat Context: {beat_context}\n"
+            f"Characters involved: {', '.join(characters)}\n"
+            f"Game Theory Dynamic: {game_theory_type}\n"
+            "Generate the scene content."
+        )
+        
+        response = self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+        
+        # Validate/Normalization if necessary, though generate_json returns a dict. 
+        # We expect a list, but generate_json returns a dict (parsed from JSON). 
+        # If the LLM returns { "scene": [...] } or just [...], we need to handle it.
+        # generate_json implementation: return json.loads(response.text)
+        
+        if isinstance(response, list):
+            return response
+        elif isinstance(response, dict):
+            # Check if wrapped in a key
+            for key in ["scene", "blocks", "content", "script"]:
+                if key in response and isinstance(response[key], list):
+                    return response[key]
+            
+            # If strictly a dict but no obvious list, might be error or malformed
+            return []
+            
+        return []
