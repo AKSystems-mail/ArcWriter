@@ -88,8 +88,19 @@ if api_key:
     genai.configure(api_key=api_key.strip())
 
 # Initialize Vertex AI
-vertex_creds = service_account.Credentials.from_service_account_file('serviceAccountKey.json')
-vertexai.init(project=os.getenv('GOOGLE_CLOUD_PROJECT'), location='us-central1', credentials=vertex_creds)
+# Initialize Vertex AI
+try:
+    if os.path.exists('serviceAccountKey.json'):
+        vertex_creds = service_account.Credentials.from_service_account_file('serviceAccountKey.json')
+        print("Loaded Vertex AI credentials from local serviceAccountKey.json")
+    else:
+        # Use Application Default Credentials (ADC) in production
+        vertex_creds = None 
+        print("serviceAccountKey.json not found, using Application Default Credentials")
+    
+    vertexai.init(project=os.getenv('GOOGLE_CLOUD_PROJECT'), location='us-central1', credentials=vertex_creds)
+except Exception as e:
+    print(f"Warning: Failed to initialize Vertex AI: {e}")
 
 app = FastAPI(title="Arc Studio API")
 
