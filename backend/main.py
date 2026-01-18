@@ -130,7 +130,12 @@ except FileNotFoundError:
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5000",
+        "https://arc-studio-box.web.app",
+        "https://arc-studio-box.firebaseapp.com"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
