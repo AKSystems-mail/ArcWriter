@@ -119,7 +119,7 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
         if "character_descriptions" in request.metadata:
             bible_content += "\n## Characters\n"
             for char in request.metadata["character_descriptions"]:
-                bible_content += f"- **{char.get("name", "Unknown")}**: {char.get("role", "N/A")} - {char.get("description", "")}\n"
+                bible_content += f"- **{char.get('name', 'Unknown')}**: {char.get('role', 'N/A')} - {char.get('description', '')}\n"
 
         if "beat_sheet" in request.metadata:
             bible_content += "\n## Beat Sheet (Save the Cat)\n"
