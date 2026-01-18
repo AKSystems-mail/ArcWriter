@@ -108,7 +108,8 @@ app = FastAPI(title="Arc Studio API")
 @https_fn.on_request(
     memory=512,
     timeout_sec=60,
-    min_instances=0
+    min_instances=0,
+    invoker="public"
 )
 def api(req: https_fn.Request) -> https_fn.Response:
     return https_fn.as_asgi(app)(req)
