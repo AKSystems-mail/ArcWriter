@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight, Wand2, Film, User, CheckCircle2, FileUp } from 'lucide-react';
 import { auth } from '../firebase'; // Import auth
+import { apiClient } from '../api/client';
 
 const OnboardingWizard = () => {
     const navigate = useNavigate();
@@ -38,12 +39,8 @@ const OnboardingWizard = () => {
         formData.append('file', file);
 
         try {
-            const token = await auth.currentUser.getIdToken();
-            const response = await fetch('/api/onboarding/analyze_file', {
+            const response = await apiClient('/api/onboarding/analyze_file', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
                 body: formData
             });
 
@@ -85,13 +82,9 @@ const OnboardingWizard = () => {
         setLoading(true);
 
         try {
-            const token = await auth.currentUser.getIdToken();
-            const response = await fetch('/api/projects/initialize', {
+            // Use apiClient to handle auth token attachment automatically
+            const response = await apiClient('/api/projects/initialize', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({ pitch: data.pitch })
             });
 
@@ -118,18 +111,8 @@ const OnboardingWizard = () => {
 
         // Trigger generic asset generation for poster
         try {
-            const token = await auth.currentUser.getIdToken();
-            // We use the existing asset generation endpoint but repurpose it or use a specialized one
-            // Ideally we'd have a specific endpoint, but let's use the generic generate_asset for now
-            // Or wait, we wanted immediate gratification. 
-            // In a real app, we might fire this off and listen for a webhook, or await it if it's fast (Imagen is ~4-8s).
-
-            const response = await fetch('/api/assets/generate', {
+            const response = await apiClient('/api/assets/generate', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     type: 'poster', // or 'character_concepts' for speed? Poster is better for "Vibe"
                     title: data.metadata?.title || "Untitled", // We might need to ask LLM for a title too!
@@ -163,13 +146,8 @@ const OnboardingWizard = () => {
     const finalizeOnboarding = async (persona) => {
         setLoading(true);
         try {
-            const token = await auth.currentUser.getIdToken();
-            const response = await fetch('/api/onboarding/finalize', {
+            const response = await apiClient('/api/onboarding/finalize', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({ ...data, persona }) // Ensure persona is included
             });
             const result = await response.json();
