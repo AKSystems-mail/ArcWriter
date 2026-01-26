@@ -122,7 +122,12 @@ class LogicEngine:
         )
         user_prompt = f"Here is my idea: {pitch}"
         
-        return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+        response = self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+
+        # Defense-in-depth: Un-listify if AI returns a list
+        if isinstance(response, list) and len(response) > 0:
+            return response[0]
+        return response
 
     def analyze_scene_dynamics(self, scene_text: str) -> Dict[str, Any]:
         """

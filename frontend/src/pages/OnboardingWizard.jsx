@@ -146,9 +146,16 @@ const OnboardingWizard = () => {
     const finalizeOnboarding = async (persona) => {
         setLoading(true);
         try {
+            // Defense-in-depth: Ensure metadata is an object, not a list
+            const cleanMetadata = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
+
             const response = await apiClient('/api/onboarding/finalize', {
                 method: 'POST',
-                body: JSON.stringify({ ...data, persona })
+                body: JSON.stringify({ 
+                    ...data, 
+                    metadata: cleanMetadata,
+                    persona 
+                })
             });
             
             if (!response.ok) {

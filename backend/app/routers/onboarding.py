@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional, Dict, Any
 from app.utils.firebase_auth_utils import get_current_user, get_firestore_db
 from app.services.logic_engine import LogicEngine
@@ -91,6 +91,13 @@ class SetupRequest(BaseModel):
     user_id: Optional[str] = None
     is_script: bool = False
     script_content: Optional[List[Dict[str, Any]]] = None
+
+    @field_validator('metadata', mode='before')
+    @classmethod
+    def unwrap_list(cls, v):
+        if isinstance(v, list) and len(v) > 0:
+            return v[0]
+        return v
 
 class FinalizeResponse(BaseModel):
     project_id: str
