@@ -24,9 +24,34 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
   const navigate = useNavigate();
   const getBeatValue = (initial, beatName) => {
     if (!initial) return '';
+
+    // Generate multiple possible key variations
     const snake = beatName.toLowerCase().replace(/ /g, '_').replace(/-/g, '_');
-    const altSnake = snake === 'set_up' ? 'setup' : (snake === 'setup' ? 'set_up' : snake);
-    return initial[beatName] || initial[snake] || initial[altSnake] || '';
+
+    // Special handling for common variations
+    const variations = [
+      beatName, // Original name: "Dark Night of the Soul"
+      snake,    // Snake case: "dark_night_of_the_soul"
+      snake.replace('_of_the_', '_of_'), // Without "the": "dark_night_of_soul"
+      snake.replace('_the_', '_'),       // Without any "the": "dark_night_soul"
+      beatName.toLowerCase().replace(/-/g, ' '), // Lowercase with spaces
+    ];
+
+    // Special cases
+    if (snake === 'set_up') variations.push('setup');
+    if (snake === 'setup') variations.push('set_up');
+    if (snake === 'dark_night_of_the_soul') {
+      variations.push('dark_night_of_soul', 'dark_night', 'darknight');
+    }
+
+    // Try each variation
+    for (const variant of variations) {
+      if (initial[variant] !== undefined && initial[variant] !== null) {
+        return initial[variant];
+      }
+    }
+
+    return '';
   };
 
   const [beats, setBeats] = useState(
@@ -38,6 +63,8 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
 
   React.useEffect(() => {
     if (initialBeats) {
+      console.log('[BeatSheetForm] Received beat sheet keys:', Object.keys(initialBeats));
+      console.log('[BeatSheetForm] Full beat sheet data:', initialBeats);
       setBeats(SAVE_THE_CAT_BEATS.reduce((acc, beat) => ({
         ...acc,
         [beat.name]: getBeatValue(initialBeats, beat.name)

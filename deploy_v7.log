@@ -1,0 +1,225 @@
+[2026-01-18T02:14:15.652Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[2026-01-18T02:14:15.654Z] > authorizing via signed-in user (aksystems.mail@gmail.com)
+[2026-01-18T02:14:15.655Z] [iam] checking project arc-studio-box for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]
+[2026-01-18T02:14:15.657Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:15.658Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:15.660Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box:testIamPermissions [none]
+[2026-01-18T02:14:15.660Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box:testIamPermissions x-goog-quota-user=projects/arc-studio-box
+[2026-01-18T02:14:15.660Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]}
+[2026-01-18T02:14:15.806Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box:testIamPermissions 200
+[2026-01-18T02:14:15.807Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]}
+[2026-01-18T02:14:15.807Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:15.808Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:15.808Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/arc-studio-box/serviceAccounts/arc-studio-box@appspot.gserviceaccount.com:testIamPermissions [none]
+[2026-01-18T02:14:15.808Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/arc-studio-box/serviceAccounts/arc-studio-box@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[2026-01-18T02:14:15.998Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/arc-studio-box/serviceAccounts/arc-studio-box@appspot.gserviceaccount.com:testIamPermissions 200
+[2026-01-18T02:14:15.998Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/arc-studio-box/serviceAccounts/arc-studio-box@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[2026-01-18T02:14:15.999Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:15.999Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:16.000Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box [none]
+[2026-01-18T02:14:16.261Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box 200
+[2026-01-18T02:14:16.261Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box {"projectId":"arc-studio-box","projectNumber":"784508378100","displayName":"ArcWriter","name":"projects/arc-studio-box","resources":{"hostingSite":"arc-studio-box"},"state":"ACTIVE","etag":"1_e0f96b9b-8555-45c1-a29f-618ef77d18e7"}
+
+=== Deploying to 'arc-studio-box'...
+
+i  deploying functions, hosting 
+[2026-01-18T02:14:16.266Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:16.266Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:16.266Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box [none]
+[2026-01-18T02:14:16.367Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box 200
+[2026-01-18T02:14:16.367Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box {"projectNumber":"784508378100","projectId":"arc-studio-box","lifecycleState":"ACTIVE","name":"ArcWriter","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-01-10T05:54:15.196887Z"}
+i  functions: preparing codebase default for deployment 
+i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[2026-01-18T02:14:16.369Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:16.370Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:16.370Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box/adminSdkConfig [none]
+[2026-01-18T02:14:16.614Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box/adminSdkConfig 200
+[2026-01-18T02:14:16.615Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box/adminSdkConfig {"projectId":"arc-studio-box","storageBucket":"arc-studio-box.firebasestorage.app"}
+[2026-01-18T02:14:16.615Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:16.615Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:16.616Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/arc-studio-box/configs [none]
+[2026-01-18T02:14:16.816Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/arc-studio-box/configs 200
+[2026-01-18T02:14:16.816Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/arc-studio-box/configs {}
+[2026-01-18T02:14:16.818Z] Customer code is not Node
+[2026-01-18T02:14:16.820Z] Validating python source
+[2026-01-18T02:14:16.820Z] Building python source
+i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[2026-01-18T02:14:16.821Z] Could not find functions.yaml. Must use http discovery
+[2026-01-18T02:14:16.833Z] Running command with virtualenv: command=., args=["\"/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/bin/activate\"","&&","python3.11","-c","\"import firebase_functions; import os; print(os.path.dirname(firebase_functions.__file__))\""]
+[2026-01-18T02:14:16.873Z] stdout: /home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/firebase_functions
+
+[2026-01-18T02:14:16.878Z] Running admin server with args: ["python3.11","\"/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/firebase_functions/private/serving.py\""] and env: {"FIREBASE_CONFIG":"{\"projectId\":\"arc-studio-box\",\"storageBucket\":\"arc-studio-box.firebasestorage.app\"}","GCLOUD_PROJECT":"arc-studio-box","GOOGLE_CLOUD_QUOTA_PROJECT":"arc-studio-box","ADMIN_PORT":"8081"} in /home/akprod/.gemini/antigravity/scratch/arc/backend
+[2026-01-18T02:14:16.878Z] Running command with virtualenv: command=., args=["\"/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/bin/activate\"","&&","python3.11","\"/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/firebase_functions/private/serving.py\""]
+ * Serving Flask app 'serving'
+ * Debug mode: off
+
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:8081
+Press CTRL+C to quit
+
+/home/akprod/.gemini/antigravity/scratch/arc/backend/main.py:11: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+
+127.0.0.1 - - [17/Jan/2026 21:14:20] "GET /__/functions.yaml HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [17/Jan/2026 21:14:20] "GET /__/functions.yaml HTTP/1.1" 200 -
+
+[2026-01-18T02:14:20.286Z] Got response from /__/functions.yaml endpoints:
+  api:
+    availableMemoryMb: 512
+    concurrency: null
+    entryPoint: api
+    httpsTrigger: {}
+    ingressSettings: null
+    labels: {}
+    maxInstances: null
+    minInstances: 0
+    platform: gcfv2
+    secretEnvironmentVariables: []
+    serviceAccountEmail: null
+    timeoutSeconds: 60
+params: []
+requiredAPIs: []
+specVersion: v1alpha1
+
+127.0.0.1 - - [17/Jan/2026 21:14:20] "GET /__/quitquitquit HTTP/1.1" 200 -
+
+INFO:werkzeug:127.0.0.1 - - [17/Jan/2026 21:14:20] "GET /__/quitquitquit HTTP/1.1" 200 -
+
+i  functions: Loaded environment variables from .env. 
+i  functions: preparing backend directory for uploading... 
+i  functions: packaged /home/akprod/.gemini/antigravity/scratch/arc/backend (184.96 KB) for uploading 
+[2026-01-18T02:14:20.565Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:20.566Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:20.566Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/arc-studio-box/locations/-/functions [none]
+[2026-01-18T02:14:21.145Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/arc-studio-box/locations/-/functions 200
+[2026-01-18T02:14:21.145Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/arc-studio-box/locations/-/functions {}
+[2026-01-18T02:14:21.146Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:21.146Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:21.147Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/arc-studio-box/locations/-/functions filter=environment%3D%22GEN_2%22
+[2026-01-18T02:14:21.607Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/arc-studio-box/locations/-/functions 200
+[2026-01-18T02:14:21.607Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v2/projects/arc-studio-box/locations/-/functions {"functions":[{"name":"projects/arc-studio-box/locations/us-central1/functions/api","buildConfig":{"build":"projects/784508378100/locations/us-central1/builds/41c38d97-2c4e-4295-a6f2-3844994ed4c5","runtime":"python311","entryPoint":"api","source":{"storageSource":{"bucket":"gcf-v2-sources-784508378100-us-central1","object":"api/function-source.zip","generation":"1768696297348679"}},"environmentVariables":{"GOOGLE_NODE_RUN_SCRIPTS":""},"dockerRepository":"projects/arc-studio-box/locations/us-central1/repositories/gcf-artifacts","sourceProvenance":{"resolvedStorageSource":{"bucket":"gcf-v2-sources-784508378100-us-central1","object":"api/function-source.zip","generation":"1768696297348679"}},"dockerRegistry":"ARTIFACT_REGISTRY","serviceAccount":"projects/arc-studio-box/serviceAccounts/784508378100-compute@developer.gserviceaccount.com","automaticUpdatePolicy":{}},"serviceConfig":{"service":"projects/arc-studio-box/locations/us-central1/services/api","timeoutSeconds":60,"environmentVariables":{"GEMINI_API_KEY":"AIzaSyC0uiDQbsxg88YeRdMy6PbZI7prCvHJsu8","GOOGLE_APPLICATION_CREDENTIALS":"serviceAccountKey.json","STRIPE_SECRET_KEY":"sk_test_********************************","STRIPE_WEBHOOK_SECRET":"whsec_********************************","STRIPE_SUBSCRIPTION_PRICE_ID":"price_********************","STRIPE_PITCH_PACK_PRODUCT_ID":"prod_********************","FIREBASE_CONFIG":"{\"projectId\":\"arc-studio-box\",\"storageBucket\":\"arc-studio-box.firebasestorage.app\"}","GCLOUD_PROJECT":"arc-studio-box","EVENTARC_CLOUD_EVENT_SOURCE":"projects/arc-studio-box/locations/us-central1/services/api","FUNCTION_TARGET":"api","LOG_EXECUTION_ID":"true"},"maxInstanceCount":20,"ingressSettings":"ALLOW_ALL","uri":"https://api-eqqs6vvela-uc.a.run.app","serviceAccountEmail":"784508378100-compute@developer.gserviceaccount.com","availableMemory":"512Mi","allTrafficOnLatestRevision":true,"revision":"api-00008-mek","maxInstanceRequestConcurrency":80,"availableCpu":"1"},"state":"ACTIVE","updateTime":"2026-01-18T00:33:35.934777552Z","labels":{"deployment-tool":"cli-firebase","firebase-functions-hash":"3bd763d915704c769d58a0bb2fa7d0d3b9a1a06b"},"environment":"GEN_2","url":"https://us-central1-arc-studio-box.cloudfunctions.net/api","createTime":"2026-01-11T01:24:40.919818558Z","satisfiesPzi":true}]}
+i  functions: ensuring required API run.googleapis.com is enabled... 
+i  functions: ensuring required API eventarc.googleapis.com is enabled... 
+i  functions: ensuring required API pubsub.googleapis.com is enabled... 
+i  functions: ensuring required API storage.googleapis.com is enabled... 
+i  functions: generating the service identity for pubsub.googleapis.com... 
+[2026-01-18T02:14:21.618Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:21.618Z] Checked if tokens are valid: true, expires at: 1768705874454
+i  functions: generating the service identity for eventarc.googleapis.com... 
+[2026-01-18T02:14:21.618Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:21.618Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:21.619Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1beta1/projects/784508378100/services/pubsub.googleapis.com:generateServiceIdentity [none]
+[2026-01-18T02:14:21.619Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1beta1/projects/784508378100/services/pubsub.googleapis.com:generateServiceIdentity x-goog-quota-user=projects/784508378100
+[2026-01-18T02:14:21.619Z] >>> [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/784508378100/services/pubsub.googleapis.com:generateServiceIdentity {}
+[2026-01-18T02:14:21.621Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1beta1/projects/784508378100/services/eventarc.googleapis.com:generateServiceIdentity [none]
+[2026-01-18T02:14:21.621Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1beta1/projects/784508378100/services/eventarc.googleapis.com:generateServiceIdentity x-goog-quota-user=projects/784508378100
+[2026-01-18T02:14:21.621Z] >>> [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/784508378100/services/eventarc.googleapis.com:generateServiceIdentity {}
+[2026-01-18T02:14:22.023Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1beta1/projects/784508378100/services/pubsub.googleapis.com:generateServiceIdentity 200
+[2026-01-18T02:14:22.023Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/784508378100/services/pubsub.googleapis.com:generateServiceIdentity {"name":"operations/finished.DONE_OPERATION","done":true,"response":{"@type":"type.googleapis.com/google.api.serviceusage.v1beta1.ServiceIdentity","email":"service-784508378100@gcp-sa-pubsub.iam.gserviceaccount.com","uniqueId":"112131524322375153328"}}
+[2026-01-18T02:14:22.084Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1beta1/projects/784508378100/services/eventarc.googleapis.com:generateServiceIdentity 200
+[2026-01-18T02:14:22.084Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/784508378100/services/eventarc.googleapis.com:generateServiceIdentity {"name":"operations/finished.DONE_OPERATION","done":true,"response":{"@type":"type.googleapis.com/google.api.serviceusage.v1beta1.ServiceIdentity","email":"service-784508378100@gcp-sa-eventarc.iam.gserviceaccount.com","uniqueId":"102881639690432655745"}}
+[2026-01-18T02:14:22.088Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:22.088Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:22.088Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box [none]
+[2026-01-18T02:14:22.237Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box 200
+[2026-01-18T02:14:22.237Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box {"projectNumber":"784508378100","projectId":"arc-studio-box","lifecycleState":"ACTIVE","name":"ArcWriter","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-01-10T05:54:15.196887Z"}
+[2026-01-18T02:14:22.237Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:22.237Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:22.238Z] >>> [apiv2][query] GET https://compute.googleapis.com/compute/v1/projects/784508378100 [none]
+[2026-01-18T02:14:22.518Z] <<< [apiv2][status] GET https://compute.googleapis.com/compute/v1/projects/784508378100 403
+[2026-01-18T02:14:22.519Z] <<< [apiv2][body] GET https://compute.googleapis.com/compute/v1/projects/784508378100 {"error":{"code":403,"message":"Compute Engine API has not been used in project 784508378100 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=784508378100 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","errors":[{"message":"Compute Engine API has not been used in project 784508378100 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=784508378100 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","domain":"usageLimits","reason":"accessNotConfigured","extendedHelp":"https://console.developers.google.com"}],"status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com","metadata":{"containerInfo":"784508378100","serviceTitle":"Compute Engine API","consumer":"projects/784508378100","service":"compute.googleapis.com","activationUrl":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=784508378100"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Compute Engine API has not been used in project 784508378100 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=784508378100 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Google developers console API activation","url":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=784508378100"}]}]}}
+[2026-01-18T02:14:22.520Z] unable to look up default compute service account. Falling back to 784508378100-compute@developer.gserviceaccount.com. Error: {"name":"FirebaseError","children":[],"context":{"body":{"error":{"code":403,"message":"Compute Engine API has not been used in project 784508378100 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=784508378100 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","errors":[{"message":"Compute Engine API has not been used in project 784508378100 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=784508378100 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","domain":"usageLimits","reason":"accessNotConfigured","extendedHelp":"https://console.developers.google.com"}],"status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com","metadata":{"containerInfo":"784508378100","serviceTitle":"Compute Engine API","consumer":"projects/784508378100","service":"compute.googleapis.com","activationUrl":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=784508378100"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Compute Engine API has not been used in project 784508378100 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=784508378100 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Google developers console API activation","url":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=784508378100"}]}]}},"response":{"statusCode":403}},"exit":1,"message":"Request to https://compute.googleapis.com/compute/v1/projects/784508378100 had HTTP Error: 403, Compute Engine API has not been used in project 784508378100 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=784508378100 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","status":403}
+[2026-01-18T02:14:22.528Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:22.528Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:22.529Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/versions [none]
+[2026-01-18T02:14:22.529Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[2026-01-18T02:14:23.005Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/versions 200
+[2026-01-18T02:14:23.005Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/versions {"name":"projects/784508378100/sites/arc-studio-box/versions/0229c941c1c1a778","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+i  hosting[arc-studio-box]: beginning deploy... 
+i  hosting[arc-studio-box]: found 5 files in frontend/dist 
+[2026-01-18T02:14:23.030Z] [hosting] uploading with 200 concurrency
+[2026-01-18T02:14:23.085Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:23.086Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:23.087Z] [hosting] hash cache [ZnJvbnRlbmQvZGlzdA] stored for 5 files
+[2026-01-18T02:14:23.087Z] [hosting][hash queue][FINAL] {"max":50,"min":6,"avg":21.4,"active":0,"complete":5,"success":5,"errored":0,"retried":0,"total":5,"elapsed":55}
+[2026-01-18T02:14:23.087Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/784508378100/sites/arc-studio-box/versions/0229c941c1c1a778:populateFiles [none]
+[2026-01-18T02:14:23.087Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/784508378100/sites/arc-studio-box/versions/0229c941c1c1a778:populateFiles {"files":{"/index.html":"ea79f10ae90de9388703d13b6d4a4908f22fba5d02eb4f82844c22a0283ea779","/assets/index-BCvZtmbM.css":"ea7a30dbafb999e639af65ed4217e221f80cc46195393b5843663a642abf5577","/Arc Main.png":"b0b7e48c00ff98ac911cb07b32199660a1e245b99631a336d8c8aefde26d2314","/Example Theme.jpg":"d9f8e47f67c2e0154378045456c4bf2c763da2eeb4c1a2134126c757b14d9676","/assets/index-BKH3fNiL.js":"9c0372e3ee0eeb421a632c71d3cdd2e838e2b710617d361cbeb2e5333eab16c0"}}
+[2026-01-18T02:14:23.271Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/784508378100/sites/arc-studio-box/versions/0229c941c1c1a778:populateFiles 200
+[2026-01-18T02:14:23.271Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/784508378100/sites/arc-studio-box/versions/0229c941c1c1a778:populateFiles {"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/arc-studio-box/versions/0229c941c1c1a778/files"}
+[2026-01-18T02:14:23.272Z] [hosting][populate queue][FINAL] {"max":186,"min":186,"avg":186,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":187}
+[2026-01-18T02:14:23.272Z] [hosting] uploads queued: 0
+[2026-01-18T02:14:23.272Z] [hosting][upload queue][FINAL] {"max":0,"min":9999999999,"avg":0,"active":0,"complete":0,"success":0,"errored":0,"retried":0,"total":0,"elapsed":1768702463272}
+i  hosting: upload complete 
+✔  hosting[arc-studio-box]: file upload complete 
+[2026-01-18T02:14:23.273Z] [hosting] deploy completed after 263ms
+i  functions: Skipping the deploy of unchanged functions. 
+✔  functions[api(us-central1)] Skipped (No changes detected) 
+[2026-01-18T02:14:23.278Z] Total Function Deployment time: 1
+[2026-01-18T02:14:23.279Z] 0 Functions Deployed
+[2026-01-18T02:14:23.279Z] 0 Functions Errored
+[2026-01-18T02:14:23.279Z] 0 Function Deployments Aborted
+[2026-01-18T02:14:23.279Z] Average Function Deployment time: NaN
+[2026-01-18T02:14:23.299Z] Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment
+[2026-01-18T02:14:23.300Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:23.300Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:23.300Z] >>> [apiv2][query] GET https://artifactregistry.googleapis.com/v1/projects/arc-studio-box/locations/us-central1/repositories/gcf-artifacts [none]
+[2026-01-18T02:14:23.628Z] <<< [apiv2][status] GET https://artifactregistry.googleapis.com/v1/projects/arc-studio-box/locations/us-central1/repositories/gcf-artifacts 200
+[2026-01-18T02:14:23.628Z] <<< [apiv2][body] GET https://artifactregistry.googleapis.com/v1/projects/arc-studio-box/locations/us-central1/repositories/gcf-artifacts {"name":"projects/arc-studio-box/locations/us-central1/repositories/gcf-artifacts","format":"DOCKER","description":"This repository is created and used by Cloud Functions for storing function docker images.","labels":{"goog-managed-by":"cloudfunctions"},"createTime":"2026-01-11T01:24:56.184117Z","updateTime":"2026-01-18T00:32:47.317291Z","mode":"STANDARD_REPOSITORY","cleanupPolicies":{"firebase-functions-cleanup":{"id":"firebase-functions-cleanup","action":"DELETE","condition":{"tagState":"ANY","olderThan":"86400s"}}},"sizeBytes":"117169292","vulnerabilityScanningConfig":{"lastEnableTime":"2026-01-11T01:24:41.078891262Z","enablementState":"SCANNING_DISABLED","enablementStateReason":"API containerscanning.googleapis.com is not enabled."},"satisfiesPzi":true,"registryUri":"us-central1-docker.pkg.dev/arc-studio-box/gcf-artifacts"}
+[2026-01-18T02:14:23.629Z] [
+  {
+    "config": {
+      "public": "frontend/dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/api/**",
+          "function": {
+            "functionId": "api"
+          }
+        },
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "site": "arc-studio-box"
+    },
+    "version": "projects/784508378100/sites/arc-studio-box/versions/0229c941c1c1a778"
+  }
+]
+i  hosting[arc-studio-box]: finalizing version... 
+[2026-01-18T02:14:23.631Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:23.632Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:23.632Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/versions/0229c941c1c1a778 updateMask=status%2Cconfig
+[2026-01-18T02:14:23.632Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/versions/0229c941c1c1a778 {"status":"FINALIZED","config":{"rewrites":[{"glob":"/api/**","run":{"serviceId":"api","region":"us-central1"}},{"glob":"**","path":"/index.html"}]}}
+[2026-01-18T02:14:23.808Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/versions/0229c941c1c1a778 200
+[2026-01-18T02:14:23.808Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/versions/0229c941c1c1a778 {"name":"projects/784508378100/sites/arc-studio-box/versions/0229c941c1c1a778","status":"FINALIZED","config":{"rewrites":[{"glob":"/api/**","run":{"serviceId":"api","region":"us-central1"}},{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-01-18T02:14:22.734427Z","createUser":{"email":"AKSystems.mail@gmail.com"},"finalizeTime":"2026-01-18T02:14:23.778003Z","finalizeUser":{"email":"AKSystems.mail@gmail.com"}}
+[2026-01-18T02:14:23.808Z] [hosting] finalized version for arc-studio-box:[object Object]
+✔  hosting[arc-studio-box]: version finalized 
+i  hosting[arc-studio-box]: releasing new version... 
+[2026-01-18T02:14:23.809Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:23.809Z] Checked if tokens are valid: true, expires at: 1768705874454
+[2026-01-18T02:14:23.809Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/channels/live/releases versionName=projects%2F784508378100%2Fsites%2Farc-studio-box%2Fversions%2F0229c941c1c1a778
+[2026-01-18T02:14:23.809Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/channels/live/releases {}
+[2026-01-18T02:14:24.007Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/channels/live/releases 200
+[2026-01-18T02:14:24.007Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/arc-studio-box/channels/live/releases {"name":"projects/784508378100/sites/arc-studio-box/channels/live/releases/1768702463443000","version":{"name":"projects/784508378100/sites/arc-studio-box/versions/0229c941c1c1a778","status":"FINALIZED","config":{"rewrites":[{"glob":"/api/**","run":{"serviceId":"api","region":"us-central1"}},{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-01-18T02:14:22.734427Z","createUser":{"email":"AKSystems.mail@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLY69Ynralf1jkm9VxOGt1J6qsqsOI-AllYZI80_xzpXd1t36K0"},"finalizeTime":"2026-01-18T02:14:23.778003Z","finalizeUser":{"email":"AKSystems.mail@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLY69Ynralf1jkm9VxOGt1J6qsqsOI-AllYZI80_xzpXd1t36K0"}},"type":"DEPLOY","releaseTime":"2026-01-18T02:14:23.443Z","releaseUser":{"email":"AKSystems.mail@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLY69Ynralf1jkm9VxOGt1J6qsqsOI-AllYZI80_xzpXd1t36K0"}}
+[2026-01-18T02:14:24.007Z] [hosting] release: {"name":"projects/784508378100/sites/arc-studio-box/channels/live/releases/1768702463443000","version":{"name":"projects/784508378100/sites/arc-studio-box/versions/0229c941c1c1a778","status":"FINALIZED","config":{"rewrites":[{"glob":"/api/**","run":{"serviceId":"api","region":"us-central1"}},{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-01-18T02:14:22.734427Z","createUser":{"email":"AKSystems.mail@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLY69Ynralf1jkm9VxOGt1J6qsqsOI-AllYZI80_xzpXd1t36K0"},"finalizeTime":"2026-01-18T02:14:23.778003Z","finalizeUser":{"email":"AKSystems.mail@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLY69Ynralf1jkm9VxOGt1J6qsqsOI-AllYZI80_xzpXd1t36K0"}},"type":"DEPLOY","releaseTime":"2026-01-18T02:14:23.443Z","releaseUser":{"email":"AKSystems.mail@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLY69Ynralf1jkm9VxOGt1J6qsqsOI-AllYZI80_xzpXd1t36K0"}}
+✔  hosting[arc-studio-box]: release complete 
+
+✔  Deploy complete! 
+
+Project Console: https://console.firebase.google.com/project/arc-studio-box/overview
+Hosting URL: https://arc-studio-box.web.app

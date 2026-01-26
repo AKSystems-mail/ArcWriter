@@ -1,0 +1,111 @@
+[2026-01-18T00:27:18.779Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[2026-01-18T00:27:18.780Z] > authorizing via signed-in user (aksystems.mail@gmail.com)
+[2026-01-18T00:27:18.781Z] [iam] checking project arc-studio-box for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]
+[2026-01-18T00:27:18.782Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:18.783Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:18.784Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box:testIamPermissions [none]
+[2026-01-18T00:27:18.784Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box:testIamPermissions x-goog-quota-user=projects/arc-studio-box
+[2026-01-18T00:27:18.785Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]}
+[2026-01-18T00:27:18.995Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box:testIamPermissions 200
+[2026-01-18T00:27:18.996Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]}
+[2026-01-18T00:27:18.996Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:18.996Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:18.997Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/arc-studio-box/serviceAccounts/arc-studio-box@appspot.gserviceaccount.com:testIamPermissions [none]
+[2026-01-18T00:27:18.997Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/arc-studio-box/serviceAccounts/arc-studio-box@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[2026-01-18T00:27:19.106Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/arc-studio-box/serviceAccounts/arc-studio-box@appspot.gserviceaccount.com:testIamPermissions 200
+[2026-01-18T00:27:19.106Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/arc-studio-box/serviceAccounts/arc-studio-box@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[2026-01-18T00:27:19.107Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:19.108Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:19.108Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box [none]
+[2026-01-18T00:27:19.299Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box 200
+[2026-01-18T00:27:19.299Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box {"projectId":"arc-studio-box","projectNumber":"784508378100","displayName":"ArcWriter","name":"projects/arc-studio-box","resources":{"hostingSite":"arc-studio-box"},"state":"ACTIVE","etag":"1_e0f96b9b-8555-45c1-a29f-618ef77d18e7"}
+
+=== Deploying to 'arc-studio-box'...
+
+i  deploying functions, hosting 
+[2026-01-18T00:27:19.304Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:19.304Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:19.304Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box [none]
+[2026-01-18T00:27:19.389Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box 200
+[2026-01-18T00:27:19.389Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/arc-studio-box {"projectNumber":"784508378100","projectId":"arc-studio-box","lifecycleState":"ACTIVE","name":"ArcWriter","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-01-10T05:54:15.196887Z"}
+i  functions: preparing codebase default for deployment 
+i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[2026-01-18T00:27:19.391Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:19.392Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:19.392Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box/adminSdkConfig [none]
+[2026-01-18T00:27:19.614Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box/adminSdkConfig 200
+[2026-01-18T00:27:19.614Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/arc-studio-box/adminSdkConfig {"projectId":"arc-studio-box","storageBucket":"arc-studio-box.firebasestorage.app"}
+[2026-01-18T00:27:19.615Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:19.615Z] Checked if tokens are valid: true, expires at: 1768699528455
+[2026-01-18T00:27:19.616Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/arc-studio-box/configs [none]
+[2026-01-18T00:27:19.760Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/arc-studio-box/configs 200
+[2026-01-18T00:27:19.760Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/arc-studio-box/configs {}
+[2026-01-18T00:27:19.761Z] Customer code is not Node
+[2026-01-18T00:27:19.762Z] Validating python source
+[2026-01-18T00:27:19.762Z] Building python source
+i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[2026-01-18T00:27:19.763Z] Could not find functions.yaml. Must use http discovery
+[2026-01-18T00:27:19.771Z] Running command with virtualenv: command=., args=["\"/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/bin/activate\"","&&","python3.11","-c","\"import firebase_functions; import os; print(os.path.dirname(firebase_functions.__file__))\""]
+[2026-01-18T00:27:19.802Z] stdout: /home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/firebase_functions
+
+[2026-01-18T00:27:19.806Z] Running admin server with args: ["python3.11","\"/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/firebase_functions/private/serving.py\""] and env: {"FIREBASE_CONFIG":"{\"projectId\":\"arc-studio-box\",\"storageBucket\":\"arc-studio-box.firebasestorage.app\"}","GCLOUD_PROJECT":"arc-studio-box","GOOGLE_CLOUD_QUOTA_PROJECT":"arc-studio-box","ADMIN_PORT":"8081"} in /home/akprod/.gemini/antigravity/scratch/arc/backend
+[2026-01-18T00:27:19.806Z] Running command with virtualenv: command=., args=["\"/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/bin/activate\"","&&","python3.11","\"/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/firebase_functions/private/serving.py\""]
+ * Serving Flask app 'serving'
+ * Debug mode: off
+
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:8081
+
+Press CTRL+C to quit
+
+/home/akprod/.gemini/antigravity/scratch/arc/backend/main.py:11: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+
+[2026-01-17 19:27:22,162] ERROR in app: Exception on /__/functions.yaml [GET]
+Traceback (most recent call last):
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/firebase_functions/private/serving.py", line 121, in get_functions_yaml
+    functions = get_functions()
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/venv/lib64/python3.14/site-packages/firebase_functions/private/serving.py", line 41, in get_functions
+    spec.loader.exec_module(module)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 759, in exec_module
+  File "<frozen importlib._bootstrap>", line 491, in _call_with_frames_removed
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/main.py", line 80, in <module>
+    from app.routers import onboarding, users, pitchdeck, script
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/app/routers/onboarding.py", line 5, in <module>
+    from app.services.logic_engine import LogicEngine
+  File "/home/akprod/.gemini/antigravity/scratch/arc/backend/app/services/logic_engine.py", line 107
+    """
+    ^^^
+IndentationError: expected an indented block after function definition on line 106
+
+127.0.0.1 - - [17/Jan/2026 19:27:22] "GET /__/functions.yaml HTTP/1.1" 500 -
+
+[2026-01-18T00:27:22.168Z] Got response code 500; body <!doctype html>
+<html lang=en>
+<title>500 Internal Server Error</title>
+<h1>Internal Server Error</h1>
+<p>The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.</p>
+
+127.0.0.1 - - [17/Jan/2026 19:27:22] "GET /__/quitquitquit HTTP/1.1" 200 -
+
+
+Error: Functions codebase could not be analyzed successfully. It may have a syntax or runtime error

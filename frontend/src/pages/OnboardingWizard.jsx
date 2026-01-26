@@ -148,12 +148,20 @@ const OnboardingWizard = () => {
         try {
             const response = await apiClient('/api/onboarding/finalize', {
                 method: 'POST',
-                body: JSON.stringify({ ...data, persona }) // Ensure persona is included
+                body: JSON.stringify({ ...data, persona })
             });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                // LOG THE REAL ERROR TO CONSOLE
+                console.error("Validation Error Details:", JSON.stringify(errorData, null, 2));
+                throw new Error(errorData.detail ? JSON.stringify(errorData.detail) : 'Failed to finalize project');
+            }
+
             const result = await response.json();
 
-            // Redirect to Script Editor with the new project ID
-            navigate(`/project/${result.project_id}/editor`, {
+            // CORRECTED ROUTING: Go to Beat Sheet first!
+            navigate(`/project/${result.project_id}/beat-sheet`, {
                 state: {
                     project_id: result.project_id,
                     universe_id: result.universe_id
@@ -161,6 +169,8 @@ const OnboardingWizard = () => {
             });
         } catch (error) {
             console.error("Error finalizing:", error);
+            // Show a more helpful alert (or check console)
+            alert(`Error creating project. Check console for details.`);
         } finally {
             setLoading(false);
         }

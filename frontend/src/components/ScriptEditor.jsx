@@ -53,8 +53,8 @@ const ScriptEditor = ({ universeId, projectId }) => {
         const docSnap = await getDoc(projectRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          // Prefer raw text if available separately, otherwise bible_content
-          setSourceContent(data.bible_content || "No source material available.");
+          // Prioritize the specific source_material field, fallback to bible_content
+          setSourceContent(data.source_material || data.bible_content || "No source material available.");
         }
       } catch (error) {
         console.error("Error loading source material:", error);

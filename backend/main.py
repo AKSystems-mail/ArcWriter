@@ -13,6 +13,8 @@ import vertexai
 from google.oauth2 import service_account
 import stripe
 from firebase_functions import https_fn
+from a2wsgi import ASGIMiddleware
+from flask import Response as FlaskResponse
 
 # Lazy Service Registry
 class ServiceRegistry:
@@ -79,7 +81,7 @@ services = ServiceRegistry()
 from app.utils.firebase_auth_utils import verify_token, get_firestore_db, initialize_firebase_admin, get_current_user
 from app.routers import onboarding, users, pitchdeck, script
 
-# Initialize Firebase Admin SDK at application startup
+# Initialize Firebase Admin SDK at application startup (v2 bridge)
 initialize_firebase_admin()
 
 # Initialize Gemini
@@ -109,10 +111,11 @@ app = FastAPI(title="Arc Studio API")
     memory=512,
     timeout_sec=60,
     min_instances=0,
-    invoker="public"
+    invoker="public",
+    secrets=["GEMINI_API_KEY"]
 )
 def api(req: https_fn.Request) -> https_fn.Response:
-    return https_fn.as_asgi(app)(req)
+    return FlaskResponse.from_app(ASGIMiddleware(app), req.environ)
 
 # Define base directory for universes
 UNIVERSE_BASE_DIR = "universes"

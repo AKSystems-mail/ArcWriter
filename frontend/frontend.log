@@ -36,3 +36,19 @@
 12:19:40 PM [vite] hmr update /src/pages/OnboardingWizard.jsx, /src/index.css
 12:19:53 PM [vite] hmr update /src/components/BeatSheetForm.jsx, /src/index.css
 12:20:10 PM [vite] hmr update /src/pages/ScriptEditorPage.jsx, /src/index.css
+12:21:51 PM [vite] hmr update /src/components/BeatSheetForm.jsx, /src/index.css
+12:22:05 PM [vite] hmr update /src/components/BeatSheetForm.jsx, /src/index.css
+
+> arcwriter@0.0.0 dev
+> vite
+
+
+  VITE v5.4.21  ready in 432 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+9:09:58 PM [vite] hmr update /src/pages/OnboardingWizard.jsx, /src/index.css
+9:10:46 PM [vite] hmr update /src/pages/OnboardingWizard.jsx, /src/index.css
+4:25:52 PM [vite] hmr update /src/pages/OnboardingWizard.jsx, /src/index.css
+4:39:51 PM [vite] hmr update /src/components/ScriptEditor.jsx, /src/index.css
+5:25:17 PM [vite] hmr update /src/pages/OnboardingWizard.jsx, /src/index.css

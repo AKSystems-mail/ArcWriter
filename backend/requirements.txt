@@ -12,3 +12,4 @@ jinja2
 python-multipart
 pypdf
 pdfplumber
+a2wsgi

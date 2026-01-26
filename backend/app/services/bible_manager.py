@@ -121,6 +121,15 @@ class BibleManager:
         final_content = parts[0] + parts[1] + new_rest
         self.save_bible(final_content)
 
+        # Sync structured data if updating Beat Sheet
+        if "Beat Sheet" in header:
+            print("DEBUG: Syncing Beat Sheet to project config...")
+            try:
+                parsed_beats = self.parse_beat_sheet(new_content)
+                self.update_project_data({"beat_sheet_data": parsed_beats})
+            except Exception as e:
+                print(f"ERROR: Failed to sync beat sheet data: {e}")
+
     def get_context_string(self) -> str:
         project_ref = self._get_project_ref()
         project_doc = project_ref.get()
@@ -146,6 +155,63 @@ class BibleManager:
         beats = "; ".join(beats_lines)
 
         return f"Title: {title}, Genre: {genre}, Beats: {beats}"
+
+    def parse_beat_sheet(self, beat_sheet_content: str) -> Dict[str, str]:
+        """
+        Parses the beat sheet content into individual beats with robust error handling.
+        """
+        beats = {}
+        # Print for debugging as requested
+        print(f"DEBUG: Parsing beat sheet. Content length: {len(beat_sheet_content)}")
+        
+        # 1. Primary Parse: Numbered List
+        # Regex matches: Start of line, number, dot, whitespace, (Header Content), end of line
+        # We capture the header name
+        header_pattern = re.compile(r"^\d+\.\s+(.*?)\s*$", re.MULTILINE)
+        matches = list(header_pattern.finditer(beat_sheet_content))
+        
+        found_headers_log = []
+        
+        for i, match in enumerate(matches):
+            raw_header = match.group(1).strip()
+            start_pos = match.end()
+            
+            # End position is start of next match or end of string
+            end_pos = matches[i+1].start() if i + 1 < len(matches) else len(beat_sheet_content)
+            
+            content = beat_sheet_content[start_pos:end_pos].strip()
+            
+            # Normalize Header
+            normalized_header = raw_header
+            
+            # Fix: Dark Night of the Soul flexibility
+            # Allow "Dark Night", "Dark Night of Soul", "The Dark Night", etc.
+            if re.search(r"Dark\s+Night", raw_header, re.IGNORECASE):
+                normalized_header = "Dark Night of the Soul"
+                print(f"DEBUG: Normalized '{raw_header}' to 'Dark Night of the Soul'")
+            
+            found_headers_log.append(normalized_header)
+            beats[normalized_header] = content
+
+        print(f"DEBUG: Found headers: {found_headers_log}")
+
+        # 2. Fallback for Dark Night of the Soul if not found
+        if "Dark Night of the Soul" not in beats:
+            print("DEBUG: 'Dark Night of the Soul' missing from numbered list. Attempting fallback regex.")
+            # Try to find it without number or with weird formatting
+            # Look for line starting with "Dark Night..." followed by content
+            fallback_match = re.search(r"(?:^|\n)(?:12\.\s*)?(Dark\s+Night(?:.*Soul)?)[^\n]*\n(.*?)(?=\n\d+\.|\Z)", beat_sheet_content, re.IGNORECASE | re.DOTALL)
+            if fallback_match:
+                header_found = fallback_match.group(1).strip()
+                content_found = fallback_match.group(2).strip()
+                beats["Dark Night of the Soul"] = content_found
+                print(f"DEBUG: Found 'Dark Night of the Soul' via fallback. Header was: '{header_found}'")
+            else:
+                # Last resort: check if we can dump it in notes
+                print("DEBUG: 'Dark Night of the Soul' strictly not found.")
+                beats["Notes"] = beats.get("Notes", "") + "\n[System Warning]: Could not extract 'Dark Night of the Soul'."
+
+        return beats
 
     def _extract_section_content(self, full_content: str, header: str) -> str:
         """Helper to extract content under a specific markdown header."""

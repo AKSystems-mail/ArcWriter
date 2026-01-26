@@ -84,14 +84,13 @@ async def analyze_file(file: UploadFile = File(...), user_id: str = Depends(get_
         raise HTTPException(status_code=500, detail=f"Failed to analyze file: {str(e)}")
 
 class SetupRequest(BaseModel):
-    pitch: str
+    pitch: str = ""
     metadata: Dict[str, Any]
-    vibe: str
+    vibe: Optional[str] = "Cinematic"
     persona: str
     user_id: Optional[str] = None
     is_script: bool = False
     script_content: Optional[List[Dict[str, Any]]] = None
-    is_script: bool = False # New flag
 
 class FinalizeResponse(BaseModel):
     project_id: str
@@ -99,33 +98,38 @@ class FinalizeResponse(BaseModel):
 
 @router.post("/finalize", response_model=FinalizeResponse)
 async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_current_user)):
-    # Finalizes the onboarding process: creates universe, project, and saves to Firestore.
     try:
         db = get_firestore_db()
         
+        # Safely get metadata with defaults
         title = request.metadata.get("title", "Untitled Project")
         genre = request.metadata.get("genre", "Unknown Genre")
         logline = request.metadata.get("logline", "")
         
-        # Handle Bible Content (Source Material)
+        # 1. Construct the Beat Sheet Text
+        beat_sheet_text = ""
+        if "beat_sheet" in request.metadata:
+            beat_sheet_text = "BEAT SHEET (SAVE THE CAT)\n=========================\n\n"
+            for beat, desc in request.metadata["beat_sheet"].items():
+                beat_sheet_text += f"{beat.replace('_', ' ').upper()}:\n{desc}\n\n"
+
+        # 2. Determine Source Material Content
+        source_material_content = request.metadata.get("raw_text", "")
+        if not source_material_content or not source_material_content.strip():
+            source_material_content = beat_sheet_text
+
+        # 3. Construct Bible Content
         bible_intro = f"# Project Bible: {title}\n## Metadata\n- Genre: {genre}\n- Logline: {logline}\n- Vibe: {request.vibe}\n- Producer Persona: {request.persona}\n\n"
-        
         synopsis = request.metadata.get("synopsis", request.pitch)
-        bible_content = bible_intro + f"## Synopsis\n{synopsis}\n"
-
-        if "raw_text" in request.metadata:
-             bible_content += "\n## Source Material\n" + request.metadata["raw_text"] + "\n"
-
+        
+        bible_content = bible_intro + f"## Synopsis\n{synopsis}\n\n" + beat_sheet_text
+        
         if "character_descriptions" in request.metadata:
             bible_content += "\n## Characters\n"
             for char in request.metadata["character_descriptions"]:
                 bible_content += f"- **{char.get('name', 'Unknown')}**: {char.get('role', 'N/A')} - {char.get('description', '')}\n"
 
-        if "beat_sheet" in request.metadata:
-            bible_content += "\n## Beat Sheet (Save the Cat)\n"
-            for beat, desc in request.metadata["beat_sheet"].items():
-                bible_content += f"- **{beat}**: {desc}\n"
-
+        # 4. Create Universe (if needed)
         universe_id = f"universe_{user_id}"
         universe_ref = db.collection("universes").document(universe_id)
         
@@ -136,46 +140,29 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
                 "created_at": firestore.SERVER_TIMESTAMP
             })
 
+        # 5. Create Project
         project_id = f"project_{uuid.uuid4().hex[:8]}"
         project_ref = universe_ref.collection("projects").document(project_id)
         
-        # PERSIST TO FILE SYSTEM (BibleManager)
-        from app.services.bible_manager import BibleManager
-        bm = BibleManager(universe_name=universe_id, project_id=project_id)
-        bm.initialize_bible("save_the_cat")
-        
-        # Update project_config.json
-        bm.update_project_data({
-            "title": title,
-            "genre": genre,
-            "logline": logline,
-            "vibe": request.vibe,
-            "persona": request.persona,
-            "beat_sheet_data": request.metadata.get("beat_sheet"),
-            "synopsis": synopsis,
-            "characters": request.metadata.get("character_descriptions"),
-            "owner_id": user_id
-        })
-        
-        # SYNC TO FIRESTORE
+        # 6. Save to Firestore
         project_data = {
             "title": title,
             "owner_id": user_id,
             "created_at": firestore.SERVER_TIMESTAMP,
             "bible_content": bible_content,
+            "source_material": source_material_content,
             "logline": logline,
             "genre": genre,
             "vibe": request.vibe,
             "persona": request.persona,
-            "beat_sheet": request.metadata.get("beat_sheet"),
-            "beat_sheet_data": request.metadata.get("beat_sheet"),
+            "beat_sheet": request.metadata.get("beat_sheet", {}),
             "synopsis": synopsis,
-            "characters": request.metadata.get("character_descriptions")
+            "characters": request.metadata.get("character_descriptions", [])
         }
         
         project_ref.set(project_data)
 
-        # Handle Script Import
+        # 7. Handle Script Import
         if request.is_script and "script_blocks" in request.metadata:
             script_blocks = request.metadata["script_blocks"]
             if script_blocks:
@@ -187,4 +174,6 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
 
     except Exception as e:
         print(f"Error in finalize_onboarding: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to finalize onboarding: {str(e)}")
