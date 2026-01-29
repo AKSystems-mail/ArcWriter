@@ -8,7 +8,6 @@ import json
 import os
 import shutil
 from fastapi.responses import StreamingResponse
-import google.generativeai as genai
 import vertexai
 from google.oauth2 import service_account
 import stripe
@@ -84,11 +83,6 @@ from app.routers import onboarding, users, pitchdeck, script
 # Initialize Firebase Admin SDK at application startup (v2 bridge)
 initialize_firebase_admin()
 
-# Initialize Gemini
-api_key = os.getenv('GEMINI_API_KEY')
-if api_key:
-    genai.configure(api_key=api_key.strip())
-
 # Initialize Vertex AI
 # Initialize Vertex AI
 try:
@@ -108,8 +102,8 @@ app = FastAPI(title="Arc Studio API")
 
 # Export as Firebase Function
 @https_fn.on_request(
-    memory=512,
-    timeout_sec=60,
+    memory=2048,
+    timeout_sec=300,
     min_instances=0,
     invoker="public",
     secrets=["GEMINI_API_KEY"]
@@ -263,36 +257,49 @@ async def create_universe(request: CreateUniverseRequest, user_id: str = Depends
 # --- Project Management Endpoints ---
 @app.get("/api/universe/{universe_name}/projects", response_model=List[ProjectResponse])
 async def list_projects_in_universe(universe_name: str, user_id: str = Depends(get_current_user)): # Secured endpoint
-    universe_path = os.path.join(UNIVERSE_BASE_DIR, universe_name)
-    if not os.path.isdir(universe_path):
-        raise HTTPException(status_code=404, detail=f"Universe '{universe_name}' not found.")
+    db = get_firestore_db()
+    universe_ref = db.collection("universes").document(universe_name)
     
+    if not universe_ref.get().exists:
+        # Fallback to local FS check if Firestore universe doesn't exist yet (for transition)
+        universe_path = os.path.join(UNIVERSE_BASE_DIR, universe_name)
+        if not os.path.isdir(universe_path):
+            return [] # No projects yet
+
+    projects_ref = universe_ref.collection("projects")
     projects = []
-    for entry in os.listdir(universe_path):
-        project_path = os.path.join(universe_path, entry)
-        if os.path.isdir(project_path):
-            bm = BibleManager(universe_name=universe_name, project_id=entry)
-            project_config = bm.get_project_data()
-            projects.append(ProjectResponse(
-                id=entry, 
-                name=project_config.get('title', entry), # Use title from config, fallback to id
-                logline=project_config.get('logline'),
-                genre=project_config.get('genre'),
-                character_anchor_url=project_config.get('character_anchor_url'),
-                poster_url=project_config.get('poster_url'),
-                teaser_url=project_config.get('teaser_url'),
-                script_page_count=project_config.get('script_page_count'),
-                characters=project_config.get('characters')
-            )) 
+    
+    for doc in projects_ref.stream():
+        p_data = doc.to_dict()
+        projects.append(ProjectResponse(
+            id=doc.id, 
+            name=p_data.get('title', doc.id),
+            logline=p_data.get('logline'),
+            genre=p_data.get('genre'),
+            character_anchor_url=p_data.get('character_anchor_url'),
+            poster_url=p_data.get('poster_url'),
+            teaser_url=p_data.get('teaser_url'),
+            script_page_count=p_data.get('script_page_count'),
+            characters=p_data.get('characters')
+        ))
     return projects
 
 @app.get("/api/project/{universe_name}/{project_id}", response_model=ProjectResponse)
 async def get_project_details(universe_name: str, project_id: str, user_id: str = Depends(get_current_user)):
     bm = BibleManager(universe_name=universe_name, project_id=project_id)
-    if not os.path.exists(bm.project_path):
-        raise HTTPException(status_code=404, detail=f"Project '{project_id}' in universe '{universe_name}' not found.")
     
-    project_config = bm.get_project_data()
+    # Primary Source: Firestore
+    project_ref = bm._get_project_ref()
+    project_doc = project_ref.get()
+    
+    if not project_doc.exists:
+        # Fallback to local FS config if not in Firestore (legacy)
+        if not os.path.exists(bm.project_path):
+            raise HTTPException(status_code=404, detail=f"Project '{project_id}' not found.")
+        project_config = bm.get_project_data()
+    else:
+        project_config = project_doc.to_dict()
+    
     return ProjectResponse(
         id=project_id,
         name=project_config.get('title', project_id),
@@ -302,8 +309,8 @@ async def get_project_details(universe_name: str, project_id: str, user_id: str 
         poster_url=project_config.get('poster_url'),
         teaser_url=project_config.get('teaser_url'),
         script_page_count=project_config.get('script_page_count'),
-        beat_sheet=project_config.get('beat_sheet'),
-        beat_sheet_data=project_config.get('beat_sheet_data'),
+        beat_sheet=project_config.get('beat_sheet'), # Onboarding saves to 'beat_sheet'
+        beat_sheet_data=project_config.get('beat_sheet_data'), # BibleManager saves to 'beat_sheet_data'
         characters=project_config.get('characters')
     )
 
@@ -351,7 +358,7 @@ async def analyze_scene(request: SceneRequest, user_id: str = Depends(get_curren
     # Cost for analysis could be added here
     if not request.scene_text:
         raise HTTPException(status_code=400, detail="No scene text provided")
-    result = services.logic_engine.analyze_scene_logic(request.scene_text)
+    result = services.logic_engine.analyze_scene(request.scene_text)
     return result
 
 @app.post("/api/critique")

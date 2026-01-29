@@ -25,7 +25,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
         setLoading(true);
 
         try {
-            const response = await fetch(`http://localhost:5000/api/stripe/create-checkout-session/${planType}`, {
+            const response = await fetch(`/api/stripe/create-checkout-session/${planType}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

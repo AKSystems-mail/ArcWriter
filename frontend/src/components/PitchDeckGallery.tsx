@@ -45,7 +45,7 @@ const PitchDeckGallery: React.FC<PitchDeckGalleryProps> = ({
         }
         try {
             const idToken = await currentUser.getIdToken();
-            const response = await fetch('http://localhost:5000/api/user/me', {
+            const response = await fetch('/api/user/me', {
                 headers: {
                     'Authorization': `Bearer ${idToken}`,
                 },
@@ -95,7 +95,7 @@ const PitchDeckGallery: React.FC<PitchDeckGalleryProps> = ({
             const idToken = await auth.currentUser?.getIdToken();
             if (!idToken) throw new Error("Authentication token not found.");
 
-            const response = await fetch('http://localhost:5000/api/assets/generate', {
+            const response = await fetch('/api/assets/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -136,7 +136,7 @@ const PitchDeckGallery: React.FC<PitchDeckGalleryProps> = ({
             const idToken = await auth.currentUser?.getIdToken();
             if (!idToken) throw new Error("Authentication token not found.");
 
-            const response = await fetch('http://localhost:5000/api/assets/generate', {
+            const response = await fetch('/api/assets/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -169,7 +169,7 @@ const PitchDeckGallery: React.FC<PitchDeckGalleryProps> = ({
     };
 
     const handleDownloadPitchDeck = () => {
-        const downloadUrl = `http://localhost:5000/api/pitchdeck/download/${UNIVERSE_NAME}/${PROJECT_ID}`;
+        const downloadUrl = `/api/pitchdeck/download/${UNIVERSE_NAME}/${PROJECT_ID}`;
         window.open(downloadUrl, '_blank');
     };
 
@@ -180,7 +180,7 @@ const PitchDeckGallery: React.FC<PitchDeckGalleryProps> = ({
                     const idToken = await auth.currentUser?.getIdToken();
                     if (!idToken) throw new Error("Authentication token not found.");
 
-                    const response = await fetch(`http://localhost:5000/api/assets/check_video_status/${teaserJobId}`, {
+                    const response = await fetch(`/api/assets/check_video_status/${teaserJobId}`, {
                         headers: {
                             'Authorization': `Bearer ${idToken}`,
                         },

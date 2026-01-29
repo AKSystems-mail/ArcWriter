@@ -9,6 +9,7 @@ import io
 import os
 import uuid
 import tempfile
+import shutil
 from firebase_admin import firestore
 
 router = APIRouter(
@@ -38,31 +39,57 @@ async def analyze_pitch(request: PitchRequest, user_id: str = Depends(get_curren
 
 @router.post("/analyze_file")
 async def analyze_file(file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
+    print(f"[{user_id}] Starting analyze_file for {file.filename}")
     # Extracts text from PDF and analyzes it as a script or notes.
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
     
+    tmp_path = None
     try:
-        content = await file.read()
-        
-        # Save to temp file for pdfplumber
+        # Stream to temp file to save memory
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(content)
+            shutil.copyfileobj(file.file, tmp)
             tmp_path = tmp.name
+        
+        file_size = os.path.getsize(tmp_path)
+        print(f"[{user_id}] File streamed to {tmp_path}. Size: {file_size} bytes")
 
         # 1. Parse as Script (Always attempt, to be ready if user selects 'Script')
-        script_blocks = parse_pdf_to_editor_format(tmp_path)
+        print(f"[{user_id}] Starting parse_pdf_to_editor_format...")
+        try:
+            # Optimized: returns blocks AND full text
+            script_blocks, text = parse_pdf_to_editor_format(tmp_path)
+            print(f"[{user_id}] Finished parse_pdf_to_editor_format. Blocks: {len(script_blocks)}, Text Length: {len(text)}")
+        except Exception as e:
+            print(f"[{user_id}] parsing failed: {e}")
+            script_blocks = []
+            text = ""
         
-        # 2. Extract raw text for Analysis
-        pdf = PdfReader(io.BytesIO(content))
-        text = ""
-        for page in pdf.pages:
-            text += page.extract_text() + "\n"
-        
-        page_count = len(pdf.pages)
+        # 2. Extract raw text for Analysis (If parser failed or returned empty text, try fallback?)
+        # For now, assume if parser worked, text is good. If parser failed, we might want a fallback.
+        if not text:
+             print(f"[{user_id}] Parser returned no text. Attempting fallback raw text extraction...")
+             try:
+                pdf = PdfReader(tmp_path)
+                text = ""
+                for page in pdf.pages:
+                    text += page.extract_text() + "\n"
+                print(f"[{user_id}] Fallback extraction complete. Length: {len(text)}")
+             except Exception as e:
+                 print(f"[{user_id}] Fallback extraction failed: {e}")
+
+        # Count pages for heuristic (re-open efficiently or just guess from blocks? Let's use PdfReader just for page count if needed, or assume text length)
+        # We need page count for the heuristic 'is this a script?'
+        try:
+             pdf = PdfReader(tmp_path)
+             page_count = len(pdf.pages)
+        except:
+             page_count = 0
+
         logic_engine = LogicEngine()
         
         metadata = {}
+        print(f"[{user_id}] Starting LogicEngine analysis (Pages: {page_count})...")
         if page_count > 10:
              # Heuristic: likely a script
              metadata = logic_engine.reverse_engineer_script(text)
@@ -70,6 +97,7 @@ async def analyze_file(file: UploadFile = File(...), user_id: str = Depends(get_
         else:
              metadata = logic_engine.distill_notes(text)
              metadata["source_type"] = "notes"
+        print(f"[{user_id}] Finished LogicEngine analysis.")
         
         # Return both metadata and the raw/parsed content options
         metadata["script_blocks"] = script_blocks
@@ -78,9 +106,13 @@ async def analyze_file(file: UploadFile = File(...), user_id: str = Depends(get_
         # Cleanup
         os.unlink(tmp_path)
             
+        print(f"[{user_id}] analyze_file complete. Returning.")
         return metadata
     except Exception as e:
         print(f"Error analyzing file: {e}")
+        # Clean up if error
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
         raise HTTPException(status_code=500, detail=f"Failed to analyze file: {str(e)}")
 
 class SetupRequest(BaseModel):
@@ -152,6 +184,7 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
         project_ref = universe_ref.collection("projects").document(project_id)
         
         # 6. Save to Firestore
+        beat_sheet = request.metadata.get("beat_sheet", {})
         project_data = {
             "title": title,
             "owner_id": user_id,
@@ -162,7 +195,8 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
             "genre": genre,
             "vibe": request.vibe,
             "persona": request.persona,
-            "beat_sheet": request.metadata.get("beat_sheet", {}),
+            "beat_sheet": beat_sheet,
+            "beat_sheet_data": beat_sheet, # Sync for Architect mode
             "synopsis": synopsis,
             "characters": request.metadata.get("character_descriptions", [])
         }

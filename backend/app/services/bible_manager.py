@@ -104,6 +104,9 @@ class BibleManager:
              # If section not found, append it
              updated_content = content.rstrip() + f"\n\n{header}\n{new_content}\n"
              self.save_bible(updated_content)
+             # If this is the beat sheet, also update source_material if it's empty
+             if "Beat Sheet" in header:
+                 project_ref.update({"source_material": new_content})
              return
 
         rest = parts[2]
@@ -123,8 +126,11 @@ class BibleManager:
 
         # Sync structured data if updating Beat Sheet
         if "Beat Sheet" in header:
-            print("DEBUG: Syncing Beat Sheet to project config...")
+            print("DEBUG: Syncing Beat Sheet to project config and source_material...")
             try:
+                # Update source material for the Logic Engine
+                project_ref.update({"source_material": new_content})
+                
                 parsed_beats = self.parse_beat_sheet(new_content)
                 self.update_project_data({"beat_sheet_data": parsed_beats})
             except Exception as e:
@@ -159,57 +165,59 @@ class BibleManager:
     def parse_beat_sheet(self, beat_sheet_content: str) -> Dict[str, str]:
         """
         Parses the beat sheet content into individual beats with robust error handling.
+        Handles:
+        1. Numbered lists (1. Opening Image)
+        2. Header with Colons (OPENING IMAGE:)
+        3. Simple Headers (Opening Image)
         """
         beats = {}
-        # Print for debugging as requested
         print(f"DEBUG: Parsing beat sheet. Content length: {len(beat_sheet_content)}")
         
-        # 1. Primary Parse: Numbered List
-        # Regex matches: Start of line, number, dot, whitespace, (Header Content), end of line
-        # We capture the header name
-        header_pattern = re.compile(r"^\d+\.\s+(.*?)\s*$", re.MULTILINE)
-        matches = list(header_pattern.finditer(beat_sheet_content))
+        # Standard beat names to look for
+        standard_beats = [
+            "Opening Image", "Theme Stated", "Set-up", "Catalyst", "Debate",
+            "Break into Two", "B Story", "Fun and Games", "Midpoint",
+            "Bad Guys Close In", "All Is Lost", "Dark Night of the Soul",
+            "Break into Three", "Finale", "Final Image"
+        ]
+
+        # Normalize content for searching
+        # We'll use a regex that looks for standard beat names at the start of lines, 
+        # optionally preceded by numbers and followed by colons or dashes.
         
-        found_headers_log = []
+        # Create a combined regex for all standard beats
+        beat_names_regex = "|".join([re.escape(b) for b in standard_beats])
+        # Matches: Start of line, optional number/dot, the beat name (case insensitive), optional colon/dash, end of line
+        pattern = re.compile(rf"^(?:\d+\.?\s+)?({beat_names_regex})[:\-\s]*$", re.MULTILINE | re.IGNORECASE)
+        
+        matches = list(pattern.finditer(beat_sheet_content))
         
         for i, match in enumerate(matches):
-            raw_header = match.group(1).strip()
-            start_pos = match.end()
+            matched_name = match.group(1).strip()
             
-            # End position is start of next match or end of string
+            # Find the canonical name (correct casing)
+            canonical_name = next((b for b in standard_beats if b.lower() == matched_name.lower()), matched_name)
+            
+            # Normalize "Set-up" / "Setup" and "Dark Night" variations
+            if "Dark Night" in canonical_name:
+                canonical_name = "Dark Night of the Soul"
+            if matched_name.lower() in ["setup", "set-up", "set up"]:
+                canonical_name = "Set-up"
+
+            start_pos = match.end()
             end_pos = matches[i+1].start() if i + 1 < len(matches) else len(beat_sheet_content)
             
             content = beat_sheet_content[start_pos:end_pos].strip()
-            
-            # Normalize Header
-            normalized_header = raw_header
-            
-            # Fix: Dark Night of the Soul flexibility
-            # Allow "Dark Night", "Dark Night of Soul", "The Dark Night", etc.
-            if re.search(r"Dark\s+Night", raw_header, re.IGNORECASE):
-                normalized_header = "Dark Night of the Soul"
-                print(f"DEBUG: Normalized '{raw_header}' to 'Dark Night of the Soul'")
-            
-            found_headers_log.append(normalized_header)
-            beats[normalized_header] = content
+            beats[canonical_name] = content
 
-        print(f"DEBUG: Found headers: {found_headers_log}")
+        print(f"DEBUG: Found headers: {list(beats.keys())}")
 
-        # 2. Fallback for Dark Night of the Soul if not found
+        # Fallback for "Dark Night of the Soul" if it was missed due to weird wrapping
         if "Dark Night of the Soul" not in beats:
-            print("DEBUG: 'Dark Night of the Soul' missing from numbered list. Attempting fallback regex.")
-            # Try to find it without number or with weird formatting
-            # Look for line starting with "Dark Night..." followed by content
-            fallback_match = re.search(r"(?:^|\n)(?:12\.\s*)?(Dark\s+Night(?:.*Soul)?)[^\n]*\n(.*?)(?=\n\d+\.|\Z)", beat_sheet_content, re.IGNORECASE | re.DOTALL)
-            if fallback_match:
-                header_found = fallback_match.group(1).strip()
-                content_found = fallback_match.group(2).strip()
-                beats["Dark Night of the Soul"] = content_found
-                print(f"DEBUG: Found 'Dark Night of the Soul' via fallback. Header was: '{header_found}'")
-            else:
-                # Last resort: check if we can dump it in notes
-                print("DEBUG: 'Dark Night of the Soul' strictly not found.")
-                beats["Notes"] = beats.get("Notes", "") + "\n[System Warning]: Could not extract 'Dark Night of the Soul'."
+            fallback = re.search(r"Dark\s+Night\s+(?:of\s+the\s+)?Soul[:\-\s]*(.*?)(?=\n\d+\.|\n[A-Z\s]+:|\Z)", beat_sheet_content, re.IGNORECASE | re.DOTALL)
+            if fallback:
+                beats["Dark Night of the Soul"] = fallback.group(1).strip()
+                print("DEBUG: Found 'Dark Night of the Soul' via fallback.")
 
         return beats
 

@@ -18,8 +18,8 @@ class AssetStudio:
             print("Warning: VideoGenerationModel not available. Teaser generation disabled.")
             self.veo_model = None
         
-        # Using Imagen 3 (imagegeneration@006)
-        self.imagen_model = ImageGenerationModel.from_pretrained("imagegeneration@006")
+        # Using Imagen 3
+        self.imagen_model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-001")
 
     def generate_character_anchor(self, description: str, style_reference: str = None) -> str:
         print(f"Generating Character Anchor for: {description}")

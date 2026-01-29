@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import BeatSheetForm from '../components/BeatSheetForm';
 import CharacterProfile from '../components/CharacterProfile';
 import ProjectHeader from '../components/ProjectHeader';
@@ -9,13 +9,19 @@ import { auth } from '../firebase';
 
 const Architect = () => {
     const location = useLocation();
+    const params = useParams(); // Get ID from URL
     const { isMobile } = useResponsive();
     const [projectData, setProjectData] = useState(null);
     const [formData, setFormData] = useState({});
     const [loading, setLoading] = useState(true);
 
-    const universeId = location.state?.universe_id || "default_universe";
-    const projectId = location.state?.project_id || "default_project";
+    // Priority: URL Param > State > Default
+    const projectId = params.projectId || location.state?.project_id || "default_project";
+    // Universe ID might not be in URL for this route, so rely on state or fetch it via project lookup later (if backend supported it)
+    // For now, default to state or "default_universe". 
+    // Ideally the backend `get_project` endpoint should probably just need project_id if they are unique, 
+    // or we assume a default universe for the user.
+    const universeId = location.state?.universe_id || "default_universe"; 
 
     useEffect(() => {
         const fetchProject = async () => {

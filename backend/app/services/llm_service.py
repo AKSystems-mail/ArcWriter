@@ -1,15 +1,11 @@
 import os
 import json
 from dotenv import load_dotenv
-import google.generativeai as genai 
-from google.api_core import exceptions
+from google import genai
+from google.genai import types
 import logging
 
 load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
-
-if api_key:
-    genai.configure(api_key=api_key)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,57 +15,53 @@ class LLMService:
         key = os.getenv("GEMINI_API_KEY")
         if key:
             key = key.strip() # Remove any accidental whitespace
-            genai.configure(api_key=key)
+            self.client = genai.Client(api_key=key)
             # Use Gemini 2.0 Flash for maximum speed and intelligence
             self.model_name = "gemini-2.0-flash"
         else:
             logger.warning("GEMINI_API_KEY not set. LLMService will not function correctly.")
+            self.client = None
             self.model_name = None
 
-    def _get_model(self, system_instruction: str = None):
-        if not self.model_name:
-            return None
-        return genai.GenerativeModel(
-            model_name=self.model_name,
-            system_instruction=system_instruction
-        )
-
     def generate_json(self, prompt: str, system_instruction: str = None) -> dict:
-        model = self._get_model(system_instruction)
-        if not model:
-            return {"error": "LLM not initialized"}
+        if not self.client:
+            return {"error": "LLM client not initialized"}
         try:
-            # Simplest prompt structure
-            response = model.generate_content(
-                prompt + "\n\nOutput ONLY valid JSON. No markdown blocks.",
-                generation_config=genai.GenerationConfig(
-                    temperature=0.7, 
-                    response_mime_type="application/json"
-                ),
-                request_options={"timeout": 60}
+            config = types.GenerateContentConfig(
+                temperature=0.7,
+                system_instruction=system_instruction,
+                response_mime_type="application/json"
             )
+            
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt + "\n\nOutput ONLY valid JSON.",
+                config=config
+            )
+            
             return json.loads(response.text)
         except Exception as e:
             logger.error(f"Error generating JSON: {e}")
             return {"error": str(e), "result": {}}
 
     def generate_text(self, system_instruction: str, user_prompt: str, timeout: int = 60) -> str:
-        model = self._get_model(system_instruction)
-        if not model:
-            return "Error: LLM not initialized"
+        if not self.client:
+            return "Error: LLM client not initialized"
         try:
-            response = model.generate_content(
-                user_prompt,
-                generation_config=genai.GenerationConfig(temperature=0.7), 
-                request_options={"timeout": timeout} 
+            config = types.GenerateContentConfig(
+                temperature=0.7,
+                system_instruction=system_instruction
+            )
+            
+            # The new SDK handles timeouts differently, usually via client configuration or request_options if available.
+            # In google-genai, it's often passed in the Client initialization or not directly exposed per-call in the same way.
+            # We will use the default for now.
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=user_prompt,
+                config=config
             )
             return response.text
-        except exceptions.DeadlineExceeded:
-            logger.error("Gemini API call timed out.")
-            return "Error: Gemini API call timed out."
-        except exceptions.GoogleAPIError as e:
-            logger.error(f"Google API Error: {e}")
-            return f"Error: Google API Error: {e}"
         except Exception as e:
             logger.error(f"An unexpected error occurred during Gemini API call: {e}")
             return f"Error: An unexpected error occurred: {e}"

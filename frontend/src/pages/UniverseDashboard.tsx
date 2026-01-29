@@ -37,7 +37,7 @@ const UniverseDashboard: React.FC = () => {
         try {
             setError(null);
             const headers = await getAuthHeaders();
-            const response = await fetch('http://localhost:5000/api/universes', { headers });
+            const response = await fetch('/api/universes', { headers });
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || 'Failed to fetch universes');
@@ -53,7 +53,7 @@ const UniverseDashboard: React.FC = () => {
         try {
             setError(null);
             const headers = await getAuthHeaders();
-            const response = await fetch(`http://localhost:5000/api/universe/${universeName}/projects`, { headers });
+            const response = await fetch(`/api/universe/${universeName}/projects`, { headers });
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || `Failed to fetch projects for universe ${universeName}`);
@@ -74,7 +74,7 @@ const UniverseDashboard: React.FC = () => {
         try {
             setError(null);
             const headers = await getAuthHeaders();
-            const response = await fetch('http://localhost:5000/api/universe/create', {
+            const response = await fetch('/api/universe/create', {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify({ universe_name: newUniverseName }),
@@ -102,7 +102,7 @@ const UniverseDashboard: React.FC = () => {
         try {
             setError(null);
             const headers = await getAuthHeaders();
-            const response = await fetch(`http://localhost:5000/api/universe/${selectedUniverse}/project/create`, {
+            const response = await fetch(`/api/universe/${selectedUniverse}/project/create`, {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify({ project_name: newProjectName }),

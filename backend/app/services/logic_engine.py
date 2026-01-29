@@ -12,45 +12,68 @@ class LogicEngine:
         Analyzes a scene using Game Theory to identify plot holes and compare
         script outcome with Nash Equilibrium.
         """
-        # 1. Extract Payoff Matrix (Mock LLM Call)
-        # In a production version, you would replace _mock_llm_extract_payoff with a real generate_json call
-        analysis_data = self._mock_llm_extract_payoff(scene_text, stakes_context)
-        
-        # 2. Calculate Nash Equilibrium
-        equilibria = self._calculate_nash_equilibrium(analysis_data["payoff_matrix"])
-        
-        # 3. Compare Script Outcome to Equilibrium
-        script_outcome = tuple(analysis_data["actual_outcome"]) 
-        
-        is_rational = script_outcome in equilibria
-        
-        # 4. Calculate Rationality Score and Critique
-        if is_rational:
-            rationality_score = 95
-            critique_message = "The characters acted rationally according to their incentives. The scene logic is solid."
-        else:
-            rationality_score = 45
-            critique_message = (
-                f"The outcome {script_outcome} deviates from the Nash Equilibrium {equilibria}. "
-                "One or both characters are acting against their best interests without clear motivation."
-            )
-        
-        # Identify Game Archetype
-        game_archetype = identify_game_archetype(analysis_data["payoff_matrix"])
-        
-        # Generate Deterministic Critique based on Archetype
-        protagonist_move = script_outcome[0]
-        logic_critique = generate_logic_critique(game_archetype, protagonist_move, equilibria)
+        system_instruction = (
+            "You are a Game Theory expert and Script Doctor. "
+            "Analyze the following scene and extract a mathematical representation of the conflict.\n"
+            "Identify the two primary players and their strategies (Cooperate vs Defect, or specific actions).\n"
+            "Construct a 2x2 payoff matrix where values represent the benefit/utility to each player (0-10).\n"
+            "Identify the 'actual_outcome' chosen by the characters in the text.\n\n"
+            "Return JSON with:\n"
+            "- 'players': [str, str]\n"
+            "- 'strategies': [str, str]\n"
+            "- 'payoff_matrix': { strategy1: { strategy1: [p1_score, p2_score], strategy2: [p1_score, p2_score] }, ... }\n"
+            "- 'actual_outcome': [p1_move, p2_move]\n"
+        )
+        user_prompt = f"STAKES: {stakes_context}\nSCENE:\n{scene_text}"
 
-        return {
-            "rationality_score": rationality_score,
-            "critique_message": critique_message,
-            "game_archetype": game_archetype,
-            "logic_critique": logic_critique,
-            "payoff_matrix": analysis_data["payoff_matrix"],
-            "nash_equilibria": [list(eq) for eq in equilibria],
-            "script_outcome": list(script_outcome)
-        }
+        try:
+            analysis_data = self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+            
+            # 2. Calculate Nash Equilibrium
+            matrix = analysis_data.get("payoff_matrix", {})
+            if not matrix:
+                 # Fallback if AI fails to generate matrix
+                 analysis_data = self._mock_llm_extract_payoff(scene_text, stakes_context)
+                 matrix = analysis_data["payoff_matrix"]
+
+            equilibria = self._calculate_nash_equilibrium(matrix)
+            
+            # 3. Compare Script Outcome to Equilibrium
+            actual = analysis_data.get("actual_outcome", ["", ""])
+            script_outcome = tuple(actual) 
+            
+            is_rational = script_outcome in equilibria
+            
+            # 4. Calculate Rationality Score and Critique
+            if is_rational:
+                rationality_score = 95
+                critique_message = "The characters acted rationally according to their incentives. The scene logic is solid."
+            else:
+                rationality_score = 45
+                critique_message = (
+                    f"The outcome {script_outcome} deviates from the Nash Equilibrium {equilibria}. "
+                    "One or both characters are acting against their best interests without clear motivation."
+                )
+            
+            # Identify Game Archetype
+            game_archetype = identify_game_archetype(matrix)
+            
+            # Generate Deterministic Critique based on Archetype
+            protagonist_move = actual[0] if actual else ""
+            logic_critique = generate_logic_critique(game_archetype, protagonist_move, equilibria)
+
+            return {
+                "rationality_score": rationality_score,
+                "critique_message": critique_message,
+                "game_archetype": game_archetype,
+                "logic_critique": logic_critique,
+                "payoff_matrix": matrix,
+                "nash_equilibria": [list(eq) for eq in equilibria],
+                "script_outcome": list(script_outcome)
+            }
+        except Exception as e:
+            print(f"Error in analyze_scene: {e}")
+            return {"error": str(e), "rationality_score": 0}
 
     def generate_scene_content(self, beat_context: str, characters: list, game_theory_type: str) -> List[str]:
         """
@@ -114,11 +137,12 @@ class LogicEngine:
             "'structure_suggestion' (str, e.g. 'Hero's Journey', 'Three Act', 'Non-linear'), "
             "'title_ideas' (list of strings), 'title' (str), 'synopsis' (str), "
             "and a 'beat_sheet' object with these exact keys: "
-            "'opening_image', 'theme_stated', 'setup', 'catalyst', 'debate', "
+            "'opening_image', 'theme_stated', 'set_up', 'catalyst', 'debate', "
             "'break_into_two', 'b_story', 'fun_and_games', 'midpoint', "
             "'bad_guys_close_in', 'all_is_lost', 'dark_night_of_the_soul', "
             "'break_into_three', 'finale', 'final_image'."
             " IMPORTANT: Use 'dark_night_of_the_soul' NOT 'dark_night_of_soul'."
+            " IMPORTANT: Use 'set_up' NOT 'setup'."
         )
         user_prompt = f"Here is my idea: {pitch}"
         
@@ -159,7 +183,7 @@ class LogicEngine:
             "You are a master film analyst. Reverse engineer a professional Save the Cat beat sheet from the provided script text. "
             "Return a JSON object with keys: 'genre' (str), 'logline' (str), 'title' (str), "
             "'beat_sheet' (dict with these exact keys: "
-            "'opening_image', 'theme_stated', 'setup', 'catalyst', 'debate', "
+            "'opening_image', 'theme_stated', 'set_up', 'catalyst', 'debate', "
             "'break_into_two', 'b_story', 'fun_and_games', 'midpoint', "
             "'bad_guys_close_in', 'all_is_lost', 'dark_night_of_the_soul', "
             "'break_into_three', 'finale', 'final_image')."
@@ -177,7 +201,7 @@ class LogicEngine:
             "Return a JSON object with keys: 'genre' (str), 'logline' (str), 'title' (str), 'themes' (list of str), "
             "'character_descriptions' (list of objects with 'name' and 'role'), 'synopsis' (str), "
             "and a 'beat_sheet' object with these exact keys: "
-            "'opening_image', 'theme_stated', 'setup', 'catalyst', 'debate', "
+            "'opening_image', 'theme_stated', 'set_up', 'catalyst', 'debate', "
             "'break_into_two', 'b_story', 'fun_and_games', 'midpoint', "
             "'bad_guys_close_in', 'all_is_lost', 'dark_night_of_the_soul', "
             "'break_into_three', 'finale', 'final_image'."

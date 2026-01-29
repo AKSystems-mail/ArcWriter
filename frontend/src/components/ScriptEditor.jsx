@@ -35,14 +35,14 @@ const ScriptEditor = ({ universeId, projectId }) => {
 
   // Helper to get Firestore document reference for the current script
   const getDocumentRef = useCallback(() => {
-    const userId = auth.currentUser?.uid || "testuser";
-    return doc(db, `users/${userId}/universes/${universeId}/projects/${projectId}/script/content`);
+    // Path must match backend: universes/{universe_id}/projects/{project_id}
+    return doc(db, 'universes', universeId, 'projects', projectId, 'script', 'content');
   }, [universeId, projectId]);
 
   // Helper to get Project Ref for Source Material
   const getProjectRef = useCallback(() => {
-    const userId = auth.currentUser?.uid || "testuser";
-    return doc(db, `users/${userId}/universes/${universeId}/projects/${projectId}`);
+    // Path must match backend: universes/{universe_id}/projects/{project_id}
+    return doc(db, 'universes', universeId, 'projects', projectId);
   }, [universeId, projectId]);
 
   // Load Source Material (Bible Content)
@@ -287,12 +287,19 @@ const ScriptEditor = ({ universeId, projectId }) => {
     const scriptText = blocks.map(block => block.text).join('\n');
 
     try {
-      const response = await fetch('http://localhost:8000/critique', {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/critique', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ persona, scene_text: scriptText }),
+        body: JSON.stringify({ 
+          persona, 
+          scene_text: scriptText,
+          universe_name: universeId,
+          project_id: projectId
+        }),
       });
 
       if (!response.ok) {

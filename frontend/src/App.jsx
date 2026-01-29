@@ -153,6 +153,14 @@ function App() {
                         }
                     />
                     <Route
+                        path="/project/:projectId/beat-sheet"
+                        element={
+                            <ProtectedRoute>
+                                <Architect />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
                         path="/pitchdeck"
                         element={
                             <ProtectedRoute>

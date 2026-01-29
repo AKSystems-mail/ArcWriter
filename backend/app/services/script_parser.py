@@ -6,12 +6,20 @@ def parse_pdf_to_editor_format(file_path):
     """
     Parses a PDF script into a JSON format compatible with the ScriptEditor.
     Uses pdfplumber to extract text and layout information to categorize lines.
+    Returns:
+        tuple: (blocks: list, full_text: str)
     """
     blocks = []
+    full_text = ""
     
     try:
         with pdfplumber.open(file_path) as pdf:
             for page in pdf.pages:
+                # Accumulate raw text for the Logic Engine
+                page_text = page.extract_text()
+                if page_text:
+                    full_text += page_text + "\n"
+
                 # Extract words with position data
                 words = page.extract_words(x_tolerance=2, y_tolerance=2)
                 if not words:
@@ -101,9 +109,9 @@ def parse_pdf_to_editor_format(file_path):
 
     except Exception as e:
         print(f"Error parsing PDF: {e}")
-        return []
+        return [], ""
 
-    return blocks
+    return blocks, full_text
 
 def is_scene_heading(text):
     """Checks if text looks like a scene heading."""
