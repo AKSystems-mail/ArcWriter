@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from './firebase';
+import { auth, db } from './firebase';
+import { collectionGroup, query, where, getDocs, limit } from 'firebase/firestore';
 
 // Pages
 import OnboardingScreen from './pages/OnboardingScreen'; // Keep if used elsewhere, otherwise remove
@@ -15,15 +16,20 @@ import OnboardingWizard from './pages/OnboardingWizard';
 import ScriptEditorPage from './pages/ScriptEditorPage';
 import './index.css';
 
-// Mock API service - REPLACE THIS with your real backend call
 // This checks if the user has completed onboarding or has projects
 const checkUserOnboardingStatus = async (user) => {
-    // TODO: Connect this to your backend endpoint, e.g., /api/users/me
-    // return { hasProjects: data.project_count > 0 }
-
-    // For MVP testing: We assume new users have 0 projects.
-    // You might check a flag in Firestore here.
-    return { hasProjects: false };
+    try {
+        const q = query(
+            collectionGroup(db, 'projects'),
+            where('owner_id', '==', user.uid),
+            limit(1)
+        );
+        const querySnapshot = await getDocs(q);
+        return { hasProjects: !querySnapshot.empty };
+    } catch (error) {
+        console.error("Error checking onboarding status:", error);
+        return { hasProjects: false };
+    }
 };
 
 const ProtectedRoute = ({ children }) => {
@@ -72,8 +78,8 @@ const TrafficController = () => {
                     // New User -> Force them to the Wizard
                     navigate('/wizard');
                 } else {
-                    // Returning User -> Go to Universe Dashboard
-                    navigate('/universes');
+                    // Returning User -> Go to Dashboard
+                    navigate('/dashboard');
                 }
             }
             setLoading(false);

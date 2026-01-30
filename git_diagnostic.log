@@ -1,9 +1,0 @@
-On branch master
-nothing to commit, working tree clean
-commit 95b9e11c826508de1171940736f1163590b69fd4
-Author: Akil Bjorn <aksystems.mail@gmail.com>
-Date:   Sat Jan 10 22:09:27 2026 -0500
-
-    Initial commit with Firebase and FastAPI setup
-/usr/bin/git
-git version 2.52.0

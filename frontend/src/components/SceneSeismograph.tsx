@@ -4,13 +4,22 @@ import { Activity, AlertTriangle } from 'lucide-react';
 
 interface SceneSeismographProps {
     tensionPeaks?: (number | string)[];
+    tensionCurve?: number[]; // New: line-by-line values
     totalLines?: number;
 }
 
-const SceneSeismograph: React.FC<SceneSeismographProps> = ({ tensionPeaks = [], totalLines = 50 }) => {
-    // Process data: transform tensionPeaks (list of line numbers) into graph data
+const SceneSeismograph: React.FC<SceneSeismographProps> = ({ tensionPeaks = [], tensionCurve = [], totalLines = 50 }) => {
+    // Process data: transform tensionCurve or tensionPeaks into graph data
     const data = useMemo(() => {
-        // If no peaks, return flatline
+        // 1. Prefer precision curve if available
+        if (tensionCurve && tensionCurve.length > 0) {
+            return tensionCurve.map((val, idx) => ({
+                line: idx,
+                tension: val * 10 // Scale 0-10 to 0-100
+            }));
+        }
+
+        // 2. Fallback to Peaks logic
         if (!tensionPeaks || tensionPeaks.length === 0) {
             return Array.from({ length: 10 }, (_, i) => ({
                 line: i * (totalLines / 10),

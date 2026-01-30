@@ -84,7 +84,7 @@ const SourceMaterialDrawer: React.FC<SourceMaterialDrawerProps> = ({
             ) : (
                 <div className="flex-1 flex flex-col items-center pt-6 gap-4">
                     <span 
-                        className="transform -rotate-90 whitespace-nowrap text-gray-500 text-xs font-bold uppercase tracking-widest cursor-pointer hover:text-white transition-colors mt-8"
+                        className="transform -rotate-90 whitespace-nowrap text-gray-500 text-xs font-bold uppercase tracking-widest cursor-pointer hover:text-white transition-colors mt-20"
                         onClick={onToggle}
                     >
                         Source Material

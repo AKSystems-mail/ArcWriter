@@ -1,4 +1,23 @@
 {
-    "indexes": [],
-    "fieldOverrides": []
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "projects",
+      "fieldPath": "owner_id",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
 }

@@ -120,6 +120,7 @@ class SetupRequest(BaseModel):
     metadata: Dict[str, Any]
     vibe: Optional[str] = "Cinematic"
     persona: str
+    mode: str = "architect"
     user_id: Optional[str] = None
     is_script: bool = False
     script_content: Optional[List[Dict[str, Any]]] = None
@@ -134,11 +135,13 @@ class SetupRequest(BaseModel):
 class FinalizeResponse(BaseModel):
     project_id: str
     universe_id: str
+    redirect_to: str = "beat-sheet"
 
 @router.post("/finalize", response_model=FinalizeResponse)
 async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_current_user)):
     try:
         db = get_firestore_db()
+        logic_engine = LogicEngine()
         
         # Safely get metadata with defaults
         title = request.metadata.get("title", "Untitled Project")
@@ -147,8 +150,11 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
         
         # 1. Construct the Beat Sheet Text
         beat_sheet_text = ""
+        # ... (keep existing construction logic)
         if "beat_sheet" in request.metadata:
-            beat_sheet_text = "BEAT SHEET (SAVE THE CAT)\n=========================\n\n"
+            # Detect framework for header
+            framework = request.metadata.get("structure_suggestion", "Save the Cat")
+            beat_sheet_text = f"BEAT SHEET ({framework})\n" + "="*20 + "\n\n"
             for beat, desc in request.metadata["beat_sheet"].items():
                 beat_sheet_text += f"{beat.replace('_', ' ').upper()}:\n{desc}\n\n"
 
@@ -195,6 +201,7 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
             "genre": genre,
             "vibe": request.vibe,
             "persona": request.persona,
+            "mode": request.mode,
             "beat_sheet": beat_sheet,
             "beat_sheet_data": beat_sheet, # Sync for Architect mode
             "synopsis": synopsis,
@@ -203,15 +210,41 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
         
         project_ref.set(project_data)
 
-        # 7. Handle Script Import
+        # 7. Handle Script Import or Initial Scene Generation (Explorer Mode)
+        redirect_to = "beat-sheet"
+        
         if request.is_script and "script_blocks" in request.metadata:
+            # Import existing script
             script_blocks = request.metadata["script_blocks"]
             if script_blocks:
                 script_ref = project_ref.collection("script").document("content")
                 script_ref.set({"blocks": script_blocks})
-                print(f"Imported {len(script_blocks)} blocks to script.")
+                redirect_to = "editor" # Go to editor if script imported
+        elif request.mode == "explorer":
+            # Explorer Mode: Generate the first scene automatically
+            print(f"[{user_id}] Explorer mode: Generating initial scene...")
+            first_beat = "Opening Image"
+            beat_desc = beat_sheet.get("opening_image", "The start of the journey.")
+            
+            # Simple character extraction for the prompt
+            chars = [c.get("name", "Protagonist") for c in request.metadata.get("character_descriptions", [])[:2]]
+            if not chars: chars = ["Protagonist"]
+            
+            try:
+                initial_blocks = logic_engine.generate_scene_content(
+                    beat_context=f"{first_beat}: {beat_desc}",
+                    characters=chars,
+                    game_theory_type="Cooperative"
+                )
+                if initial_blocks:
+                    script_ref = project_ref.collection("script").document("content")
+                    script_ref.set({"blocks": initial_blocks})
+                    redirect_to = "editor"
+            except Exception as e:
+                print(f"Error generating initial explorer scene: {e}")
+                redirect_to = "editor" # Still go to editor, it will just be empty or default
 
-        return FinalizeResponse(project_id=project_id, universe_id=universe_id)
+        return FinalizeResponse(project_id=project_id, universe_id=universe_id, redirect_to=redirect_to)
 
     except Exception as e:
         print(f"Error in finalize_onboarding: {e}")

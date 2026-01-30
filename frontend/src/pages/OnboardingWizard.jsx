@@ -100,9 +100,9 @@ const OnboardingWizard = () => {
         } catch (error) {
             console.error("Error initializing project:", error);
             alert(`Error: ${error.message}`);
-        } finally {
             setLoading(false);
         }
+        // Do not set loading(false) on success to prevent button flicker during transition
     };
 
     const handleVibeSelect = async (vibe) => {
@@ -167,8 +167,9 @@ const OnboardingWizard = () => {
 
             const result = await response.json();
 
-            // CORRECTED ROUTING: Go to Beat Sheet first!
-            navigate(`/project/${result.project_id}/beat-sheet`, {
+            // DYNAMIC ROUTING based on mode
+            const path = result.redirect_to === "editor" ? "editor" : "beat-sheet";
+            navigate(`/project/${result.project_id}/${path}`, {
                 state: {
                     project_id: result.project_id,
                     universe_id: result.universe_id

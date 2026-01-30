@@ -72,3 +72,84 @@ body {
   /* Emotional Weight / Pull */
   border-left: 3px solid #a855f7;
 }
+
+/* Screenplay Formatting */
+.script-page {
+  background-color: white;
+  color: black;
+  width: 8.5in;
+  min-height: 11in;
+  padding: 1in;
+  margin: 0 auto 2rem auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  font-family: 'Courier Prime', monospace;
+  position: relative;
+  overflow: hidden; /* Cuts off text that spills over (temporary fix until pagination) */
+  margin-bottom: 2rem; /* Spacing between pages */
+}
+
+.slug {
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.action {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  width: 100%;
+  line-height: 1.2;
+}
+
+.character {
+  text-transform: uppercase;
+  margin-top: 1.5rem;
+  margin-bottom: 0;
+  width: 50%;
+  margin-left: 25%;
+  text-align: center;
+}
+
+.parenthetical {
+  width: 30%;
+  margin-left: 35%;
+  margin-top: 0;
+  margin-bottom: 0;
+  font-style: italic;
+  text-align: left;
+}
+
+.dialogue {
+  width: 60%;
+  margin-left: 20%;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+  text-align: left; /* Force text to align left within the centered block */
+}
+
+.source-drawer.collapsed .vertical-text {
+  margin-top: 80px; /* Pushes label below the header */
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+/* Scrollbar Fixes */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}

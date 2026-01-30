@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { formatLine } from '../utils/formatUtils';
 import CritiqueSidebar from './CritiqueSidebar';
 import SourceMaterialDrawer from './SourceMaterialDrawer';
@@ -30,6 +31,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const [isSourceDrawerOpen, setIsSourceDrawerOpen] = useState(false);
   const [sourceContent, setSourceContent] = useState('');
   const [isGeneratingScene, setIsGeneratingScene] = useState(false);
+  const [isMagicMenuOpen, setIsMagicMenuOpen] = useState(false);
 
   const blockRefs = useRef({});
 
@@ -195,7 +197,43 @@ const ScriptEditor = ({ universeId, projectId }) => {
     setIsSaved(false);
   };
 
+  const handleSuggestDialogue = async () => {
+    setIsMagicMenuOpen(false);
+    setIsGeneratingScene(true);
+
+    try {
+      // Get last 5 blocks for context
+      const context = blocks.slice(-5).map(b => b.text).join('\n');
+      const token = await auth.currentUser?.getIdToken();
+      
+      const response = await fetch('/api/script/suggest_dialogue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ context })
+      });
+
+      if (!response.ok) throw new Error('Failed to get suggestion');
+      
+      const data = await response.json();
+      if (data.suggestion) {
+        const newBlock = { id: generateId(), type: 'Dialogue', text: data.suggestion };
+        setBlocks(prev => [...prev, newBlock]);
+        setIsSaved(false);
+        setAiFeedbackMessages(prev => [...prev, '[AI] Dialogue suggestion added!']);
+      }
+    } catch (error) {
+      console.error('Error suggesting dialogue:', error);
+      alert('Dialogue suggestion failed.');
+    } finally {
+      setIsGeneratingScene(false);
+    }
+  };
+
   const handleMagicWand = async () => {
+    setIsMagicMenuOpen(false);
     const hasContent = blocks.some(block =>
       block.text.trim() !== '' &&
       block.text !== 'INT. STARTING POINT - DAY'
@@ -311,23 +349,9 @@ const ScriptEditor = ({ universeId, projectId }) => {
       setAiFeedbackMessages((prev) => [...prev, `[AI] ${data.critique}`]);
       setLogicScore(data.score);
 
-      if (data.rhythm_map) {
-        const newOverlays = {};
-        Object.entries(data.rhythm_map).forEach(([lineNum, type]) => {
-          const index = parseInt(lineNum) - 1;
-          if (index >= 0 && index < blocks.length) {
-            const category = type;
-            if (category === 'on_the_nose') newOverlays[index] = 'overlay-blue';
-            else if (category === 'high_tension') newOverlays[index] = 'overlay-orange';
-            else if (category === 'emotional_weight') newOverlays[index] = 'overlay-purple';
-          }
-        });
-        setAnalysisOverlays(newOverlays);
-        setSceneDynamics({
-          power_shift_score: data.power_shift_score,
-          tension_peaks: data.tension_peaks,
-          verdict: data.verdict
-        });
+      if (data.tension_curve) {
+        setAnalysisOverlays({}); // Clear old overlays
+        setSceneDynamics(data);
       }
     } catch (error) {
       console.error("Error analyzing scene:", error);
@@ -336,12 +360,12 @@ const ScriptEditor = ({ universeId, projectId }) => {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [blocks, isSaved, saveScriptToFirestore]);
+  }, [blocks, isSaved, saveScriptToFirestore, universeId, projectId]);
 
   const activeFormat = blocks.find(b => b.id === focusedBlockId)?.type || 'Action';
 
   return (
-    <div className="flex h-screen bg-gray-900 overflow-hidden">
+    <div className="flex h-screen bg-black overflow-hidden selection:bg-arc-teal/30">
       <SourceMaterialDrawer
         isOpen={isSourceDrawerOpen}
         onToggle={() => setIsSourceDrawerOpen(!isSourceDrawerOpen)}
@@ -349,12 +373,9 @@ const ScriptEditor = ({ universeId, projectId }) => {
         onInsert={handleInsertSourceMaterial}
       />
 
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 overflow-y-auto p-8 flex justify-center bg-gray-800" onClick={() => {
-          if (blocks.length > 0) {
-          }
-        }}>
-          <div className="w-full max-w-[8.5in] min-h-[11in] bg-white shadow-2xl p-[1in] mb-8 relative flex flex-col text-black z-10" style={{ minHeight: '11in' }}>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 overflow-y-auto p-12 bg-obsidian-black flex flex-col items-center custom-scrollbar">
+          <div className="script-page">
             {blocks.map((block, index) => {
               const { className } = formatLine(block.type, block.text);
               return (
@@ -366,13 +387,14 @@ const ScriptEditor = ({ universeId, projectId }) => {
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   onFocus={() => setFocusedBlockId(block.id)}
 
-                  className={`overflow-hidden text-black ${className} ${analysisOverlays[index] || ''} transition-colors duration-500`}
+                  className={className}
                   placeholder={block.type === 'Scene Heading' ? 'INT. LOCATION - TIME' : ''}
                   rows={1}
-                  style={{ height: 'auto', minHeight: '1.5em' }}
+                  style={{ height: 'auto' }}
                   onInput={(e) => {
-                    e.target.style.height = 'auto';
-                    e.target.style.height = e.target.scrollHeight + 'px';
+                    const target = e.target;
+                    target.style.height = 'auto';
+                    target.style.height = target.scrollHeight + 'px';
                   }}
                 />
               );
@@ -380,9 +402,9 @@ const ScriptEditor = ({ universeId, projectId }) => {
           </div>
         </div>
 
-        <div className="h-16 bg-obsidian-black border-t border-gray-700 flex items-center justify-center gap-4 px-4 z-50">
+        <div className="h-20 bg-gray-900 border-t border-gray-800 flex items-center justify-center gap-4 px-6 z-50">
           <FormatButton
-            label="Scene Heading"
+            label="Slug"
             shortcut="1"
             isActive={activeFormat === 'Scene Heading'}
             onClick={() => handleFormatChange('Scene Heading')}
@@ -394,48 +416,53 @@ const ScriptEditor = ({ universeId, projectId }) => {
             onClick={() => handleFormatChange('Action')}
           />
           <FormatButton
-            label="Character"
+            label="Char"
             shortcut="3"
             isActive={activeFormat === 'Character'}
             onClick={() => handleFormatChange('Character')}
           />
           <FormatButton
-            label="Dialogue"
+            label="Dial"
             shortcut="4"
             isActive={activeFormat === 'Dialogue'}
             onClick={() => handleFormatChange('Dialogue')}
           />
-          <div className="w-px h-8 bg-gray-700 mx-2"></div>
           <FormatButton
-            label="Parenthetical"
+            label="Par"
             shortcut="5"
             isActive={activeFormat === 'Parenthetical'}
             onClick={() => handleFormatChange('Parenthetical')}
           />
-          <div className="w-px h-8 bg-gray-700 mx-2"></div>
-          <button
-            onClick={handleMagicWand}
-            disabled={isGeneratingScene}
-            className="px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_10px_rgba(168,85,247,0.4)]"
-            title="Generate Scene with AI"
-          >
-            {isGeneratingScene ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Generating...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-                </svg>
-                Magic Wand
-              </span>
+          
+          <div className="w-px h-8 bg-gray-800 mx-2"></div>
+          
+          <div className="relative">
+            <button
+              onClick={() => setIsMagicMenuOpen(!isMagicMenuOpen)}
+              disabled={isGeneratingScene}
+              className="px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-200 bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50 shadow-[0_0_20px_rgba(168,85,247,0.3)] flex items-center gap-2"
+            >
+              {isGeneratingScene ? 'Thinking...' : 'Magic Wand'}
+              <ChevronRight className={`w-4 h-4 transition-transform ${isMagicMenuOpen ? 'rotate-90' : ''}`} />
+            </button>
+
+            {isMagicMenuOpen && (
+              <div className="absolute bottom-full mb-4 right-0 w-56 bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
+                <button
+                  onClick={handleMagicWand}
+                  className="w-full text-left p-4 hover:bg-purple-600/20 text-white text-xs font-bold uppercase tracking-widest border-b border-gray-800 transition-colors"
+                >
+                  Auto-Write Scene
+                </button>
+                <button
+                  onClick={handleSuggestDialogue}
+                  className="w-full text-left p-4 hover:bg-purple-600/20 text-white text-xs font-bold uppercase tracking-widest transition-colors"
+                >
+                  Suggest Dialogue
+                </button>
+              </div>
             )}
-          </button>
+          </div>
         </div>
       </div>
 

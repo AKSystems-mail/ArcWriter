@@ -124,7 +124,14 @@ class LogicEngine:
         analysis_result = self.analyze_scene(scene_text)
         rationality_score = analysis_result.get("rationality_score", 0)
 
-        return {"critique": llm_critique, "score": rationality_score}
+        # Integrate dynamic analysis
+        dynamics_result = self.analyze_scene_dynamics(scene_text)
+
+        return {
+            "critique": llm_critique, 
+            "score": rationality_score,
+            **dynamics_result
+        }
 
     def generate_project_metadata(self, pitch: str) -> Dict[str, Any]:
         """
@@ -158,22 +165,25 @@ class LogicEngine:
         Analyzes the emotional rhythm, power dynamics, and subtext of a scene.
         """
         system_instruction = (
-            "You are a master dramatic editor. Analyze the text for 'Push and Pull' based on these criteria:\n"
-            "1. Power Dynamics: Who holds the power at the start? Who holds it at the end? Does it shift?\n"
-            "2. Subtext Gap: Are the characters saying exactly what they mean (Bad) or is there a gap (Good)?\n"
-            "3. Pacing: Contrast between short, sharp dialogue (Push) and pauses/monologues (Pull).\n\n"
+            "You are a master dramatic editor. Analyze the following screenplay scene for dynamic tension and rhythm.\n"
+            "1. Power Shifts: Identify who holds the power at various points. Does it shift?\n"
+            "2. Push vs Pull: Identify 'Push' lines (aggressive, advancing the plot, making demands) and 'Pull' lines (defensive, retreating, reacting).\n"
+            "3. Tension Curve: Generate an array of integers (0-10) representing the emotional intensity for every line of text.\n\n"
             "Return a JSON object with:\n"
-            "- 'power_shift_score' (integer 0-100: How much did the dynamic change?)\n"
-            "- 'tension_peaks' (List of line numbers (1-indexed based on input) where tension is highest)\n"
-            "- 'verdict' (string, e.g., 'Static Scene' or 'Dynamic Scene')\n"
-            "- 'analysis_summary' (string: Brief explanation of the dynamics)\n"
-            "- 'rhythm_map' (Dictionary where keys are line numbers (1-indexed) and values are categories: "
-            "'on_the_nose' (Low Subtext/Blue), 'high_tension' (Push/Orange), 'emotional_weight' (Pull/Purple). "
-            "Only include lines that fit these categories.)"
+            "- 'tension_curve': [int, int, ...] (one value per line of input text)\n"
+            "- 'push_pull_map': { line_index: 'push' | 'pull' } (only for notable lines)\n"
+            "- 'power_shift_indices': [int, ...] (indices where the power dynamic notably changes)\n"
+            "- 'highlight_ranges': [ [start, end, 'label'], ... ] (important thematic ranges)\n"
+            "- 'verdict': str (e.g., 'Rising Action', 'Stagnant', 'Climactic')\n"
+            "- 'analysis_summary': str (Brief professional explanation)\n"
         )
-        user_prompt = f"Analyze this scene line by line. Treat the first line of text as line 1.\n\n{scene_text}"
+        user_prompt = f"Analyze this scene line by line. Treat the first line as index 0.\n\n{scene_text}"
         
-        return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+        try:
+            return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+        except Exception as e:
+            print(f"Error in analyze_scene_dynamics: {e}")
+            return {"error": str(e), "tension_curve": []}
 
     def reverse_engineer_script(self, script_text: str) -> Dict[str, Any]:
         """
@@ -191,6 +201,24 @@ class LogicEngine:
         user_prompt = f"Analyze this script and extract the beat sheet:\n\n{script_text[:50000]}" 
         
         return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+
+    def suggest_dialogue(self, context: str) -> Dict[str, Any]:
+        """
+        Suggests the next line of dialogue based on current script context.
+        """
+        system_instruction = (
+            "You are a master screenwriter. Based on the provided script context, "
+            "suggest the next logical and punchy line of dialogue or action. "
+            "Keep it character-driven and concise. "
+            "Return JSON with a single key 'suggestion' (str)."
+        )
+        user_prompt = f"SCRIPT CONTEXT:\n{context}\n\nWHAT HAPPENS NEXT?"
+        
+        try:
+            return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+        except Exception as e:
+            print(f"Error in suggest_dialogue: {e}")
+            return {"suggestion": "(AI failed to generate suggestion)"}
 
     def distill_notes(self, notes_text: str) -> Dict[str, Any]:
         """
