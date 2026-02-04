@@ -199,7 +199,7 @@ const OnboardingWizard = () => {
                         <Sparkles className="w-10 h-10 text-violet-400" />
                     </div>
                     <h3 className="text-3xl font-bold text-white mb-3">The Explorer</h3>
-                    <p className="text-gray-400 text-lg">"I have a vibe..."</p>
+                    <p className="text-gray-400 text-lg">"Start with tone and loose concepts."</p>
                     <p className="text-sm text-gray-500 mt-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-500">
                         Discover your story through visuals and mood.
                     </p>
@@ -216,7 +216,7 @@ const OnboardingWizard = () => {
                         <Wand2 className="w-10 h-10 text-emerald-400" />
                     </div>
                     <h3 className="text-3xl font-bold text-white mb-3">The Architect</h3>
-                    <p className="text-gray-400 text-lg">"I have a plan..."</p>
+                    <p className="text-gray-400 text-lg">"Start with structure and plot points."</p>
                     <p className="text-sm text-gray-500 mt-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-500">
                         Build from a strong foundation of structure.
                     </p>
@@ -294,7 +294,7 @@ const OnboardingWizard = () => {
                         </>
                     ) : (
                         <>
-                            {data.uploaded_file_name ? "Continue" : "Generate Magic"} <ArrowRight className="w-5 h-5" />
+                            {data.uploaded_file_name ? "Continue" : "Analyze Concept"} <ArrowRight className="w-5 h-5" />
                         </>
                     )}
                 </button>
@@ -316,13 +316,13 @@ const OnboardingWizard = () => {
 
         return (
             <div className="w-full max-w-5xl mx-auto px-4 z-10 text-center">
-                <h2 className="text-4xl font-bold text-white mb-4">Set the Vibe</h2>
+                <h2 className="text-4xl font-bold text-white mb-4">Define Visual Aesthetic</h2>
                 <p className="text-xl text-gray-400 mb-12">Choose a visual style for your world.</p>
 
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <div className="w-24 h-24 mb-6 rounded-full border-4 border-white/20 border-t-arc-teal animate-spin" />
-                        <h3 className="text-2xl font-light text-white animate-pulse">Dreaming up your world...</h3>
+                        <h3 className="text-2xl font-light text-white animate-pulse">Rendering Concept Art...</h3>
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
@@ -344,15 +344,15 @@ const OnboardingWizard = () => {
 
     const renderStep4 = () => {
         const personas = [
-            { id: 'studio_exec', name: 'The Studio Exec', desc: 'Focus on commercial appeal, budget, and audience.' },
-            { id: 'auteur', name: 'The Auteur', desc: 'Prioritize artistic vision, theme, and subtext.' },
-            { id: 'script_doctor', name: 'The Doctor', desc: 'Rigorous approach to structure, logic, and efficiency.' },
+            { id: 'market_viability', name: 'Market Viability Mode', desc: 'Optimizes for high stakes, pacing, and commercial audience appeal.' },
+            { id: 'thematic_consistency', name: 'Thematic Consistency Mode', desc: 'Focuses on subtext, emotional resonance, and narrative motifs.' },
+            { id: 'structural_integrity', name: 'Structural Integrity Mode', desc: 'Rigorous stress-testing of plot logic, beat sheet adherence, and pacing.' },
         ];
 
         return (
             <div className="w-full max-w-4xl mx-auto px-4 z-10 text-center">
-                <h2 className="text-4xl font-bold text-white mb-4">Choose Your Producer</h2>
-                <p className="text-xl text-gray-400 mb-12">Who will guide you through this project?</p>
+                <h2 className="text-4xl font-bold text-white mb-4">Select Analysis Lens</h2>
+                <p className="text-xl text-gray-400 mb-12">How should the logic engine prioritize feedback?</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {personas.map(persona => (

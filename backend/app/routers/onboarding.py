@@ -164,7 +164,7 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
             source_material_content = beat_sheet_text
 
         # 3. Construct Bible Content
-        bible_intro = f"# Project Bible: {title}\n## Metadata\n- Genre: {genre}\n- Logline: {logline}\n- Vibe: {request.vibe}\n- Producer Persona: {request.persona}\n\n"
+        bible_intro = f"# Project Bible: {title}\n## Metadata\n- Genre: {genre}\n- Logline: {logline}\n- Vibe: {request.vibe}\n- Analysis Lens: {request.persona}\n\n"
         synopsis = request.metadata.get("synopsis", request.pitch)
         
         bible_content = bible_intro + f"## Synopsis\n{synopsis}\n\n" + beat_sheet_text

@@ -38,18 +38,18 @@ const LandingPage: React.FC = () => {
                         TO <span className="text-arc-orange">BLOCKBUSTER</span>
                     </h1>
                     <p className="text-xl md:text-3xl text-gray-400 mb-12 font-light max-w-3xl mx-auto leading-relaxed">
-                        The Architect's Studio for the AI-Powered Screenwriter.
-                        Design worlds, stress-test plots, and render the future of cinema.
+                        The Structural Co-Pilot for the Professional Screenwriter.
+                        Design worlds, stress-test plots, and render the future of cinema with Draft Assist.
                     </p>
                     <div className="flex flex-col md:flex-row gap-6 justify-center">
                         <button
                             onClick={() => navigate('/login')}
                             className="bg-arc-orange hover:bg-opacity-90 text-white font-black py-5 px-12 rounded-2xl text-xl transition-all transform hover:scale-105 shadow-2xl shadow-arc-orange/30 active:scale-95"
                         >
-                            START WRITING FOR FREE
+                            ACCESS THE STUDIO
                         </button>
                         <button className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black py-5 px-12 rounded-2xl text-xl backdrop-blur-xl transition-all active:scale-95">
-                            WATCH TEASER
+                            WATCH DEMO
                         </button>
                     </div>
                 </div>
@@ -82,7 +82,7 @@ const LandingPage: React.FC = () => {
                             <div className="h-16 w-16 bg-arc-orange/20 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
                                 <span className="text-arc-orange text-3xl font-black">✧</span>
                             </div>
-                            <h3 className="text-2xl font-black mb-4 text-white uppercase tracking-tight">Nano Banana Visuals</h3>
+                            <h3 className="text-2xl font-black mb-4 text-white uppercase tracking-tight">Cinematic Visualization</h3>
                             <p className="text-gray-400 text-lg leading-relaxed">
                                 Instantly generate high-fidelity posters, character anchors, and atmospheric mood boards
                                 that capture the spirit of your script.
@@ -94,7 +94,7 @@ const LandingPage: React.FC = () => {
                             <div className="h-16 w-16 bg-arc-teal/20 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
                                 <span className="text-arc-teal text-3xl font-black">▶</span>
                             </div>
-                            <h3 className="text-2xl font-black mb-4 text-white uppercase tracking-tight">Veo Teasers</h3>
+                            <h3 className="text-2xl font-black mb-4 text-white uppercase tracking-tight">Motion Storyboards</h3>
                             <p className="text-gray-400 text-lg leading-relaxed">
                                 Transform your beat sheet into a cinematic 30-second motion teaser. Pitch with the
                                 power of motion before a single frame is shot.

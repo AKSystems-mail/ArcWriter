@@ -130,6 +130,13 @@ body {
   text-align: left; /* Force text to align left within the centered block */
 }
 
+.logic-error-underline {
+  text-decoration: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: #f97316; /* arc-orange */
+  text-underline-offset: 4px;
+}
+
 .source-drawer.collapsed .vertical-text {
   margin-top: 80px; /* Pushes label below the header */
   writing-mode: vertical-rl;

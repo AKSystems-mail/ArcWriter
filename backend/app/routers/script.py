@@ -15,7 +15,9 @@ class SceneGenerationRequest(BaseModel):
     game_theory_type: str = "Prisoner's Dilemma" # Default
 
 class DialogueSuggestionRequest(BaseModel):
-    context: str
+    context_lines: str
+    genre: str = "Drama"
+    style: str = "Modern"
 
 @router.post("/generate_scene")
 async def generate_scene(request: SceneGenerationRequest, user_id: str = Depends(get_current_user)):
@@ -35,8 +37,12 @@ async def generate_scene(request: SceneGenerationRequest, user_id: str = Depends
 async def suggest_dialogue(request: DialogueSuggestionRequest, user_id: str = Depends(get_current_user)):
     logic_engine = LogicEngine()
     try:
-        suggestion = logic_engine.suggest_dialogue(request.context)
-        return suggestion
+        suggestions = logic_engine.suggest_dialogue(
+            context_lines=request.context_lines,
+            genre=request.genre,
+            style=request.style
+        )
+        return suggestions
     except Exception as e:
         print(f"Error suggesting dialogue: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -16,8 +16,8 @@ class LLMService:
         if key:
             key = key.strip() # Remove any accidental whitespace
             self.client = genai.Client(api_key=key)
-            # Use Gemini 2.0 Flash for maximum speed and intelligence
-            self.model_name = "gemini-2.0-flash"
+            # Use Gemini 1.5 Pro for stability ensuring compatibility
+            self.model_name = "gemini-1.5-pro"
         else:
             logger.warning("GEMINI_API_KEY not set. LLMService will not function correctly.")
             self.client = None
@@ -33,9 +33,19 @@ class LLMService:
                 response_mime_type="application/json"
             )
             
+            # Use explicit Content/Part structure to avoid API ambiguity
+            contents = [
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(text=prompt + "\n\nOutput ONLY valid JSON.")
+                    ]
+                )
+            ]
+
             response = self.client.models.generate_content(
                 model=self.model_name,
-                contents=prompt + "\n\nOutput ONLY valid JSON.",
+                contents=contents,
                 config=config
             )
             
@@ -56,9 +66,19 @@ class LLMService:
             # The new SDK handles timeouts differently, usually via client configuration or request_options if available.
             # In google-genai, it's often passed in the Client initialization or not directly exposed per-call in the same way.
             # We will use the default for now.
+            
+            contents = [
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(text=user_prompt)
+                    ]
+                )
+            ]
+            
             response = self.client.models.generate_content(
                 model=self.model_name,
-                contents=user_prompt,
+                contents=contents,
                 config=config
             )
             return response.text

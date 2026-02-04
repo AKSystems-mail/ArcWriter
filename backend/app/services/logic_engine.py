@@ -115,8 +115,17 @@ class LogicEngine:
         """
         Generates a critique and a rationality score using a specific system prompt (Persona).
         """
-        system_instruction = "You are an AI assistant tasked with critiquing movie scripts and providing helpful feedback based on the provided persona and context."
-        user_prompt = f"{persona_prompt}\nContext: {bible_context}\nAnalyze this scene:\n\n{scene_text}"
+        # Map IDs to System Instructions
+        prompts = {
+            "market_viability": "You are a commercial analyst. Focus strictly on pacing, stakes, and audience retention. Flag slow scenes or low stakes.",
+            "thematic_consistency": "You are a literary analyst. Focus on character arcs, subtext, and motif. Flag on-the-nose dialogue.",
+            "structural_integrity": "You are a logic engine. Focus on cause-and-effect, plot holes, and Game Theory violations. Ignore artistic flair if the logic fails."
+        }
+        
+        # Default fallback if unknown ID or if the full prompt was passed directly
+        system_instruction = prompts.get(persona_prompt, "You are an AI assistant tasked with critiquing movie scripts and providing helpful feedback.")
+        
+        user_prompt = f"Context: {bible_context}\nAnalyze this scene:\n\n{scene_text}"
         
         llm_critique = self.llm.generate_text(system_instruction=system_instruction, user_prompt=user_prompt)
         
@@ -130,6 +139,7 @@ class LogicEngine:
         return {
             "critique": llm_critique, 
             "score": rationality_score,
+            "analysis_details": analysis_result, # Pass full analysis for frontend visualization
             **dynamics_result
         }
 
@@ -202,23 +212,30 @@ class LogicEngine:
         
         return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
 
-    def suggest_dialogue(self, context: str) -> Dict[str, Any]:
+    def suggest_dialogue(self, context_lines: str, genre: str = "Drama", style: str = "Modern") -> List[str]:
         """
-        Suggests the next line of dialogue based on current script context.
+        Suggests 3 distinct dialogue options based on context, genre, and style.
         """
         system_instruction = (
-            "You are a master screenwriter. Based on the provided script context, "
-            "suggest the next logical and punchy line of dialogue or action. "
-            "Keep it character-driven and concise. "
-            "Return JSON with a single key 'suggestion' (str)."
+            "You are a screenwriting assistant. Read the following context lines. "
+            "Suggest 3 distinct dialogue options for the next character to speak.\n"
+            "Option 1: On the nose (Direct).\n"
+            "Option 2: Subtextual (Hidden meaning).\n"
+            "Option 3: Conflict-heavy (Push back).\n"
+            "Return ONLY the dialogue lines as a JSON list of strings."
         )
-        user_prompt = f"SCRIPT CONTEXT:\n{context}\n\nWHAT HAPPENS NEXT?"
+        user_prompt = f"GENRE: {genre}\nSTYLE: {style}\nCONTEXT LINES:\n{context_lines}"
         
         try:
-            return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+            response = self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+            if isinstance(response, list):
+                return response
+            elif isinstance(response, dict) and "suggestions" in response:
+                return response["suggestions"]
+            return [str(response)]
         except Exception as e:
             print(f"Error in suggest_dialogue: {e}")
-            return {"suggestion": "(AI failed to generate suggestion)"}
+            return ["(AI failed to generate suggestions)"]
 
     def distill_notes(self, notes_text: str) -> Dict[str, Any]:
         """
@@ -237,6 +254,42 @@ class LogicEngine:
         user_prompt = f"Distill these notes:\n\n{notes_text}"
         
         return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+
+    def analyze_resolution(self, script_text: str, active_conflicts: List[str]) -> Dict[str, Any]:
+        """
+        Analyzes the script's ending for stability and unresolved loose ends.
+        """
+        system_instruction = (
+            "You are a narrative stability analyst. Analyze the ending of this script. "
+            "1. Identify all surviving characters with high agency. "
+            "2. For each survivor, check if their primary 'Want' was achieved or abandoned. "
+            "3. STABILITY TEST: Does any Antagonistic force still have a Dominant Strategy to attack? "
+            "   - If YES -> Status: 'Unstable / Sequel Hook'. "
+            "   - If NO -> Status: 'Stable Resolution'. "
+            "Return a JSON object with keys: "
+            "'resolution_status' ('Stable' | 'Unstable' | 'Ambiguous'), "
+            "'loose_ends' (list of objects {character, unresolved_utility}), "
+            "'critique' (natural language explanation of the stability)."
+        )
+        
+        # Analyze only the last 20% of the script for efficiency, or full if short
+        text_len = len(script_text)
+        ending_text = script_text[int(text_len * 0.8):] if text_len > 5000 else script_text
+        
+        user_prompt = (
+            f"ACTIVE CONFLICTS: {', '.join(active_conflicts)}\n"
+            f"SCRIPT ENDING:\n{ending_text}"
+        )
+
+        try:
+            return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+        except Exception as e:
+            print(f"Error in analyze_resolution: {e}")
+            return {
+                "resolution_status": "Ambiguous", 
+                "loose_ends": [], 
+                "critique": f"Analysis failed: {str(e)}"
+            }
 
     # --- Helper Methods ---
 

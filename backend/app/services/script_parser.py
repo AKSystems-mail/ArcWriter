@@ -6,8 +6,6 @@ def parse_pdf_to_editor_format(file_path):
     """
     Parses a PDF script into a JSON format compatible with the ScriptEditor.
     Uses pdfplumber to extract text and layout information to categorize lines.
-    Returns:
-        tuple: (blocks: list, full_text: str)
     """
     blocks = []
     full_text = ""
@@ -15,7 +13,7 @@ def parse_pdf_to_editor_format(file_path):
     try:
         with pdfplumber.open(file_path) as pdf:
             for page in pdf.pages:
-                # Accumulate raw text for the Logic Engine
+                # Accumulate raw text
                 page_text = page.extract_text()
                 if page_text:
                     full_text += page_text + "\n"
@@ -28,7 +26,6 @@ def parse_pdf_to_editor_format(file_path):
                 # Group words into lines based on 'top' coordinate
                 line_map = {}
                 for word in words:
-                    # Rounding to group slightly misaligned words into the same line
                     top = round(word['top'], 0)
                     if top not in line_map:
                         line_map[top] = []
@@ -44,33 +41,37 @@ def parse_pdf_to_editor_format(file_path):
                     if not text:
                         continue
                     
-                    # 1. Ignore Page Numbers
-                    # Heuristic: Text is numeric and located at the very top or bottom of the page
+                    # 1. Ignore Page Numbers (Top/Bottom of page, numeric)
                     is_numeric = re.match(r'^\d+\.?$', text)
-                    if is_numeric and (top < 50 or top > 750):
+                    if is_numeric and (top < 70 or top > 750):
                         continue
 
-                    # 2. Get the left-most position of the line
+                    # 2. Get the left-most position (x0)
                     x0 = line_words[0]['x0']
                     
-                    # 3. Apply Heuristics based on x0 (left position)
+                    # 3. Apply Heuristics based on x0 (Standard PDF points: 72 dpi)
+                    # Action: ~72-100
+                    # Dialogue: ~180-220
+                    # Character: ~250-280
+                    # Parenthetical: ~210-230
+                    
                     block_type = 'Action' # Default
                     
-                    if x0 < 100:
-                        # Action or Slugline (Scene Heading)
-                        if text.isupper() and is_scene_heading(text):
+                    if x0 < 140:
+                        # Action or Slugline
+                        if is_scene_heading(text):
                             block_type = 'Scene Heading'
                         else:
                             block_type = 'Action'
                     
-                    elif 150 < x0 < 250:
+                    elif 140 <= x0 < 240:
                         # Dialogue or Parenthetical
                         if text.startswith("(") and text.endswith(")"):
                             block_type = 'Parenthetical'
                         else:
                             block_type = 'Dialogue'
                     
-                    elif x0 >= 250:
+                    elif x0 >= 240:
                         # Character Name or Transition
                         if text.isupper():
                             block_type = 'Character'
@@ -78,10 +79,9 @@ def parse_pdf_to_editor_format(file_path):
                             # Fallback for centered text that isn't a character
                             block_type = 'Action'
 
-                    # Clean extra whitespace within the line
+                    # Clean extra whitespace
                     text = re.sub(r'\s+', ' ', text).strip()
 
-                    # Add to blocks
                     blocks.append({
                         "id": str(uuid.uuid4()),
                         "type": block_type,
@@ -104,9 +104,6 @@ def is_scene_heading(text):
     for pat in patterns:
         if re.match(pat, text):
             return True
-    
-    # Also catch lines like "INT HOUSE - DAY" (without dot)
     if (text.startswith("INT ") or text.startswith("EXT ")) and " - " in text:
         return True
-        
     return False
