@@ -297,8 +297,8 @@ const ScriptEditor = ({ universeId, projectId }) => {
       // Assuming avg 60 chars per line for Courier 12pt
       const estimatedLines = Math.max(1, Math.ceil(block.text.length / 60));
       
-      // Add extra spacing for Scene Headings
-      const spacing = block.type === 'Scene Heading' ? 2 : 1;
+      // Use single spacing for all blocks
+      const spacing = 1;
 
       if (currentLines + estimatedLines + spacing > LINES_PER_PAGE) {
         pages.push(currentPage);

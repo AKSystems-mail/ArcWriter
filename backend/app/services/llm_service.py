@@ -16,8 +16,8 @@ class LLMService:
         if key:
             key = key.strip() # Remove any accidental whitespace
             self.client = genai.Client(api_key=key)
-            # Use Gemini 1.5 Pro for stability ensuring compatibility
-            self.model_name = "gemini-1.5-pro"
+            # Use Gemini 1.5 Flash for speed and high availability
+            self.model_name = "gemini-1.5-flash"
         else:
             logger.warning("GEMINI_API_KEY not set. LLMService will not function correctly.")
             self.client = None
