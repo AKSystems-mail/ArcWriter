@@ -15,11 +15,15 @@ export const apiClient = async (endpoint, options = {}) => {
     // Add Auth Token if user is logged in
     if (auth.currentUser) {
         try {
-            const token = await auth.currentUser.getIdToken();
+            // Force a refresh check
+            const token = await auth.currentUser.getIdToken(false);
             requestHeaders['Authorization'] = `Bearer ${token}`;
         } catch (error) {
-            console.error("Error getting auth token:", error);
-            throw error;
+            console.error("Critical Auth Error: Session may be invalid.", error);
+            // If we can't get a token, the session is likely dead.
+            // Redirect to login to prevent 'hanging' API calls.
+            window.location.href = '/login';
+            return Promise.reject(new Error("Session expired"));
         }
     } else {
         // If no user and we might need one. 

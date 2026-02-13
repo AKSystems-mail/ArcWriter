@@ -31,27 +31,30 @@ class UserService:
         # Check balance and subscription status first
         user_doc = user_ref.get()
         if not user_doc.exists:
-            raise HTTPException(status_code=404, detail="User not found")
-            
-        user_data = user_doc.to_dict()
-        current_credits = user_data.get('studio_credits', 0)
-        subscription_status = user_data.get('subscription_status')
+            # Grant a one-time "New User Bonus" for testing/onboarding
+            print(f"User {user_id} not found. Creating profile with 100 starter credits.")
+            user_ref.set({
+                'studio_credits': 100,
+                'email': None, # Will be updated later if needed
+                'plan': 'free',
+                'created_at': firestore.SERVER_TIMESTAMP
+            })
+            current_credits = 100
+            subscription_status = 'free'
+        else:
+            user_data = user_doc.to_dict()
+            current_credits = user_data.get('studio_credits', 0)
+            subscription_status = user_data.get('subscription_status')
 
         # If user has an active subscription, no credits are deducted
         if subscription_status == 'active':
             return True
             
         if current_credits < amount:
-            if current_credits == 0:
-                # Grant a one-time "New User Bonus" for testing/onboarding
-                print(f"User {user_id} has 0 credits. Granting 100 starter credits.")
-                user_ref.update({'studio_credits': 100})
-                current_credits = 100
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_402_PAYMENT_REQUIRED, 
-                    detail="Insufficient credits. Please purchase more or subscribe."
-                )
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED, 
+                detail="Insufficient credits. Please purchase more or subscribe."
+            )
 
         # Atomic decrement (Safe and Simple)
         user_ref.update({

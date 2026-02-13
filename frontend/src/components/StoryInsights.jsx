@@ -4,40 +4,32 @@ import SceneSeismograph from './SceneSeismograph';
 
 const StoryInsights = ({ 
   onAnalyzeScene, 
+  onHookScan, // New prop
   messages, 
   isAnalyzing, 
+  hookScanResult, // New prop
   score, 
   dynamics, 
   totalLines, 
   isSaving, 
   isSaved 
 }) => {
-  const messagesEndRef = useRef(null);
+  const [activeTab, setActiveTab] = React.useState('scene'); // 'scene' or 'hook'
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Phase 3: Translation Layer (Math -> English)
-  // Logic to interpret backend data if available in dynamics
-  // Note: We expect 'dynamics' to potentially contain 'analysis_details' from our recent backend update,
-  // or 'dynamics' itself might be the merged object from the backend response in ScriptEditor.
-  
-  // Let's assume the 'dynamics' prop passed here is the full data object from the API response
-  // when available, or null.
-  
   const analysisDetails = dynamics?.analysis_details || {};
-  
-  // Mapping
-  // Payoff Matrix -> Stakes Analysis (visualized conceptually or just listed)
-  // Nash Equilibrium -> Believability Check
-  // Dominant Strategy -> Primary Motivation
-  
   const hasAnalysis = !!dynamics;
+
+  const PillarScore = ({ label, score }) => (
+    <div className="flex flex-col gap-1">
+        <div className="flex justify-between items-center text-[9px] uppercase tracking-tighter text-gray-500 font-bold">
+            <span>{label}</span>
+            <span>{score}%</span>
+        </div>
+        <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
+            <div className="h-full bg-arc-teal transition-all duration-1000" style={{ width: `${score}%` }} />
+        </div>
+    </div>
+  );
 
   return (
     <div className="w-96 bg-gray-900 border-l border-gray-800 flex flex-col h-full shadow-2xl z-40 font-sans">
@@ -45,128 +37,113 @@ const StoryInsights = ({
       <div className="h-16 border-b border-gray-800 flex items-center justify-between px-6 bg-gray-900/50 backdrop-blur-sm">
         <div className="flex items-center gap-3">
             <Activity className="w-5 h-5 text-arc-teal" />
-            <h2 className="font-bold text-sm tracking-widest uppercase text-gray-200">Story Insights</h2>
+            <h2 className="font-bold text-sm tracking-widest uppercase text-gray-200">Insights</h2>
         </div>
-        <div className="flex items-center gap-2">
-            {isSaving ? (
-                <span className="text-xs text-yellow-500 font-mono animate-pulse">SAVING...</span>
-            ) : isSaved ? (
-                <span className="text-xs text-gray-500 font-mono flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> SAVED
-                </span>
-            ) : (
-                <span className="text-xs text-red-500 font-mono">UNSAVED</span>
-            )}
+        <div className="flex bg-gray-800 p-1 rounded-lg">
+            <button 
+                onClick={() => setActiveTab('scene')}
+                className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'scene' ? 'bg-arc-teal text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+            >
+                Scene
+            </button>
+            <button 
+                onClick={() => setActiveTab('hook')}
+                className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'hook' ? 'bg-arc-teal text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+            >
+                Hook
+            </button>
         </div>
       </div>
 
       {/* Diagnostic Panel */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <div className="p-6 space-y-8">
-            
-            {/* Analyze Button */}
-            <button
-                onClick={() => onAnalyzeScene("current_persona")}
-                disabled={isAnalyzing || totalLines < 5}
-                className="w-full py-3 bg-arc-teal/10 hover:bg-arc-teal/20 border border-arc-teal/50 text-arc-teal rounded-lg font-bold text-xs uppercase tracking-widest transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
-            >
-                {isAnalyzing ? (
-                    <>
-                        <div className="w-4 h-4 border-2 border-arc-teal border-t-transparent rounded-full animate-spin" />
-                        Running Simulation...
-                    </>
-                ) : (
-                    <>
-                        <BrainCircuit className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                        Run Diagnostics
-                    </>
+          {activeTab === 'scene' ? (
+            <div className="p-6 space-y-8">
+                {/* ... (Existing Scene Analysis UI) */}
+                <button
+                    onClick={() => onAnalyzeScene("market_viability")}
+                    disabled={isAnalyzing || totalLines < 5}
+                    className="w-full py-3 bg-arc-teal/10 hover:bg-arc-teal/20 border border-arc-teal/50 text-arc-teal rounded-lg font-bold text-xs uppercase tracking-widest transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
+                >
+                    {isAnalyzing ? <div className="w-4 h-4 border-2 border-arc-teal border-t-transparent rounded-full animate-spin" /> : <BrainCircuit className="w-4 h-4" />}
+                    Run Scene Diagnostics
+                </button>
+
+                {/* Logic Score */}
+                <div className="flex items-center justify-between p-4 bg-gray-900/50 border border-gray-800 rounded-xl">
+                    <div className="flex items-center gap-3">
+                        <Scale className="w-5 h-5 text-gray-400" />
+                        <span className="text-xs text-gray-400 uppercase tracking-widest font-semibold">Logic Score</span>
+                    </div>
+                    <div className={`text-3xl font-black font-mono ${score >= 80 ? 'text-green-400' : score >= 50 ? 'text-yellow-400' : score !== null ? 'text-red-400' : 'text-gray-600'}`}>{score !== null ? score : '--'}</div>
+                </div>
+
+                {/* Seismograph */}
+                {dynamics && dynamics.tension_curve && (
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 mb-1"><Activity className="w-4 h-4 text-gray-500" /><span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Scene Dynamics</span></div>
+                        <div className="h-24 w-full bg-gray-950 rounded-lg border border-gray-800 overflow-hidden relative"><SceneSeismograph data={dynamics.tension_curve} /></div>
+                    </div>
                 )}
-            </button>
 
-            {/* Rationality / Logic Score */}
-            <div className="flex items-center justify-between p-4 bg-gray-900/50 border border-gray-800 rounded-xl">
-                <div className="flex items-center gap-3">
-                    <Scale className="w-5 h-5 text-gray-400" />
-                    <span className="text-xs text-gray-400 uppercase tracking-widest font-semibold">Logic Score</span>
-                </div>
-                <div className={`text-3xl font-black font-mono ${
-                    score >= 80 ? 'text-green-400' : 
-                    score >= 50 ? 'text-yellow-400' : 
-                    score !== null ? 'text-red-400' : 'text-gray-600'
-                }`}>
-                    {score !== null ? score : '--'}
-                </div>
+                {/* Report */}
+                {messages.length > 0 && (
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 mb-1"><BarChart3 className="w-4 h-4 text-gray-500" /><span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Analysis Report</span></div>
+                        <div className="bg-gray-950/50 border border-gray-800 rounded-xl p-4 font-mono text-sm space-y-4">
+                            {messages.slice(-1).map((msg, idx) => (
+                                <div key={idx} className="animate-fade-in text-gray-300"><p className="whitespace-pre-wrap leading-relaxed">{msg.replace(/^\[.*?\]\s*/, '')}</p></div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
+          ) : (
+            <div className="p-6 space-y-8">
+                <button
+                    onClick={onHookScan}
+                    disabled={isAnalyzing || totalLines < 50}
+                    className="w-full py-3 bg-arc-orange/10 hover:bg-arc-orange/20 border border-arc-orange/50 text-arc-orange rounded-lg font-bold text-xs uppercase tracking-widest transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
+                >
+                    {isAnalyzing ? <div className="w-4 h-4 border-2 border-arc-orange border-t-transparent rounded-full animate-spin" /> : <Target className="w-4 h-4" />}
+                    Gatekeeper Audit
+                </button>
 
-            {/* Scene Dynamics (Seismograph) */}
-            {dynamics && dynamics.tension_curve && (
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2 mb-1">
-                        <Activity className="w-4 h-4 text-gray-500" />
-                        <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Scene Dynamics</span>
-                    </div>
-                    <div className="h-24 w-full bg-gray-950 rounded-lg border border-gray-800 overflow-hidden relative">
-                        <SceneSeismograph data={dynamics.tension_curve} />
-                    </div>
-                </div>
-            )}
+                {hookScanResult ? (
+                    <div className="space-y-8 animate-fade-in">
+                        {/* Verdict Card */}
+                        <div className={`p-6 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 ${hookScanResult.gatekeeper_verdict === 'READ' ? 'bg-green-500/10 border-green-500/50' : 'bg-red-500/10 border-red-500/50'}`}>
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Verdict</span>
+                            <span className={`text-5xl font-black italic tracking-tighter ${hookScanResult.gatekeeper_verdict === 'READ' ? 'text-green-400' : 'text-red-400'}`}>
+                                {hookScanResult.gatekeeper_verdict}
+                            </span>
+                        </div>
 
-            {/* Stakes Analysis (Payoff Matrix Translation) */}
-            {analysisDetails.payoff_matrix && (
-                <div className="space-y-2 animate-fade-in">
-                     <div className="flex items-center gap-2 mb-1">
-                        <Target className="w-4 h-4 text-gray-500" />
-                        <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Stakes Analysis</span>
-                    </div>
-                    <div className="bg-gray-950 border border-gray-800 rounded-lg p-3 text-xs text-gray-400 font-mono">
-                         {/* Conceptual display of strategies */}
-                         {Object.keys(analysisDetails.payoff_matrix).map(strategy => (
-                             <div key={strategy} className="mb-1">
-                                 <span className="text-arc-teal">• {strategy}</span>
-                             </div>
-                         ))}
-                    </div>
-                </div>
-            )}
+                        {/* Pillar Scores */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <PillarScore label="Theme" score={hookScanResult.pillar_scores.theme} />
+                            <PillarScore label="Motivation" score={hookScanResult.pillar_scores.motivation} />
+                            <PillarScore label="Tone" score={hookScanResult.pillar_scores.tone} />
+                            <PillarScore label="Catalyst" score={hookScanResult.pillar_scores.catalyst} />
+                        </div>
 
-             {/* Believability Check (Nash Equilibrium) */}
-             {analysisDetails.nash_equilibria && (
-                <div className="space-y-2 animate-fade-in">
-                     <div className="flex items-center gap-2 mb-1">
-                        <CheckCircle2 className="w-4 h-4 text-gray-500" />
-                        <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Believability Check</span>
-                    </div>
-                    <div className="bg-gray-950 border border-gray-800 rounded-lg p-3 text-xs text-gray-400 font-mono">
-                         {analysisDetails.nash_equilibria.length > 0 ? (
-                             <span className="text-green-400">Stable Motivation Detected</span>
-                         ) : (
-                             <span className="text-yellow-400">Motivation Gap: Behavior may feel forced.</span>
-                         )}
-                    </div>
-                </div>
-            )}
-
-
-            {/* Analysis Report (Critique Text) */}
-            {messages.length > 0 && (
-                <div className="space-y-2">
-                     <div className="flex items-center gap-2 mb-1">
-                        <BarChart3 className="w-4 h-4 text-gray-500" />
-                        <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Analysis Report</span>
-                    </div>
-                    <div className="bg-gray-950/50 border border-gray-800 rounded-xl p-4 font-mono text-sm space-y-4">
-                        {messages.slice(-1).map((msg, idx) => ( // Only show latest report for cleaner UI? Or keep log? User said "Diagnostic Panel... not Chatbot stream"
-                            <div key={idx} className="animate-fade-in text-gray-300">
-                                <p className="whitespace-pre-wrap leading-relaxed">
-                                    {msg.replace(/^\[.*?\]\s*/, '')}
-                                </p>
+                        {/* Audit Report */}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 mb-1"><Target className="w-4 h-4 text-gray-500" /><span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pillar Audit</span></div>
+                            <div className="bg-gray-950/50 border border-gray-800 rounded-xl p-4 font-mono text-[11px] text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                {hookScanResult.detailed_audit}
                             </div>
-                        ))}
+                        </div>
                     </div>
-                </div>
-            )}
-
-          </div>
+                ) : (
+                    <div className="py-20 text-center space-y-4">
+                        <Target className="w-12 h-12 text-gray-800 mx-auto" />
+                        <p className="text-gray-600 text-sm italic">"The first 10 pages are a contract. Have you fulfilled yours?"</p>
+                        <p className="text-gray-700 text-[10px] uppercase font-bold tracking-widest">(Requires ~50 lines of text)</p>
+                    </div>
+                )}
+            </div>
+          )}
       </div>
     </div>
   );

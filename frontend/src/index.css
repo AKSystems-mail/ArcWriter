@@ -79,50 +79,54 @@ body {
   color: black;
   width: 8.5in;
   min-height: 11in;
-  padding: 1in;
+  padding: 1in 1in 1.5in 1in; /* Added extra .5in to bottom for breathing room */
   margin: 0 auto 2rem auto;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   font-family: 'Courier Prime', monospace;
   position: relative;
-  overflow: hidden; /* Cuts off text that spills over (temporary fix until pagination) */
-  margin-bottom: 2rem; /* Spacing between pages */
+  margin-bottom: 4rem; /* More space between pages */
+}
+
+textarea.script-block {
+  padding: 0;
+  border: none;
+  width: 100%;
+  display: block;
+  line-height: 1.2;
 }
 
 .slug {
   font-weight: 700;
   text-transform: uppercase;
-  margin: 0;
-  width: 100%;
+  margin-bottom: 1em;
 }
 
 .action {
-  margin: 0;
+  margin-bottom: 1em;
   width: 100%;
-  line-height: 1.2;
 }
 
 .character {
   text-transform: uppercase;
-  margin: 0;
-  width: 50%;
-  margin-left: 25%;
+  width: 50% !important;
+  margin-left: 25% !important;
   text-align: center;
+  margin-bottom: 0;
 }
 
 .parenthetical {
-  width: 30%;
-  margin-left: 35%;
-  margin: 0;
+  width: 30% !important;
+  margin-left: 35% !important;
   font-style: italic;
   text-align: left;
+  margin-bottom: 0;
 }
 
 .dialogue {
-  width: 60%;
-  margin-left: 20%;
-  margin: 0;
-  line-height: 1.2;
-  text-align: left; /* Force text to align left within the centered block */
+  width: 60% !important;
+  margin-left: 20% !important;
+  text-align: left; 
+  margin-bottom: 1em;
 }
 
 .logic-error-underline {

@@ -18,13 +18,33 @@ class AssetStudio:
             print("Warning: VideoGenerationModel not available. Teaser generation disabled.")
             self.veo_model = None
         
-        # Using Imagen 3
-        self.imagen_model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-001")
+        # Using Imagen 3 as primary
+        try:
+            self.imagen_model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-001")
+        except Exception as e:
+            print(f"Warning: Failed to load Imagen 3.0: {e}. Falling back to imagegeneration@002.")
+            self.imagen_model = ImageGenerationModel.from_pretrained("imagegeneration@002")
+
+    def _generate_with_fallback(self, prompt, **kwargs):
+        try:
+            return self.imagen_model.generate_images(prompt=prompt, **kwargs)
+        except Exception as e:
+            print(f"Primary model generation failed: {e}")
+            if "403" in str(e) or "PermissionDenied" in str(e) or "404" in str(e):
+                print(f"Attempting fallback to imagegeneration@002 due to: {e}")
+                from vertexai.vision_models import ImageGenerationModel
+                try:
+                    fallback_model = ImageGenerationModel.from_pretrained("imagegeneration@002")
+                    return fallback_model.generate_images(prompt=prompt, **kwargs)
+                except Exception as fe:
+                    print(f"Fallback model also failed: {fe}")
+                    raise fe
+            raise e
 
     def generate_character_anchor(self, description: str, style_reference: str = None) -> str:
         print(f"Generating Character Anchor for: {description}")
         try:
-            response = self.imagen_model.generate_images(
+            response = self._generate_with_fallback(
                 prompt=f"A consistent character face for: {description}. Cinematic lighting, 8k resolution.",
                 number_of_images=1,
             )
@@ -44,7 +64,7 @@ class AssetStudio:
         print(f"Generating character concepts for: {description}")
         generated_urls = []
         try:
-            response = self.imagen_model.generate_images(
+            response = self._generate_with_fallback(
                 prompt=f"High-quality cinematic headshot of {description}, neutral lighting, 8k resolution. Style: {visual_style}.",
                 number_of_images=4,
             )
@@ -71,7 +91,7 @@ class AssetStudio:
         print(f"Generating Poster with prompt: {prompt}")
         
         try:
-            response = self.imagen_model.generate_images(
+            response = self._generate_with_fallback(
                 prompt=prompt,
                 number_of_images=1,
             )
@@ -85,6 +105,8 @@ class AssetStudio:
         except Exception:
             traceback.print_exc()
             return "https://placehold.co/600x900?text=Poster+Generation+Unavailable"
+
+        return "https://placehold.co/600x900?text=Poster+Generation+Unavailable"
 
         return "https://placehold.co/600x900?text=Poster+Generation+Unavailable"
 

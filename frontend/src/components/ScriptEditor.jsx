@@ -1,26 +1,27 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronRight, FileText } from 'lucide-react';
+import { ChevronRight, FileText, ArrowLeft, Save, Target, BrainCircuit } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { formatLine } from '../utils/formatUtils';
 import StoryInsights from './StoryInsights';
 import SourceMaterialDrawer from './SourceMaterialDrawer';
 import { db, auth } from '../firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
-console.log("ScriptEditor loaded.");
-
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 const ScriptEditor = ({ universeId, projectId }) => {
-  const [blocks, setBlocks] = useState([
+  const navigate = useNavigate();
+  const initialBlocks = [
     { id: generateId(), type: 'Scene Heading', text: 'INT. STARTING POINT - DAY' },
     { id: generateId(), type: 'Action', text: '' }
-  ]);
-
-  const [focusedBlockId, setFocusedBlockId] = useState(null);
+  ];
+  const [blocks, setBlocks] = useState(initialBlocks);
+  const [focusedBlockId, setFocusedBlockId] = useState(initialBlocks[0].id);
   const [aiFeedbackMessages, setAiFeedbackMessages] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [logicScore, setLogicScore] = useState(null);
   const [sceneDynamics, setSceneDynamics] = useState(null);
+  const [hookScanResult, setHookScanResult] = useState(null); 
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
   const lastSavedBlocksRef = useRef(blocks);
@@ -32,6 +33,12 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
   const blockRefs = useRef({});
 
+  // Autocomplete State
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteIndex, setAutocompleteIndex] = useState(0);
+  const [universeCharacters, setUniverseCharacters] = useState([]);
+
   const getDocumentRef = useCallback(() => {
     return doc(db, 'universes', universeId, 'projects', projectId, 'script', 'content');
   }, [universeId, projectId]);
@@ -41,28 +48,34 @@ const ScriptEditor = ({ universeId, projectId }) => {
   }, [universeId, projectId]);
 
   useEffect(() => {
-    const fetchSourceMaterial = async () => {
+    const fetchData = async () => {
       try {
         const projectRef = getProjectRef();
         const docSnap = await getDoc(projectRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
           setSourceContent(data.source_material || data.bible_content || "No source material available.");
+          setUniverseCharacters(data.characters || []);
         }
       } catch (error) {
-        console.error("Error loading source material:", error);
+        console.error("Error loading project data:", error);
       }
     };
-    fetchSourceMaterial();
+    fetchData();
   }, [getProjectRef]);
 
   const saveScriptToFirestore = useCallback(async (currentBlocks) => {
     setIsSaving(true);
     setIsSaved(false);
     try {
+      const sanitizedBlocks = currentBlocks.map(block => ({
+        id: block.id || generateId(),
+        type: block.type || "Action",
+        text: block.text || ""
+      }));
       const scriptRef = getDocumentRef();
-      await setDoc(scriptRef, { blocks: currentBlocks });
-      lastSavedBlocksRef.current = currentBlocks;
+      await setDoc(scriptRef, { blocks: sanitizedBlocks });
+      lastSavedBlocksRef.current = sanitizedBlocks;
       setIsSaved(true);
     } catch (error) {
       console.error("Error saving script:", error);
@@ -82,6 +95,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
           setBlocks(loadedBlocks);
           lastSavedBlocksRef.current = loadedBlocks;
           setIsSaved(true);
+          setFocusedBlockId(loadedBlocks[0].id);
         }
       }
     } catch (error) {
@@ -92,6 +106,30 @@ const ScriptEditor = ({ universeId, projectId }) => {
   useEffect(() => {
     loadScriptFromFirestore();
   }, [loadScriptFromFirestore]);
+
+  useEffect(() => {
+    Object.values(blockRefs.current).forEach(ref => {
+      if (ref) {
+        ref.style.height = 'auto';
+        ref.style.height = ref.scrollHeight + 'px';
+      }
+    });
+  }, [blocks]);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && !isNaN(e.key)) {
+        const num = parseInt(e.key);
+        const formats = ['Scene Heading', 'Action', 'Character', 'Dialogue', 'Parenthetical'];
+        if (num >= 1 && num <= 5) {
+          e.preventDefault();
+          handleFormatChange(formats[num - 1]);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [focusedBlockId, blocks]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -110,9 +148,61 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const handleTextChange = (id, text, type) => {
     const { text: formattedText } = formatLine(type, text);
     updateBlock(id, { text: formattedText });
+
+    // Autocomplete Logic
+    if (type === 'Character' || type === 'Scene Heading') {
+      const query = text.toUpperCase();
+      let matches = [];
+      
+      if (type === 'Character') {
+        matches = universeCharacters
+          .map(c => c.name.toUpperCase())
+          .filter(name => name.startsWith(query) && query.length > 0);
+      } else {
+        matches = Array.from(new Set(blocks
+          .filter(b => b.type === 'Scene Heading' && b.id !== id)
+          .map(b => b.text.toUpperCase())))
+          .filter(loc => loc.startsWith(query) && query.length > 0);
+      }
+
+      setAutocompleteSuggestions(matches.slice(0, 5));
+      setShowAutocomplete(matches.length > 0);
+      setAutocompleteIndex(0);
+    } else {
+      setShowAutocomplete(false);
+    }
+  };
+
+  const applyAutocomplete = (suggestion) => {
+    if (focusedBlockId) {
+      updateBlock(focusedBlockId, { text: suggestion });
+      setShowAutocomplete(false);
+    }
   };
 
   const handleKeyDown = (e, index) => {
+    if (showAutocomplete) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setAutocompleteIndex(prev => (prev + 1) % autocompleteSuggestions.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setAutocompleteIndex(prev => (prev - 1 + autocompleteSuggestions.length) % autocompleteSuggestions.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        applyAutocomplete(autocompleteSuggestions[autocompleteIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        setShowAutocomplete(false);
+        return;
+      }
+    }
+
     if (e.key === 'Enter') {
       e.preventDefault();
       const currentBlock = blocks[index];
@@ -145,11 +235,14 @@ const ScriptEditor = ({ universeId, projectId }) => {
 
   const handleFormatChange = (newFormat) => {
     if (focusedBlockId) {
-      const block = blocks.find(b => b.id === focusedBlockId);
-      if (block) {
-        const { text: formattedText } = formatLine(newFormat, block.text);
-        updateBlock(focusedBlockId, { type: newFormat, text: formattedText });
-      }
+      setBlocks(prev => prev.map(b => {
+        if (b.id === focusedBlockId) {
+          const { text: formattedText } = formatLine(newFormat, b.text);
+          return { ...b, type: newFormat, text: formattedText };
+        }
+        return b;
+      }));
+      setIsSaved(false);
     }
   };
 
@@ -170,32 +263,33 @@ const ScriptEditor = ({ universeId, projectId }) => {
     setIsMagicMenuOpen(false);
     setIsGeneratingScene(true);
     try {
-      const context = blocks.slice(-10).map(b => b.text).join('\n').slice(-1000);
+      const projectRef = getProjectRef();
+      const projectSnap = await getDoc(projectRef);
+      const projectData = projectSnap.exists() ? projectSnap.data() : {};
+      const beatSheet = projectData.beat_sheet || {};
+      const characterNames = (projectData.characters || []).map(char => char.name || 'Unknown');
+
+      const context = blocks.slice(-15).map(b => b.text).join('\n').slice(-2000);
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/script/suggest_dialogue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ 
           context_lines: context,
-          genre: "Drama",
-          style: "Modern" 
+          genre: projectData.genre || "Drama",
+          style: projectData.vibe || "Modern",
+          beat_context: JSON.stringify(beatSheet),
+          characters: characterNames
         })
       });
       if (!response.ok) throw new Error('Failed to get suggestion');
       const data = await response.json();
-      
-      let newSuggestions = [];
-      if (Array.isArray(data)) {
-        newSuggestions = data;
-      } else if (data.suggestions) {
-        newSuggestions = data.suggestions;
-      }
+      const newSuggestions = Array.isArray(data) ? data : data.suggestions || [];
 
       if (newSuggestions.length > 0) {
         setSuggestions(newSuggestions);
         setIsSuggestionModalOpen(true);
       }
-
     } catch (error) {
       console.error('Error:', error);
       alert('Dialogue suggestion failed.');
@@ -207,13 +301,11 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const handleInsertSuggestion = (text) => {
     const newBlock = { id: generateId(), type: 'Dialogue', text: text };
     const newBlocks = [...blocks];
-    
     let insertIndex = blocks.length;
     if (focusedBlockId) {
       const index = blocks.findIndex(b => b.id === focusedBlockId);
       if (index !== -1) insertIndex = index + 1;
     }
-    
     newBlocks.splice(insertIndex, 0, newBlock);
     setBlocks(newBlocks);
     setIsSaved(false);
@@ -230,31 +322,63 @@ const ScriptEditor = ({ universeId, projectId }) => {
       if (!projectSnap.exists()) throw new Error('Project not found');
       const projectData = projectSnap.data();
       const beatSheet = projectData.beat_sheet || {};
-      const characters = projectData.characters || [];
-      const characterNames = characters.map(char => char.name || 'Unknown');
-      
+      const characterNames = (projectData.characters || []).map(char => char.name || 'Unknown');
+      const existingScriptContext = blocks.map(b => b.text).join('\n').slice(-2000);
+
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/script/generate_scene', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
-          beat_context: "Next Scene",
+          beat_context: JSON.stringify(beatSheet),
           characters: characterNames,
-          game_theory_type: "Prisoner's Dilemma"
+          game_theory_type: "Prisoner's Dilemma",
+          existing_script: existingScriptContext
         })
       });
       if (!response.ok) throw new Error('Failed');
       const data = await response.json();
-      const generatedBlocks = (data.blocks || []).map(block => ({ ...block, id: generateId() }));
+      const generatedBlocks = (data.blocks || []).map(block => ({
+        id: generateId(),
+        type: block.type || 'Action',
+        text: block.text || ""
+      }));
+
       if (generatedBlocks.length > 0) {
         setBlocks(generatedBlocks);
         setIsSaved(false);
       }
     } catch (error) {
       console.error('Error:', error);
-      alert(`Failed: ${error.message}`);
+      alert(`Draft Assist failed: ${error.message}`);
     } finally {
       setIsGeneratingScene(false);
+    }
+  };
+
+  const handleHookScan = async () => {
+    setIsAnalyzing(true);
+    setHookScanResult(null);
+    const scriptText = blocks.map(block => block.text).join('\n');
+    try {
+      const projectRef = getProjectRef();
+      const projectSnap = await getDoc(projectRef);
+      const genre = projectSnap.exists() ? projectSnap.data().genre : "Drama";
+
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/script/hook_scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ script_text: scriptText, genre }),
+      });
+      if (!response.ok) throw new Error('Hook Scan Failed');
+      const data = await response.json();
+      setHookScanResult(data);
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Gatekeeper Audit failed. Please try again.");
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -274,9 +398,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
       const data = await response.json();
       setAiFeedbackMessages((prev) => [...prev, `[AI] ${data.critique}`]);
       setLogicScore(data.score);
-      if (data.tension_curve) {
-        setSceneDynamics(data);
-      }
+      if (data.tension_curve) setSceneDynamics(data);
     } catch (error) {
       console.error("Error:", error);
       setAiFeedbackMessages((prev) => [...prev, `[ERROR] Analysis failed.`]);
@@ -285,61 +407,62 @@ const ScriptEditor = ({ universeId, projectId }) => {
     }
   }, [blocks, isSaved, saveScriptToFirestore, universeId, projectId]);
 
-  // --- PAGINATION LOGIC ---
   const renderPages = () => {
-    const LINES_PER_PAGE = 55; // Approx lines per page
+    const LINES_PER_PAGE = 55;
     const pages = [];
     let currentPage = [];
     let currentLines = 0;
 
     blocks.forEach((block, index) => {
-      // Estimate lines this block takes up (wrapping text)
-      // Assuming avg 60 chars per line for Courier 12pt
-      const estimatedLines = Math.max(1, Math.ceil(block.text.length / 60));
-      
-      // Use single spacing for all blocks
-      const spacing = 1;
-
-      if (currentLines + estimatedLines + spacing > LINES_PER_PAGE) {
+      const text = block.text || "";
+      const estimatedLines = Math.max(1, Math.ceil(text.length / 60));
+      if (currentLines + estimatedLines + 1 > LINES_PER_PAGE) {
         pages.push(currentPage);
         currentPage = [];
         currentLines = 0;
       }
-
-      currentPage.push({ ...block, index }); // Store original index
-      currentLines += estimatedLines + spacing;
+      currentPage.push({ ...block, index });
+      currentLines += estimatedLines + 1;
     });
-
-    if (currentPage.length > 0) {
-      pages.push(currentPage);
-    }
+    if (currentPage.length > 0) pages.push(currentPage);
 
     return pages.map((pageBlocks, pageIndex) => (
       <div key={pageIndex} className="script-page relative mb-8 shadow-2xl">
-        {/* Page Number */}
-        <div className="absolute top-4 right-8 text-gray-400 text-xs font-mono select-none">
-          {pageIndex + 1}.
-        </div>
-        
+        <div className="absolute top-4 right-8 text-gray-400 text-xs font-mono select-none">{pageIndex + 1}.</div>
         {pageBlocks.map((block) => {
           const { className } = formatLine(block.type, block.text);
           return (
-            <textarea
-              key={block.id}
-              ref={el => blockRefs.current[block.id] = el}
-              value={block.text}
-              onChange={(e) => handleTextChange(block.id, e.target.value, block.type)}
-              onKeyDown={(e) => handleKeyDown(e, block.index)}
-              onFocus={() => setFocusedBlockId(block.id)}
-              className={`${className} resize-none overflow-hidden bg-transparent focus:outline-none focus:bg-blue-50/50`}
-              placeholder={block.type === 'Scene Heading' ? 'INT. LOCATION - TIME' : ''}
-              rows={1}
-              style={{ height: 'auto', minHeight: '1.5em' }}
-              onInput={(e) => {
-                e.target.style.height = 'auto';
-                e.target.style.height = e.target.scrollHeight + 'px';
-              }}
-            />
+            <div key={block.id} className="relative group/block">
+              <textarea
+                ref={el => blockRefs.current[block.id] = el}
+                value={block.text}
+                onChange={(e) => handleTextChange(block.id, e.target.value, block.type)}
+                onKeyDown={(e) => handleKeyDown(e, block.index)}
+                onFocus={() => {
+                  setFocusedBlockId(block.id);
+                  setShowAutocomplete(false);
+                }}
+                className={`${className} script-block resize-none overflow-hidden bg-transparent focus:outline-none focus:bg-blue-50/50 transition-colors`}
+                placeholder={block.type === 'Scene Heading' ? 'INT. LOCATION - TIME' : ''}
+                rows={1}
+              />
+              
+              {/* Autocomplete Menu */}
+              {showAutocomplete && focusedBlockId === block.id && (
+                <div className="absolute left-0 top-full z-[100] w-64 bg-gray-900 border border-arc-teal rounded-lg shadow-2xl overflow-hidden animate-fade-in">
+                  {autocompleteSuggestions.map((s, idx) => (
+                    <button
+                      key={s}
+                      onClick={() => applyAutocomplete(s)}
+                      onMouseEnter={() => setAutocompleteIndex(idx)}
+                      className={`w-full text-left p-3 text-xs font-bold uppercase tracking-widest transition-colors ${idx === autocompleteIndex ? 'bg-arc-teal text-black' : 'text-white hover:bg-gray-800'}`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
@@ -350,90 +473,46 @@ const ScriptEditor = ({ universeId, projectId }) => {
 
   return (
     <div className="flex h-screen bg-black overflow-hidden selection:bg-arc-teal/30">
-      <SourceMaterialDrawer
-        isOpen={isSourceDrawerOpen}
-        onToggle={() => setIsSourceDrawerOpen(!isSourceDrawerOpen)}
-        content={sourceContent}
-        onInsert={handleInsertSourceMaterial}
-      />
-
+      <SourceMaterialDrawer isOpen={isSourceDrawerOpen} onToggle={() => setIsSourceDrawerOpen(!isSourceDrawerOpen)} content={sourceContent} onInsert={handleInsertSourceMaterial} />
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Editor Area with Pagination */}
-        <div className="flex-1 overflow-y-auto p-8 bg-gray-900 flex flex-col items-center custom-scrollbar">
-          {renderPages()}
-          
-          {/* Bottom padding to scroll past last page */}
-          <div className="h-32"></div>
+        <div className="h-14 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-6 z-50">
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 transition-colors" title="Exit to Dashboard"><ArrowLeft className="w-5 h-5" /></button>
+            <div className="h-4 w-px bg-gray-700"></div>
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Script Editor</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className={`text-[10px] uppercase tracking-tighter ${isSaved ? 'text-gray-600' : 'text-arc-orange animate-pulse'}`}>{isSaving ? 'Saving...' : isSaved ? 'All changes saved' : 'Unsaved Changes'}</span>
+            <button onClick={() => saveScriptToFirestore(blocks)} className="p-2 hover:bg-gray-800 rounded-lg text-arc-teal transition-colors"><Save className="w-4 h-4" /></button>
+          </div>
         </div>
-
-        {/* Format Bar */}
+        <div className="flex-1 overflow-y-auto p-8 bg-gray-900 flex flex-col items-center custom-scrollbar">{renderPages()}<div className="h-64"></div></div>
         <div className="h-20 bg-gray-900 border-t border-gray-800 flex items-center justify-center gap-4 px-6 z-50 shadow-lg">
           <FormatButton label="Slug" shortcut="1" isActive={activeFormat === 'Scene Heading'} onClick={() => handleFormatChange('Scene Heading')} />
           <FormatButton label="Action" shortcut="2" isActive={activeFormat === 'Action'} onClick={() => handleFormatChange('Action')} />
           <FormatButton label="Char" shortcut="3" isActive={activeFormat === 'Character'} onClick={() => handleFormatChange('Character')} />
           <FormatButton label="Dial" shortcut="4" isActive={activeFormat === 'Dialogue'} onClick={() => handleFormatChange('Dialogue')} />
           <FormatButton label="Par" shortcut="5" isActive={activeFormat === 'Parenthetical'} onClick={() => handleFormatChange('Parenthetical')} />
-          
           <div className="w-px h-8 bg-gray-800 mx-2"></div>
-          
           <div className="relative">
-            <button
-              onClick={() => setIsMagicMenuOpen(!isMagicMenuOpen)}
-              disabled={isGeneratingScene}
-              className="px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-200 bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50 shadow-[0_0_20px_rgba(168,85,247,0.3)] flex items-center gap-2"
-            >
-              {isGeneratingScene ? 'Thinking...' : 'Draft Assist'}
-              <ChevronRight className={`w-4 h-4 transition-transform ${isMagicMenuOpen ? 'rotate-90' : ''}`} />
-            </button>
-
+            <button onClick={() => setIsMagicMenuOpen(!isMagicMenuOpen)} disabled={isGeneratingScene} className="px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-200 bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50 shadow-[0_0_20px_rgba(168,85,247,0.3)] flex items-center gap-2">{isGeneratingScene ? 'Thinking...' : 'Draft Assist'}<ChevronRight className={`w-4 h-4 transition-transform ${isMagicMenuOpen ? 'rotate-90' : ''}`} /></button>
             {isMagicMenuOpen && (
               <div className="absolute bottom-full mb-4 right-0 w-64 bg-gray-900 border border-arc-teal rounded-2xl shadow-2xl overflow-hidden animate-fade-in z-50">
-                <button onClick={handleMagicWand} className="w-full text-left p-4 hover:bg-purple-600/20 text-white text-xs font-bold uppercase tracking-widest border-b border-gray-800 transition-colors">
-                  Auto-Draft Scene
-                </button>
-                <button onClick={handleSuggestDialogue} className="w-full text-left p-4 hover:bg-purple-600/20 text-white text-xs font-bold uppercase tracking-widest border-b border-gray-800 transition-colors">
-                  Suggest Dialogue
-                </button>
-                <button disabled className="w-full text-left p-4 opacity-50 cursor-not-allowed text-white text-xs font-bold uppercase tracking-widest transition-colors">
-                  Rewrite Selection
-                </button>
+                <button onClick={handleMagicWand} className="w-full text-left p-4 hover:bg-purple-600/20 text-white text-xs font-bold uppercase tracking-widest border-b border-gray-800 transition-colors">Auto-Draft Scene</button>
+                <button onClick={handleSuggestDialogue} className="w-full text-left p-4 hover:bg-purple-600/20 text-white text-xs font-bold uppercase tracking-widest border-b border-gray-800 transition-colors">Suggest Dialogue</button>
               </div>
             )}
-
             {isSuggestionModalOpen && (
                <div className="absolute bottom-full mb-4 right-0 w-96 bg-gray-900 border-2 border-arc-teal rounded-2xl shadow-[0_0_50px_rgba(0,206,201,0.2)] overflow-hidden z-[60] p-4 flex flex-col gap-3">
                   <div className="text-arc-teal text-xs font-black uppercase tracking-widest mb-2">Select Dialogue Option</div>
-                  {suggestions.map((option, idx) => (
-                    <button 
-                      key={idx}
-                      onClick={() => handleInsertSuggestion(option)}
-                      className="text-left p-3 rounded-lg bg-gray-800 hover:bg-arc-teal/20 hover:border-arc-teal border border-transparent transition-all text-sm text-gray-200"
-                    >
-                      "{option}"
-                    </button>
-                  ))}
-                  <button 
-                    onClick={() => setIsSuggestionModalOpen(false)}
-                    className="mt-2 text-xs text-gray-500 hover:text-white uppercase tracking-widest"
-                  >
-                    Cancel
-                  </button>
+                  {suggestions.map((option, idx) => (<button key={idx} onClick={() => handleInsertSuggestion(option)} className="text-left p-3 rounded-lg bg-gray-800 hover:bg-arc-teal/20 hover:border-arc-teal border border-transparent transition-all text-sm text-gray-200">"{option}"</button>))}
+                  <button onClick={() => setIsSuggestionModalOpen(false)} className="mt-2 text-xs text-gray-500 hover:text-white uppercase tracking-widest">Cancel</button>
                </div>
             )}
           </div>
         </div>
       </div>
-
-      <StoryInsights
-        onAnalyzeScene={handleAnalyzeSceneRequest}
-        messages={aiFeedbackMessages}
-        isAnalyzing={isAnalyzing}
-        score={logicScore}
-        dynamics={sceneDynamics}
-        totalLines={blocks.length}
-        isSaving={isSaving}
-        isSaved={isSaved}
-      />
+      <StoryInsights onAnalyzeScene={handleAnalyzeSceneRequest} onHookScan={handleHookScan} messages={aiFeedbackMessages} isAnalyzing={isAnalyzing} hookScanResult={hookScanResult} score={logicScore} dynamics={sceneDynamics} totalLines={blocks.length} isSaving={isSaving} isSaved={isSaved} />
     </div>
   );
 };

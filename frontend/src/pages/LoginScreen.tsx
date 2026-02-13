@@ -14,7 +14,6 @@ const LoginScreen: React.FC = () => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
                 // User is signed in, redirect to dashboard or home
-                console.log("User already signed in:", user.uid);
                 navigate('/app'); // Redirect to Traffic Controller
             }
         });
@@ -30,18 +29,6 @@ const LoginScreen: React.FC = () => {
             // The Firebase credential type is GoogleAuthProvider.credential
             const credential = GoogleAuthProvider.credentialFromResult(result);
             const token = await result.user.getIdToken(); // Get Firebase ID token
-
-            console.log("Google Sign-In successful. User UID:", result.user.uid);
-            console.log("Firebase ID Token:", token);
-
-            // Here, you might send the ID token to your backend for verification
-            // and to create/update user data in your Firestore or other database.
-            // Example:
-            // await fetch('http://localhost:5000/api/auth/verify-token', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            //     body: JSON.stringify({ userId: result.user.uid })
-            // });
 
             navigate('/app'); // Navigate to Traffic Controller after successful login
         } catch (err: any) {

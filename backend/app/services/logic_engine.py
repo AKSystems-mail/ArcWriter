@@ -75,23 +75,35 @@ class LogicEngine:
             print(f"Error in analyze_scene: {e}")
             return {"error": str(e), "rationality_score": 0}
 
-    def generate_scene_content(self, beat_context: str, characters: list, game_theory_type: str) -> List[str]:
+    def generate_scene_content(self, beat_context: str, characters: list, game_theory_type: str, existing_script: str = "") -> List[str]:
         """
         Generates a screenplay scene based on a beat and game theory constraint.
-        Returns a list of strings (blocks) for the editor.
+        Maintains continuity with existing_script if provided.
+        Returns a list of objects for the editor.
         """
         system_instruction = (
             "You are a professional screenwriter. Write a scene in standard screenplay format. "
             "Do not include conversational filler before or after the script. "
-            "Return the result as a JSON object with a single key 'blocks' containing a list of strings, "
-            "where each string is a paragraph of the script (e.g., 'INT. ROOM - DAY', 'JOHN', 'Hello there.')."
+            "Return the result as a JSON object with a single key 'blocks' containing a list of objects. "
+            "Each object must have 'type' and 'text' keys.\n\n"
+            "ALLOWED TYPES:\n"
+            "- 'Scene Heading' (e.g. INT. OFFICE - DAY)\n"
+            "- 'Action' (Description of visual events)\n"
+            "- 'Character' (Name of the speaker, uppercase)\n"
+            "- 'Dialogue' (The spoken words)\n"
+            "- 'Parenthetical' (Internal direction, e.g. (beat))\n\n"
+            "CONTINUITY RULES:\n"
+            "1. If 'existing_script' is empty, write the definitive OPENING IMAGE scene from the provided beat sheet.\n"
+            "2. If 'existing_script' is provided, pick up exactly where the script left off. Maintain tone and location.\n"
+            "3. Ensure character voices are consistent with the previous pages."
         )
         
         user_prompt = (
-            f"CONTEXT: The current beat is '{beat_context}'.\n"
+            f"BEAT SHEET CONTEXT: {beat_context}.\n"
             f"CHARACTERS: {', '.join(characters)}.\n"
-            f"CONSTRAINT: The interaction must follow the logic of a '{game_theory_type}' game.\n"
-            "TASK: Write the scene content."
+            f"CONSTRAINT: Use the logic of a '{game_theory_type}' game for the conflict.\n"
+            f"EXISTING SCRIPT PAGES:\n{existing_script}\n\n"
+            "TASK: Write the next logical scene."
         )
 
         try:
@@ -114,18 +126,42 @@ class LogicEngine:
     def critique_scene(self, scene_text: str, persona_prompt: str, bible_context: str) -> Dict[str, Any]:
         """
         Generates a critique and a rationality score using a specific system prompt (Persona).
+        Includes an audit of 10 narrative devices.
         """
-        # Map IDs to System Instructions
+        # Map IDs to System Instructions with specialized Narrative Device focus
         prompts = {
-            "market_viability": "You are a commercial analyst. Focus strictly on pacing, stakes, and audience retention. Flag slow scenes or low stakes.",
-            "thematic_consistency": "You are a literary analyst. Focus on character arcs, subtext, and motif. Flag on-the-nose dialogue.",
-            "structural_integrity": "You are a logic engine. Focus on cause-and-effect, plot holes, and Game Theory violations. Ignore artistic flair if the logic fails."
+            "market_viability": (
+                "You are a commercial Hollywood analyst. Focus strictly on pacing, stakes, and audience retention.\n"
+                "Audit the following devices: 'Save the Cat' (Empathy), 'In Medias Res' (Pacing), 'The MacGuffin' (Goal), and 'Pope in the Pool' (Exposition Management).\n"
+            ),
+            "thematic_consistency": (
+                "You are a literary analyst. Focus on character arcs, subtext, and motifs.\n"
+                "Audit the following devices: 'Subtext' (On-the-nose dialogue), 'Dramatic Irony' (Knowledge gaps), and 'Red Herrings' (Misdirection).\n"
+            ),
+            "structural_integrity": (
+                "You are a logic engine. Focus on cause-and-effect, plot holes, and Game Theory.\n"
+                "Audit the following devices: 'Chekhov’s Gun' (Payoffs), 'Deus Ex Machina' (Logic gaps), and 'Peripeteia' (Midpoint Pivots).\n"
+            )
         }
         
-        # Default fallback if unknown ID or if the full prompt was passed directly
-        system_instruction = prompts.get(persona_prompt, "You are an AI assistant tasked with critiquing movie scripts and providing helpful feedback.")
+        persona_context = prompts.get(persona_prompt, "You are a professional script consultant.")
         
-        user_prompt = f"Context: {bible_context}\nAnalyze this scene:\n\n{scene_text}"
+        system_instruction = (
+            f"{persona_context}\n"
+            "Analyze the scene based on the provided context.\n\n"
+            "UNIVERSE CONTINUITY RULES:\n"
+            "The PROJECT CONTEXT contains details for the current script and other scripts in the same universe.\n"
+            "1. Cross-reference characters, deaths, and major events across ALL projects.\n"
+            "2. If this scene contradicts an established fact in a previous script (e.g., a dead character is alive without explanation), flag it.\n"
+            "3. Use the specific literary terms (Chekhov's Gun, Peripeteia, etc.) when applicable.\n\n"
+            "FORMATTING RULES:\n"
+            "1. Provide the report as a numbered list.\n"
+            "2. IMPORTANT: Add an empty line (extra space) after each numbered item to ensure readability.\n"
+            "3. If a device is missing but needed, suggest how to add it.\n"
+            "4. Use professional Hollywood terminology."
+        )
+        
+        user_prompt = f"PROJECT CONTEXT:\n{bible_context}\n\nSCENE TEXT:\n{scene_text}"
         
         llm_critique = self.llm.generate_text(system_instruction=system_instruction, user_prompt=user_prompt)
         
@@ -139,7 +175,7 @@ class LogicEngine:
         return {
             "critique": llm_critique, 
             "score": rationality_score,
-            "analysis_details": analysis_result, # Pass full analysis for frontend visualization
+            "analysis_details": analysis_result,
             **dynamics_result
         }
 
@@ -153,11 +189,13 @@ class LogicEngine:
             "Return JSON with keys: 'genre' (str), 'logline' (str, punchy 1-sentence), "
             "'structure_suggestion' (str, e.g. 'Hero's Journey', 'Three Act', 'Non-linear'), "
             "'title_ideas' (list of strings), 'title' (str), 'synopsis' (str), "
+            "'character_descriptions': (list of objects with 'name', 'role', and 'description'), "
             "and a 'beat_sheet' object with these exact keys: "
             "'opening_image', 'theme_stated', 'set_up', 'catalyst', 'debate', "
             "'break_into_two', 'b_story', 'fun_and_games', 'midpoint', "
             "'bad_guys_close_in', 'all_is_lost', 'dark_night_of_the_soul', "
             "'break_into_three', 'finale', 'final_image'."
+            " IMPORTANT: If characters aren't named in the pitch, invent a compelling 3-4 person cast that fits the genre."
             " IMPORTANT: Use 'dark_night_of_the_soul' NOT 'dark_night_of_soul'."
             " IMPORTANT: Use 'set_up' NOT 'setup'."
         )
@@ -212,19 +250,22 @@ class LogicEngine:
         
         return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
 
-    def suggest_dialogue(self, context_lines: str, genre: str = "Drama", style: str = "Modern") -> List[str]:
+    def suggest_dialogue(self, context_lines: str, genre: str = "Drama", style: str = "Modern", beat_context: str = "", characters: list = []) -> List[str]:
         """
-        Suggests 3 distinct dialogue options based on context, genre, and style.
+        Suggests 3 distinct dialogue options based on script context, genre, style, and project universe.
         """
         system_instruction = (
-            "You are a screenwriting assistant. Read the following context lines. "
+            "You are a screenwriting assistant. Analyze the script context and the project universe.\n"
             "Suggest 3 distinct dialogue options for the next character to speak.\n"
-            "Option 1: On the nose (Direct).\n"
-            "Option 2: Subtextual (Hidden meaning).\n"
-            "Option 3: Conflict-heavy (Push back).\n"
+            "Option 1: On the nose (Direct, literal).\n"
+            "Option 2: Subtextual (Hidden meaning, talking around the subject).\n"
+            "Option 3: Conflict-heavy (Push back, aggressive, defensive).\n\n"
+            "UNIVERSE CONTEXT:\n"
+            f"- Characters: {', '.join(characters)}\n"
+            f"- Current Beat/Goal: {beat_context}\n\n"
             "Return ONLY the dialogue lines as a JSON list of strings."
         )
-        user_prompt = f"GENRE: {genre}\nSTYLE: {style}\nCONTEXT LINES:\n{context_lines}"
+        user_prompt = f"GENRE: {genre}\nSTYLE: {style}\n\nSCRIPT CONTEXT:\n{context_lines}"
         
         try:
             response = self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
@@ -304,6 +345,32 @@ class LogicEngine:
             },
             "actual_outcome": ["Cooperate", "Cooperate"] if len(scene_text) % 2 == 0 else ["Defect", "Defect"]
         }
+
+    def scan_first_ten_pages(self, script_text: str, genre: str) -> Dict[str, Any]:
+        """
+        Conducts a specialized 'Gatekeeper Audit' of the first 10 pages.
+        """
+        system_instruction = (
+            "You are a Senior Story Executive at a major studio. Your job is to decide whether to 'Pass' or 'Read' "
+            "based strictly on the first 10 pages of a script.\n\n"
+            "Evaluate the following 4 pillars:\n"
+            "1. THEME STATEMENT: Is the theme stated (usually by a minor character) in pages 3-5?\n"
+            "2. MOTIVATION: Are the protagonist's 'Want' (external goal) and 'Need' (internal lack) clear?\n"
+            "3. TONE: Does the vocabulary and scene rhythm match the intended genre?\n"
+            "4. CATALYST: Has the inciting incident occurred or been strongly foreshadowed?\n\n"
+            "Return a JSON object with:\n"
+            "- 'gatekeeper_verdict': 'READ' (Strong) or 'PASS' (Weak)\n"
+            "- 'pillar_scores': { 'theme': int, 'motivation': int, 'tone': int, 'catalyst': int }\n"
+            "- 'detailed_audit': str (A numbered list with professional feedback. IMPORTANT: Add an empty line space after each numbered item.)\n"
+        )
+        
+        user_prompt = f"INTENDED GENRE: {genre}\nSCRIPT TEXT (FIRST 10 PAGES):\n{script_text[:30000]}"
+        
+        try:
+            return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+        except Exception as e:
+            print(f"Error in hook scan: {e}")
+            return {"error": str(e), "gatekeeper_verdict": "PASS"}
 
     def _calculate_nash_equilibrium(self, matrix: Dict[str, Dict[str, List[int]]]) -> List[Tuple[str, str]]:
         """Calculates Pure Strategy Nash Equilibria."""

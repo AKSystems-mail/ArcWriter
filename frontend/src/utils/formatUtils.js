@@ -1,10 +1,10 @@
 export const formatLine = (type, text) => {
-  let formattedText = text;
-  let className = "outline-none resize-none bg-transparent font-courier text-[12pt] leading-normal placeholder-gray-300 ";
+  let formattedText = text || "";
+  let className = "outline-none resize-none bg-transparent font-courier text-[12pt] ";
 
   switch (type) {
     case 'Scene Heading':
-      formattedText = text.toUpperCase();
+      formattedText = formattedText.toUpperCase();
       className += "slug";
       break;
 
@@ -13,7 +13,7 @@ export const formatLine = (type, text) => {
       break;
 
     case 'Character':
-      formattedText = text.toUpperCase();
+      formattedText = formattedText.toUpperCase();
       className += "character"; 
       break;
 

@@ -15,18 +15,44 @@ const OnboardingWizard = () => {
     const [data, setData] = useState({
         mode: null,         // 'explorer' | 'architect'
         pitch: '',
-        metadata: null,     // { genre, logline, structure_suggestion }
+        universe_name: '',  
+        metadata: null,     
         vibe: null,
         poster_url: null,
-        persona: null,      // 'studio_exec' | 'auteur' | 'script_doctor'
-        is_script: false    // User toggle for uploaded file type
+        persona: null,      
+        is_script: false    
     });
+
+    const [existingUniverses, setExistingUniverses] = useState([]);
+    const [showNewUniverseInput, setShowNewUniverseInput] = useState(false);
+
+    useEffect(() => {
+        const fetchUniverses = async () => {
+            try {
+                const response = await apiClient('/api/universes');
+                if (response.ok) {
+                    const list = await response.json();
+                    setExistingUniverses(list);
+                    if (list.length > 0) {
+                        setData(prev => ({ ...prev, universe_name: list[0].name }));
+                    } else {
+                        setShowNewUniverseInput(true);
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching universes:", err);
+                setShowNewUniverseInput(true);
+            }
+        };
+        fetchUniverses();
+    }, []);
 
     const nextStep = () => {
         setAnimateOut(true);
         setTimeout(() => {
             setStep(s => s + 1);
             setAnimateOut(false);
+            setLoading(false); // ALWAYS reset loading on step transition
         }, 300);
     };
 
@@ -60,12 +86,12 @@ const OnboardingWizard = () => {
             }));
 
             console.log("File analysis complete:", metadata);
-
+            setLoading(false); // Reset loading after file analysis
         } catch (error) {
             console.error("Error uploading file:", error);
             alert(`Error: ${error.message}`);
-        } finally {
             setLoading(false);
+        } finally {
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
@@ -83,7 +109,7 @@ const OnboardingWizard = () => {
 
         try {
             // Use apiClient to handle auth token attachment automatically
-            const response = await apiClient('/api/projects/initialize', {
+            const response = await apiClient('/api/onboarding/initialize', {
                 method: 'POST',
                 body: JSON.stringify({ pitch: data.pitch })
             });
@@ -94,6 +120,14 @@ const OnboardingWizard = () => {
             }
 
             const metadata = await response.json();
+            
+            if (metadata.error) {
+                console.error("Story DNA Analysis failed:", metadata.error);
+                alert(`Story DNA Analysis failed: ${metadata.error}`);
+                setLoading(false);
+                return;
+            }
+
             setData(prev => ({ ...prev, metadata }));
             console.log("Metadata generated:", metadata);
             nextStep();
@@ -102,38 +136,48 @@ const OnboardingWizard = () => {
             alert(`Error: ${error.message}`);
             setLoading(false);
         }
-        // Do not set loading(false) on success to prevent button flicker during transition
     };
 
     const handleVibeSelect = async (vibe) => {
         setData(prev => ({ ...prev, vibe }));
-        setLoading(true); // "Dreaming up your world..."
+        setLoading(true);
+
+        // Create a timeout promise
+        const timeoutPromise = new Promise((resolve) => {
+            setTimeout(() => {
+                console.warn("Image generation timed out. Proceeding without image.");
+                resolve({ timeout: true });
+            }, 15000); // 15 second timeout for visuals
+        });
 
         // Trigger generic asset generation for poster
         try {
-            const response = await apiClient('/api/assets/generate', {
+            const apiCall = apiClient('/api/assets/generate', {
                 method: 'POST',
                 body: JSON.stringify({
-                    type: 'poster', // or 'character_concepts' for speed? Poster is better for "Vibe"
-                    title: data.metadata?.title || "Untitled", // We might need to ask LLM for a title too!
+                    type: 'poster', 
+                    title: data.metadata?.title || "Untitled", 
                     tagline: data.metadata?.logline || "A story waiting to be told.",
                     description: `A movie poster in ${vibe} style. ${data.pitch}`,
                     genre: data.metadata?.genre,
                     style: vibe
                 })
             });
-            const result = await response.json();
 
-            if (result.url) {
-                setData(prev => ({ ...prev, poster_url: result.url }));
+            // Race the API call against the timeout
+            const response = await Promise.race([apiCall, timeoutPromise]);
+            
+            if (response && !response.timeout && response.ok) {
+                const result = await response.json();
+                if (result.url) {
+                    setData(prev => ({ ...prev, poster_url: result.url }));
+                }
             }
+            
             nextStep();
         } catch (error) {
             console.error("Error generating poster:", error);
-            // Proceed anyway, maybe without image
             nextStep();
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -228,24 +272,62 @@ const OnboardingWizard = () => {
     const renderStep2 = () => (
         <div className="w-full max-w-2xl mx-auto px-4 z-10">
             <div className="text-center mb-10">
-                <h2 className="text-4xl font-bold text-white mb-4">The Elevator Pitch</h2>
-                <p className="text-xl text-gray-400">Tell us your story idea in a sentence or two.</p>
+                <h2 className="text-4xl font-bold text-white mb-4">The DNA</h2>
+                <p className="text-xl text-gray-400">Select your universe and pitch your idea.</p>
             </div>
 
-            <div className="relative group">
-                <textarea
-                    value={data.pitch}
-                    onChange={(e) => setData(prev => ({ ...prev, pitch: e.target.value }))}
-                    placeholder="In a world where..."
-                    disabled={data.uploaded_file_name}
-                    className={`w-full bg-gray-900/50 border border-gray-700 rounded-2xl p-6 text-xl text-white placeholder-gray-600 focus:outline-none focus:border-arc-teal min-h-[200px] resize-none backdrop-blur-sm transition-all ${data.uploaded_file_name ? 'opacity-50 cursor-not-allowed' : ''}`}
-                />
-
-                {data.uploaded_file_name && (
-                    <div className="absolute bottom-4 right-4 bg-arc-teal/20 text-arc-teal px-3 py-1 rounded-full text-sm flex items-center gap-2 border border-arc-teal/30 z-20">
-                        <CheckCircle2 className="w-4 h-4" /> {data.uploaded_file_name}
+            <div className="flex flex-col gap-6">
+                <div className="relative group">
+                    <div className="flex justify-between items-center mb-2">
+                        <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal block">Cinematic Universe</label>
+                        <button 
+                            onClick={() => {
+                                setShowNewUniverseInput(!showNewUniverseInput);
+                            }}
+                            className="text-[10px] uppercase font-bold text-gray-500 hover:text-white transition-colors"
+                        >
+                            {showNewUniverseInput ? "Select Existing" : "Create New +"}
+                        </button>
                     </div>
-                )}
+
+                    {!showNewUniverseInput && existingUniverses.length > 0 ? (
+                        <select
+                            value={data.universe_name}
+                            onChange={(e) => setData(prev => ({ ...prev, universe_name: e.target.value }))}
+                            className="w-full bg-gray-900/50 border border-gray-700 rounded-xl p-4 text-white focus:outline-none focus:border-arc-teal backdrop-blur-sm transition-all appearance-none"
+                        >
+                            {existingUniverses.map(u => (
+                                <option key={u.name} value={u.name}>{u.name}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <input
+                            type="text"
+                            value={data.universe_name}
+                            onChange={(e) => setData(prev => ({ ...prev, universe_name: e.target.value }))}
+                            placeholder="e.g. The Quantum Noir Saga"
+                            className="w-full bg-gray-900/50 border border-gray-700 rounded-xl p-4 text-white focus:outline-none focus:border-arc-teal backdrop-blur-sm transition-all animate-fade-in"
+                            autoFocus
+                        />
+                    )}
+                </div>
+
+                <div className="relative group">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-2 block">Elevator Pitch</label>
+                    <textarea
+                        value={data.pitch}
+                        onChange={(e) => setData(prev => ({ ...prev, pitch: e.target.value }))}
+                        placeholder="In a world where..."
+                        disabled={data.uploaded_file_name}
+                        className={`w-full bg-gray-900/50 border border-gray-700 rounded-2xl p-6 text-xl text-white placeholder-gray-600 focus:outline-none focus:border-arc-teal min-h-[200px] resize-none backdrop-blur-sm transition-all ${data.uploaded_file_name ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    />
+
+                    {data.uploaded_file_name && (
+                        <div className="absolute bottom-4 right-4 bg-arc-teal/20 text-arc-teal px-3 py-1 rounded-full text-sm flex items-center gap-2 border border-arc-teal/30 z-20">
+                            <CheckCircle2 className="w-4 h-4" /> {data.uploaded_file_name}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="mt-8 flex justify-center gap-4">
@@ -354,21 +436,30 @@ const OnboardingWizard = () => {
                 <h2 className="text-4xl font-bold text-white mb-4">Select Analysis Lens</h2>
                 <p className="text-xl text-gray-400 mb-12">How should the logic engine prioritize feedback?</p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {personas.map(persona => (
-                        <button
-                            key={persona.id}
-                            onClick={() => handlePersonaSelect(persona.id)}
-                            className="bg-gray-900/40 border border-gray-700 hover:border-arc-teal/50 hover:bg-gray-800/60 p-8 rounded-2xl transition-all duration-300 flex flex-col items-center text-center group"
-                        >
-                            <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                <User className="w-8 h-8 text-white" />
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-2">{persona.name}</h3>
-                            <p className="text-gray-400 text-sm">{persona.desc}</p>
-                        </button>
-                    ))}
-                </div>
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20">
+                        <div className="w-24 h-24 mb-6 rounded-full border-4 border-white/20 border-t-arc-orange animate-spin" />
+                        <h3 className="text-2xl font-light text-white animate-pulse">Initializing Studio...</h3>
+                        <p className="text-gray-500 mt-4">Preparing your universe and generating initial scenes.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {personas.map(persona => (
+                            <button
+                                key={persona.id}
+                                onClick={() => handlePersonaSelect(persona.id)}
+                                disabled={loading}
+                                className="bg-gray-900/40 border border-gray-700 hover:border-arc-teal/50 hover:bg-gray-800/60 p-8 rounded-2xl transition-all duration-300 flex flex-col items-center text-center group disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                    <User className="w-8 h-8 text-white" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">{persona.name}</h3>
+                                <p className="text-gray-400 text-sm">{persona.desc}</p>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
         );
     };

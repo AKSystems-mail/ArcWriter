@@ -138,30 +138,24 @@ class BibleManager:
                 print(f"ERROR: Failed to sync beat sheet data: {e}")
 
     def get_context_string(self) -> str:
-        project_ref = self._get_project_ref()
-        project_doc = project_ref.get()
+        universe_ref = self.db.collection("universes").document(self.universe_name)
+        projects_ref = universe_ref.collection("projects")
         
-        if not project_doc.exists:
-            return "Title: Unknown, Genre: Unknown, Beats: "
-
-        project_data = project_doc.to_dict()
-        content = project_data.get("bible_content", "")
-
-        if not content:
-            return "Title: Unknown, Genre: Unknown, Beats: "
-
-        title = self._extract_section_content(content, "## Title") or "Unknown"
-        genre = self._extract_section_content(content, "## Genre") or "Unknown"
+        full_universe_context = f"UNIVERSE: {self.universe_name}\n"
         
-        beats_content = self._extract_section_content(content, "## Beat Sheet (Save the Cat)")
-        if not beats_content:
-             beats_content = self._extract_section_content(content, "## The Hero's Journey")
-        
-        # Format beats: replace newlines with a separator to make it a single line
-        beats_lines = [line.strip() for line in beats_content.split('\n') if line.strip()]
-        beats = "; ".join(beats_lines)
+        # Pull data from ALL projects in this universe for continuity
+        for proj_doc in projects_ref.stream():
+            data = proj_doc.to_dict()
+            title = data.get("title", "Untitled")
+            logline = data.get("logline", "")
+            synopsis = data.get("synopsis", "")
+            
+            # Label the current project vs. others
+            prefix = "[CURRENT PROJECT]" if proj_doc.id == self.project_id else "[OTHER PROJECT IN UNIVERSE]"
+            
+            full_universe_context += f"{prefix} Title: {title}\nLogline: {logline}\nSynopsis: {synopsis}\n---\n"
 
-        return f"Title: {title}, Genre: {genre}, Beats: {beats}"
+        return full_universe_context
 
     def parse_beat_sheet(self, beat_sheet_content: str) -> Dict[str, str]:
         """

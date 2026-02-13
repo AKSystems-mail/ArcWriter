@@ -13,13 +13,30 @@ logger = logging.getLogger(__name__)
 class LLMService:
     def __init__(self):
         key = os.getenv("GEMINI_API_KEY")
-        if key:
-            key = key.strip() # Remove any accidental whitespace
-            self.client = genai.Client(api_key=key)
-            # Use Gemini 1.5 Flash for speed and high availability
-            self.model_name = "gemini-1.5-flash"
+        project = os.getenv("GOOGLE_CLOUD_PROJECT")
+        location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+
+        if project:
+            # Prioritize Vertex AI in GCP environments
+            try:
+                self.client = genai.Client(vertex=True, project=project, location=location)
+                # Use Gemini 2.5 Flash for the base model (Cost efficient for testing)
+                self.model_name = "gemini-2.5-flash" 
+                logger.info(f"LLMService initialized with Vertex AI (project={project}, location={location})")
+            except Exception as e:
+                logger.error(f"Failed to initialize Vertex AI client: {e}")
+                self.client = None
+        elif key:
+            # Fallback to Google AI Studio API Key
+            try:
+                self.client = genai.Client(api_key=key.strip())
+                self.model_name = "models/gemini-2.5-flash"
+                logger.info("LLMService initialized with Google AI API Key")
+            except Exception as e:
+                logger.error(f"Failed to initialize Google AI client: {e}")
+                self.client = None
         else:
-            logger.warning("GEMINI_API_KEY not set. LLMService will not function correctly.")
+            logger.warning("Neither GEMINI_API_KEY nor GOOGLE_CLOUD_PROJECT set. LLMService will not function correctly.")
             self.client = None
             self.model_name = None
 
@@ -27,13 +44,17 @@ class LLMService:
         if not self.client:
             return {"error": "LLM client not initialized"}
         try:
+            # Explicitly wrap system instruction if provided
+            sys_inst = None
+            if system_instruction:
+                sys_inst = types.Content(parts=[types.Part.from_text(text=system_instruction)])
+
             config = types.GenerateContentConfig(
                 temperature=0.7,
-                system_instruction=system_instruction,
+                system_instruction=sys_inst,
                 response_mime_type="application/json"
             )
             
-            # Use explicit Content/Part structure to avoid API ambiguity
             contents = [
                 types.Content(
                     role="user",
@@ -58,14 +79,17 @@ class LLMService:
         if not self.client:
             return "Error: LLM client not initialized"
         try:
+            sys_inst = None
+            if system_instruction:
+                sys_inst = types.Content(parts=[types.Part.from_text(text=system_instruction)])
+
             config = types.GenerateContentConfig(
                 temperature=0.7,
-                system_instruction=system_instruction
+                system_instruction=sys_inst
             )
             
-            # The new SDK handles timeouts differently, usually via client configuration or request_options if available.
-            # In google-genai, it's often passed in the Client initialization or not directly exposed per-call in the same way.
-            # We will use the default for now.
+            # Switch to Gemini 2.5 Pro for intensive text analysis
+            pro_model = self.model_name.replace("flash", "pro")
             
             contents = [
                 types.Content(
@@ -77,7 +101,7 @@ class LLMService:
             ]
             
             response = self.client.models.generate_content(
-                model=self.model_name,
+                model=pro_model,
                 contents=contents,
                 config=config
             )
