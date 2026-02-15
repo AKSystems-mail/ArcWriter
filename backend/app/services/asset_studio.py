@@ -124,8 +124,6 @@ class AssetStudio:
 
         return "https://placehold.co/600x900?text=Poster+Generation+Unavailable"
 
-        return "https://placehold.co/600x900?text=Poster+Generation+Unavailable"
-
     def generate_teaser(self, scene_description: str, anchor_image_url: Optional[str] = None) -> str:
         # ... (Keep existing logic, but ensure try/except if you enable real API calls)
         job_id = str(uuid.uuid4())
