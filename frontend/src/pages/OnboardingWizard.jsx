@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight, Pencil, Film, User, CheckCircle2, FileUp } from 'lucide-react';
-import { auth } from '../firebase'; // Import auth
+import { auth, db, storage } from '../firebase';
 import { apiClient } from '../api/client';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { doc, updateDoc } from 'firebase/firestore';
 
 const OnboardingWizard = () => {
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [loadingText, setLoadingText] = useState("Analyzing Narrative Core...");
     const [animateOut, setAnimateOut] = useState(false);
     const fileInputRef = React.useRef(null);
 
@@ -23,7 +26,6 @@ const OnboardingWizard = () => {
         is_script: false    
     });
 
-    // Helper to update metadata fields directly
     const updateMetadataField = (field, value) => {
         setData(prev => ({
             ...prev,
@@ -69,7 +71,7 @@ const OnboardingWizard = () => {
         setTimeout(() => {
             setStep(s => s + 1);
             setAnimateOut(false);
-            setLoading(false); // ALWAYS reset loading on step transition
+            setLoading(false); 
         }, 300);
     };
 
@@ -78,6 +80,7 @@ const OnboardingWizard = () => {
         if (!file) return;
 
         setLoading(true);
+        setLoadingText("Extracting Manuscript Data...");
         const formData = new FormData();
         formData.append('file', file);
 
@@ -98,13 +101,11 @@ const OnboardingWizard = () => {
                 ...prev,
                 metadata: metadata,
                 uploaded_file_name: file.name,
-                // If logline exists, use it as pitch to bypass validation or prefill
                 pitch: metadata.logline || prev.pitch
             }));
 
-            console.log("File analysis complete:", metadata);
-            setLoading(false); // Reset loading after file analysis
-            nextStep(); // Move to review step
+            setLoading(false);
+            nextStep();
         } catch (error) {
             console.error("Error uploading file:", error);
             alert(`Error: ${error.message}`);
@@ -124,9 +125,9 @@ const OnboardingWizard = () => {
     const handleGenerate = async () => {
         if (!data.pitch.trim()) return;
         setLoading(true);
+        setLoadingText("Analyzing Narrative Core...");
 
         try {
-            // Use apiClient to handle auth token attachment automatically
             const response = await apiClient('/api/onboarding/initialize', {
                 method: 'POST',
                 body: JSON.stringify({ pitch: data.pitch })
@@ -147,7 +148,6 @@ const OnboardingWizard = () => {
             }
 
             setData(prev => ({ ...prev, metadata }));
-            console.log("Metadata generated:", metadata);
             nextStep();
         } catch (error) {
             console.error("Error initializing project:", error);
@@ -158,62 +158,77 @@ const OnboardingWizard = () => {
 
     const handleVibeSelect = (vibe) => {
         setData(prev => ({ ...prev, vibe }));
-        // No more API call here, just move to next step instantly
         nextStep();
     };
 
     const handlePersonaSelect = (persona) => {
         setData(prev => ({ ...prev, persona }));
-        // Auto-finalize after selection
         finalizeOnboarding(persona);
     };
 
-        const finalizeOnboarding = async (persona) => {
-            setLoading(true);
+    const finalizeOnboarding = async (persona) => {
+        setLoading(true);
+        setLoadingText("Initializing Studio...");
+        try {
+            const cleanMetadata = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
+
+            // 1. Create Project
+            const response = await apiClient('/api/onboarding/finalize', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    ...data, 
+                    metadata: cleanMetadata,
+                    persona,
+                    is_script: data.is_script,
+                    script_content: cleanMetadata?.script_blocks || null
+                })
+            });            
+            
+            if (!response.ok) throw new Error('Failed to finalize');
+            const result = await response.json();
+            const { project_id, universe_id } = result;
+
+            // 2. Generate Poster (Sync Hand-off)
+            setLoadingText("Art Dept: Rendering Official Poster...");
             try {
-                // Defense-in-depth: Ensure metadata is an object, not a list
-                const cleanMetadata = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
-    
-                const response = await apiClient('/api/onboarding/finalize', {
+                const assetResponse = await apiClient('/api/assets/generate', {
                     method: 'POST',
-                    body: JSON.stringify({ 
-                        ...data, 
-                        metadata: cleanMetadata,
-                        persona,
-                        is_script: data.is_script,
-                        script_content: cleanMetadata?.script_blocks || null
+                    body: JSON.stringify({
+                        type: 'poster',
+                        title: cleanMetadata.title,
+                        tagline: cleanMetadata.logline,
+                        genre: cleanMetadata.genre,
+                        style: data.vibe
                     })
-                });            
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error("Validation Error Details:", JSON.stringify(errorData, null, 2));
-                throw new Error(errorData.detail ? JSON.stringify(errorData.detail) : 'Failed to finalize project');
+                });
+
+                if (assetResponse.ok) {
+                    const { b64_data } = await assetResponse.json();
+                    const storageRef = ref(storage, `posters/${project_id}_initial.jpg`);
+                    await uploadString(storageRef, b64_data, 'base64', { contentType: 'image/jpeg' });
+                    const url = await getDownloadURL(storageRef);
+                    
+                    const projectRef = doc(db, 'universes', universe_id, 'projects', project_id);
+                    await updateDoc(projectRef, { poster_url: url });
+                }
+            } catch (err) {
+                console.error("Initial visual gen failed, continuing to dashboard:", err);
             }
 
-            const result = await response.json();
-
-            // Success! The "Visuals Department" message is handled by the redirect
             const path = result.redirect_to === "editor" ? "editor" : "beat-sheet";
             navigate(`/project/${result.project_id}/${path}`, {
-                state: {
-                    project_id: result.project_id,
-                    universe_id: result.universe_id
-                }
+                state: { project_id, universe_id }
             });
         } catch (error) {
             console.error("Error finalizing:", error);
-            alert(`Error creating project. Check console for details.`);
+            alert(`Error creating project.`);
         } finally {
             setLoading(false);
         }
     };
 
-
-    // --- Render Steps ---
-
     const renderStep1 = () => (
         <div className="w-full max-w-4xl mx-auto px-4 z-10">
-            {/* Introductory Text */}
             <div className="text-center mb-16 max-w-2xl mx-auto animate-fade-in">
                 <h2 className="text-4xl font-bold text-white mb-6">Choose Your Path</h2>
                 <p className="text-gray-400 text-lg leading-relaxed">
@@ -275,11 +290,9 @@ const OnboardingWizard = () => {
                                 onClick={() => {
                                     const willShowNew = !showNewUniverseInput;
                                     if (willShowNew) {
-                                        // Only clear if switching from an existing selection
                                         const isExisting = existingUniverses.some(u => u.name === data.universe_name);
                                         if (isExisting) setData(prev => ({ ...prev, universe_name: '' }));
                                     } else {
-                                        // Revert to first existing when switching back
                                         if (existingUniverses.length > 0) setData(prev => ({ ...prev, universe_name: existingUniverses[0].name }));
                                     }
                                     setShowNewUniverseInput(willShowNew);
@@ -373,7 +386,7 @@ const OnboardingWizard = () => {
                     {loading ? (
                         <>
                             <div className="animate-spin w-6 h-6 border-2 border-black border-t-transparent rounded-full" />
-                            <span>Analyzing Narrative Core...</span>
+                            <span>{loadingText}</span>
                         </>
                     ) : (
                         <>
@@ -393,7 +406,6 @@ const OnboardingWizard = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                {/* Left Side: General Info */}
                 <div className="flex flex-col gap-6">
                     <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm">
                         <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-3 block">Working Title</label>
@@ -430,7 +442,6 @@ const OnboardingWizard = () => {
                     </div>
                 </div>
 
-                {/* Right Side: Cast of Characters */}
                 <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm flex flex-col">
                     <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-4 block">Key Cast (Visual Anchors)</label>
                     <div className="flex flex-col gap-4 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
@@ -499,7 +510,7 @@ const OnboardingWizard = () => {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <div className="w-24 h-24 mb-6 rounded-full border-4 border-white/20 border-t-arc-teal animate-spin" />
-                        <h3 className="text-2xl font-light text-white animate-pulse">Rendering Concept Art...</h3>
+                        <h3 className="text-2xl font-light text-white animate-pulse">{loadingText}</h3>
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -534,7 +545,7 @@ const OnboardingWizard = () => {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <div className="w-24 h-24 mb-6 rounded-full border-4 border-white/20 border-t-arc-orange animate-spin" />
-                        <h3 className="text-2xl font-light text-white animate-pulse text-center">Initializing Studio...</h3>
+                        <h3 className="text-2xl font-light text-white animate-pulse text-center">{loadingText}</h3>
                         <p className="text-gray-500 mt-6 max-w-lg text-center leading-relaxed">
                             The Art Department is bringing your vision to life and currently rendering your world. Assets will be delivered to your Project Bible and studio archives as soon as they are ready.
                         </p>
@@ -563,8 +574,6 @@ const OnboardingWizard = () => {
 
     return (
         <div className="fixed inset-0 bg-obsidian-black bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-obsidian-black to-black flex flex-col items-center justify-center overflow-hidden">
-            {/* Background Texture or Noise could go here */}
-
             <div className={`transition-all duration-500 transform ${animateOut ? 'opacity-0 scale-95 translate-y-4' : 'opacity-100 scale-100 translate-y-0'} w-full`}>
                 {step === 1 && renderStep1()}
                 {step === 2 && renderStep2()}
@@ -573,7 +582,6 @@ const OnboardingWizard = () => {
                 {step === 5 && renderStep5()}
             </div>
 
-            {/* Progress Indicator */}
             <div className="absolute bottom-10 flex gap-4">
                 {[1, 2, 3, 4, 5].map(i => (
                     <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i <= step ? 'w-12 bg-white' : 'w-2 bg-gray-700'}`} />

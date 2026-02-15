@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { ImageIcon, User, RefreshCw, Sparkles, CheckCircle2 } from 'lucide-react';
 import { apiClient } from '../api/client';
+import { storage, db } from '../firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 
 const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
     const [regenerating, setRegenerating] = useState(null); // 'poster' or character name
@@ -9,9 +12,10 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
     const handleRegenerate = async (type, charName = null) => {
         const id = charName || type;
         setRegenerating(id);
-        setMessage('');
+        setMessage(`Visuals Dept: Re-imagining ${id}...`);
 
         try {
+            // 1. Get Base64 from Backend
             const response = await apiClient('/api/assets/regenerate', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -22,17 +26,45 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                 })
             });
 
-            if (response.ok) {
-                setMessage(`Regeneration for ${id} queued! Please wait a few moments.`);
-                // We don't refresh immediately because it's a background task.
-                // But we can suggest they check back.
-                setTimeout(() => setMessage(''), 5000);
-            } else {
+            if (!response.ok) {
                 const err = await response.json();
-                alert(err.detail || "Regeneration failed. Check your credits.");
+                throw new Error(err.detail || "Generation failed");
             }
+
+            const { b64_data } = await response.json();
+            
+            // 2. Upload to Firebase Storage
+            const path = type === 'poster' 
+                ? `posters/${projectId}_${Date.now()}.jpg` 
+                : `character_anchors/${projectId}_${charName}_${Date.now()}.jpg`;
+            
+            const storageRef = ref(storage, path);
+            await uploadString(storageRef, b64_data, 'base64', { contentType: 'image/jpeg' });
+            const downloadURL = await getDownloadURL(storageRef);
+
+            // 3. Update Firestore
+            const projectRef = doc(db, 'universes', universeId, 'projects', projectId);
+            
+            if (type === 'poster') {
+                await updateDoc(projectRef, { poster_url: downloadURL });
+            } else {
+                const snap = await getDoc(projectRef);
+                if (snap.exists()) {
+                    const characters = snap.data().characters || [];
+                    const updated = characters.map(c => 
+                        c.name === charName ? { ...c, anchor_url: downloadURL } : c
+                    );
+                    await updateDoc(projectRef, { characters: updated });
+                }
+            }
+
+            setMessage(`Studio Delivery: ${id} updated!`);
+            if (onRefresh) onRefresh();
+            setTimeout(() => setMessage(''), 5000);
+
         } catch (error) {
-            console.error("Error regenerating asset:", error);
+            console.error("Visuals Studio Error:", error);
+            alert(`Art Dept Error: ${error.message}`);
         } finally {
             setRegenerating(null);
         }
