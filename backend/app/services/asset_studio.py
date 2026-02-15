@@ -57,6 +57,36 @@ class AssetStudio:
         except Exception as e:
             print(f"Background Visuals Dept: Failed to deliver poster: {e}")
 
+    def generate_and_update_character(self, universe_id: str, project_id: str, character_name: str, description: str, style: str):
+        """
+        Background task to generate a character anchor and update the project's character list in Firestore.
+        """
+        print(f"Background Visuals Dept: Working on character {character_name} for {project_id}...")
+        url = self.generate_character_anchor(description, style_reference=style)
+        
+        try:
+            from app.utils.firebase_auth_utils import get_firestore_db
+            db = get_firestore_db()
+            project_ref = db.collection("universes").document(universe_id).collection("projects").document(project_id)
+            
+            # Fetch current characters
+            project_doc = project_ref.get()
+            if not project_doc.exists: return
+            
+            characters = project_doc.to_dict().get("characters", [])
+            updated = False
+            for char in characters:
+                if char.get("name") == character_name:
+                    char["anchor_url"] = url
+                    updated = True
+                    break
+            
+            if updated:
+                project_ref.update({"characters": characters})
+                print(f"Background Visuals Dept: Character {character_name} anchor delivered.")
+        except Exception as e:
+            print(f"Background Visuals Dept: Failed to deliver character anchor: {e}")
+
     def generate_character_anchor(self, description: str, style_reference: str = None) -> str:
         print(f"Generating Character Anchor for: {description}")
         try:

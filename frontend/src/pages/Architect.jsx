@@ -4,6 +4,7 @@ import BeatSheetForm from '../components/BeatSheetForm';
 import CharacterProfile from '../components/CharacterProfile';
 import ProjectHeader from '../components/ProjectHeader';
 import MobilePitchDeck from '../components/MobilePitchDeck';
+import VisualsStudio from '../components/VisualsStudio';
 import { useResponsive } from '../hooks/useResponsive';
 import { auth } from '../firebase';
 
@@ -23,33 +24,33 @@ const Architect = () => {
     // or we assume a default universe for the user.
     const universeId = location.state?.universe_id || "default_universe"; 
 
-    useEffect(() => {
-        const fetchProject = async () => {
-            try {
-                const token = await auth.currentUser?.getIdToken();
-                if (!token) return;
+    const fetchProject = async () => {
+        try {
+            const token = await auth.currentUser?.getIdToken();
+            if (!token) return;
 
-                const response = await fetch(`/api/project/${universeId}/${projectId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setProjectData(data);
+            const response = await fetch(`/api/project/${universeId}/${projectId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setProjectData(data);
 
-                    // Pre-fill form if beat_sheet_data exists
-                    if (data.beat_sheet_data) {
-                        setFormData(data.beat_sheet_data);
-                    } else if (data.beat_sheet) {
-                        setFormData(data.beat_sheet);
-                    }
+                // Pre-fill form if beat_sheet_data exists
+                if (data.beat_sheet_data) {
+                    setFormData(data.beat_sheet_data);
+                } else if (data.beat_sheet) {
+                    setFormData(data.beat_sheet);
                 }
-            } catch (error) {
-                console.error("Error fetching project:", error);
-            } finally {
-                setLoading(false);
             }
-        };
+        } catch (error) {
+            console.error("Error fetching project:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchProject();
     }, [universeId, projectId]);
 
@@ -92,11 +93,19 @@ const Architect = () => {
                 {loading ? (
                     <div className="text-center py-20 text-gray-500">Loading your project structure...</div>
                 ) : (
-                    <BeatSheetForm
-                        initialBeats={projectData?.beat_sheet_data || projectData?.beat_sheet}
-                        universeId={universeId}
-                        projectId={projectId}
-                    />
+                    <>
+                        <VisualsStudio 
+                            projectData={projectData} 
+                            universeId={universeId} 
+                            projectId={projectId} 
+                            onRefresh={fetchProject}
+                        />
+                        <BeatSheetForm
+                            initialBeats={projectData?.beat_sheet_data || projectData?.beat_sheet}
+                            universeId={universeId}
+                            projectId={projectId}
+                        />
+                    </>
                 )}
                 <CharacterProfile
                     initialCharacters={projectData?.characters}

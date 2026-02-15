@@ -227,6 +227,59 @@ async def generate_asset(request: AssetRequest, user_id: str = Depends(get_curre
         return {"url": url}
     return {"error": "Invalid type"}
 
+class RegenerateRequest(BaseModel):
+    universe_id: str
+    project_id: str
+    type: str # 'poster' | 'character'
+    character_name: Optional[str] = None
+
+@app.post("/api/assets/regenerate")
+async def regenerate_asset(request: RegenerateRequest, background_tasks: BackgroundTasks, user_id: str = Depends(get_current_user)):
+    cost = 25 # Regeneration is more expensive than initial gen
+    await services.user_service.deduct_credits(user_id, cost)
+    
+    # Fetch project metadata for the prompt
+    from app.utils.firebase_auth_utils import get_firestore_db
+    db = get_firestore_db()
+    project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
+    project_doc = project_ref.get()
+    
+    if not project_doc.exists:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    data = project_doc.to_dict()
+    
+    if request.type == 'poster':
+        background_tasks.add_task(
+            services.asset_studio.generate_and_update_poster,
+            universe_id=request.universe_id,
+            project_id=request.project_id,
+            title=data.get("title", "Untitled"),
+            tagline=data.get("logline", ""),
+            genre=data.get("genre", "Drama"),
+            style=data.get("vibe", "Cinematic")
+        )
+        return {"message": "Poster regeneration queued."}
+        
+    elif request.type == 'character' and request.character_name:
+        characters = data.get("characters", [])
+        char_data = next((c for c in characters if c.get("name") == request.character_name), None)
+        
+        if not char_data:
+            raise HTTPException(status_code=404, detail="Character not found in project")
+            
+        background_tasks.add_task(
+            services.asset_studio.generate_and_update_character,
+            universe_id=request.universe_id,
+            project_id=request.project_id,
+            character_name=request.character_name,
+            description=char_data.get("description", ""),
+            style=data.get("vibe", "Cinematic")
+        )
+        return {"message": f"Character {request.character_name} regeneration queued."}
+        
+    return {"error": "Invalid regeneration type or missing parameters"}
+
 # Export as Firebase Function
 @https_fn.on_request(
     region="us-central1",

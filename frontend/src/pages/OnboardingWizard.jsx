@@ -23,6 +23,23 @@ const OnboardingWizard = () => {
         is_script: false    
     });
 
+    // Helper to update metadata fields directly
+    const updateMetadataField = (field, value) => {
+        setData(prev => ({
+            ...prev,
+            metadata: {
+                ...prev.metadata,
+                [field]: value
+            }
+        }));
+    };
+
+    const updateCharacter = (index, field, value) => {
+        const newChars = [...data.metadata.character_descriptions];
+        newChars[index] = { ...newChars[index], [field]: value };
+        updateMetadataField('character_descriptions', newChars);
+    };
+
     const [existingUniverses, setExistingUniverses] = useState([]);
     const [showNewUniverseInput, setShowNewUniverseInput] = useState(false);
 
@@ -87,6 +104,7 @@ const OnboardingWizard = () => {
 
             console.log("File analysis complete:", metadata);
             setLoading(false); // Reset loading after file analysis
+            nextStep(); // Move to review step
         } catch (error) {
             console.error("Error uploading file:", error);
             alert(`Error: ${error.message}`);
@@ -367,7 +385,99 @@ const OnboardingWizard = () => {
         </div>
     );
 
-    const renderStep3 = () => {
+    const renderStep3 = () => (
+        <div className="w-full max-w-4xl mx-auto px-4 z-10">
+            <div className="text-center mb-10">
+                <h2 className="text-4xl font-bold text-white mb-2">Narrative Blueprint</h2>
+                <p className="text-lg text-gray-400">The AI has distilled your vision. Refine it before the studio initializes.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                {/* Left Side: General Info */}
+                <div className="flex flex-col gap-6">
+                    <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm">
+                        <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-3 block">Working Title</label>
+                        <input
+                            type="text"
+                            value={data.metadata?.title || ""}
+                            onChange={(e) => updateMetadataField('title', e.target.value)}
+                            className="w-full bg-transparent border-b border-gray-700 focus:border-arc-teal py-2 text-2xl font-bold text-white outline-none transition-colors"
+                        />
+                    </div>
+
+                    <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm">
+                        <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-3 block">Distilled Logline</label>
+                        <textarea
+                            value={data.metadata?.logline || ""}
+                            onChange={(e) => updateMetadataField('logline', e.target.value)}
+                            className="w-full bg-transparent text-gray-300 leading-relaxed outline-none resize-none min-h-[80px]"
+                        />
+                    </div>
+
+                    <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm">
+                        <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-3 block">Story Structure</label>
+                        <select
+                            value={data.metadata?.structure_suggestion || ""}
+                            onChange={(e) => updateMetadataField('structure_suggestion', e.target.value)}
+                            className="w-full bg-transparent text-white font-bold outline-none appearance-none cursor-pointer"
+                        >
+                            <option value="Hero's Journey">Hero's Journey</option>
+                            <option value="Save the Cat">Save the Cat</option>
+                            <option value="Story Circle">Story Circle</option>
+                            <option value="Three Act">Three Act</option>
+                            <option value="Fichtean Curve">Fichtean Curve</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* Right Side: Cast of Characters */}
+                <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm flex flex-col">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-4 block">Key Cast (Visual Anchors)</label>
+                    <div className="flex flex-col gap-4 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
+                        {data.metadata?.character_descriptions?.map((char, idx) => (
+                            <div key={idx} className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 group hover:border-gray-500 transition-colors">
+                                <div className="flex gap-4 items-start">
+                                    <div className="w-10 h-10 rounded-full bg-arc-teal/10 flex items-center justify-center shrink-0">
+                                        <User className="w-5 h-5 text-arc-teal" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <input
+                                            type="text"
+                                            value={char.name}
+                                            onChange={(e) => updateCharacter(idx, 'name', e.target.value)}
+                                            className="bg-transparent text-white font-bold outline-none block w-full mb-1"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={char.role}
+                                            onChange={(e) => updateCharacter(idx, 'role', e.target.value)}
+                                            className="bg-transparent text-[10px] text-arc-teal uppercase tracking-widest outline-none block w-full"
+                                        />
+                                        <textarea
+                                            value={char.description}
+                                            onChange={(e) => updateCharacter(idx, 'description', e.target.value)}
+                                            className="bg-transparent text-xs text-gray-400 mt-2 w-full outline-none resize-none leading-relaxed"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-center">
+                <button
+                    onClick={nextStep}
+                    className="bg-arc-teal text-black px-12 py-4 rounded-full font-bold text-lg hover:bg-opacity-90 transition-all flex items-center gap-3 shadow-[0_0_20px_rgba(45,212,191,0.3)]"
+                >
+                    Confirm Blueprint <ArrowRight className="w-5 h-5" />
+                </button>
+            </div>
+        </div>
+    );
+
+    const renderStep4 = () => {
         const vibes = [
             { id: 'scifi', name: 'Sci-Fi', color: 'from-blue-900 to-cyan-500' },
             { id: 'fantasy', name: 'Fantasy', color: 'from-purple-900 to-pink-500' },
@@ -409,7 +519,7 @@ const OnboardingWizard = () => {
         );
     };
 
-    const renderStep4 = () => {
+    const renderStep5 = () => {
         const personas = [
             { id: 'market_viability', name: 'Market Viability Mode', desc: 'Optimizes for high stakes, pacing, and commercial audience appeal.' },
             { id: 'thematic_consistency', name: 'Thematic Consistency Mode', desc: 'Focuses on subtext, emotional resonance, and narrative motifs.' },
@@ -460,11 +570,12 @@ const OnboardingWizard = () => {
                 {step === 2 && renderStep2()}
                 {step === 3 && renderStep3()}
                 {step === 4 && renderStep4()}
+                {step === 5 && renderStep5()}
             </div>
 
             {/* Progress Indicator */}
             <div className="absolute bottom-10 flex gap-4">
-                {[1, 2, 3, 4].map(i => (
+                {[1, 2, 3, 4, 5].map(i => (
                     <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i <= step ? 'w-12 bg-white' : 'w-2 bg-gray-700'}`} />
                 ))}
             </div>
