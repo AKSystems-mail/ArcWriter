@@ -36,7 +36,7 @@ class ServiceRegistry:
                     vertex_creds = None 
                 
                 vertexai.init(
-                    project=os.getenv('GOOGLE_CLOUD_PROJECT'), 
+                    project=os.getenv('GOOGLE_CLOUD_PROJECT') or "arc-studio-box", 
                     location=os.getenv('GOOGLE_CLOUD_LOCATION', 'us-central1'), 
                     credentials=vertex_creds
                 )
@@ -237,6 +237,9 @@ async def generate_asset(request: AssetRequest, user_id: str = Depends(get_curre
     secrets=["GEMINI_API_KEY"]
 )
 def api(req: https_fn.Request) -> https_fn.Response:
+    # Quick health check for Cloud Run
+    if req.path == "/health":
+        return FlaskResponse("OK", status=200)
     return FlaskResponse.from_app(ASGIMiddleware(app), req.environ)
 
 if __name__ == "__main__":

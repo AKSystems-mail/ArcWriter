@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, Wand2, Film, User, CheckCircle2, FileUp } from 'lucide-react';
+import { Sparkles, ArrowRight, Pencil, Film, User, CheckCircle2, FileUp } from 'lucide-react';
 import { auth } from '../firebase'; // Import auth
 import { apiClient } from '../api/client';
 
@@ -138,47 +138,10 @@ const OnboardingWizard = () => {
         }
     };
 
-    const handleVibeSelect = async (vibe) => {
+    const handleVibeSelect = (vibe) => {
         setData(prev => ({ ...prev, vibe }));
-        setLoading(true);
-
-        // Create a timeout promise
-        const timeoutPromise = new Promise((resolve) => {
-            setTimeout(() => {
-                console.warn("Image generation timed out. Proceeding without image.");
-                resolve({ timeout: true });
-            }, 15000); // 15 second timeout for visuals
-        });
-
-        // Trigger generic asset generation for poster
-        try {
-            const apiCall = apiClient('/api/assets/generate', {
-                method: 'POST',
-                body: JSON.stringify({
-                    type: 'poster', 
-                    title: data.metadata?.title || "Untitled", 
-                    tagline: data.metadata?.logline || "A story waiting to be told.",
-                    description: `A movie poster in ${vibe} style. ${data.pitch}`,
-                    genre: data.metadata?.genre,
-                    style: vibe
-                })
-            });
-
-            // Race the API call against the timeout
-            const response = await Promise.race([apiCall, timeoutPromise]);
-            
-            if (response && !response.timeout && response.ok) {
-                const result = await response.json();
-                if (result.url) {
-                    setData(prev => ({ ...prev, poster_url: result.url }));
-                }
-            }
-            
-            nextStep();
-        } catch (error) {
-            console.error("Error generating poster:", error);
-            nextStep();
-        }
+        // No more API call here, just move to next step instantly
+        nextStep();
     };
 
     const handlePersonaSelect = (persona) => {
@@ -187,31 +150,31 @@ const OnboardingWizard = () => {
         finalizeOnboarding(persona);
     };
 
-    const finalizeOnboarding = async (persona) => {
-        setLoading(true);
-        try {
-            // Defense-in-depth: Ensure metadata is an object, not a list
-            const cleanMetadata = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
-
-            const response = await apiClient('/api/onboarding/finalize', {
-                method: 'POST',
-                body: JSON.stringify({ 
-                    ...data, 
-                    metadata: cleanMetadata,
-                    persona 
-                })
-            });
-            
+        const finalizeOnboarding = async (persona) => {
+            setLoading(true);
+            try {
+                // Defense-in-depth: Ensure metadata is an object, not a list
+                const cleanMetadata = Array.isArray(data.metadata) ? data.metadata[0] : data.metadata;
+    
+                const response = await apiClient('/api/onboarding/finalize', {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        ...data, 
+                        metadata: cleanMetadata,
+                        persona,
+                        is_script: data.is_script,
+                        script_content: cleanMetadata?.script_blocks || null
+                    })
+                });            
             if (!response.ok) {
                 const errorData = await response.json();
-                // LOG THE REAL ERROR TO CONSOLE
                 console.error("Validation Error Details:", JSON.stringify(errorData, null, 2));
                 throw new Error(errorData.detail ? JSON.stringify(errorData.detail) : 'Failed to finalize project');
             }
 
             const result = await response.json();
 
-            // DYNAMIC ROUTING based on mode
+            // Success! The "Visuals Department" message is handled by the redirect
             const path = result.redirect_to === "editor" ? "editor" : "beat-sheet";
             navigate(`/project/${result.project_id}/${path}`, {
                 state: {
@@ -221,7 +184,6 @@ const OnboardingWizard = () => {
             });
         } catch (error) {
             console.error("Error finalizing:", error);
-            // Show a more helpful alert (or check console)
             alert(`Error creating project. Check console for details.`);
         } finally {
             setLoading(false);
@@ -232,47 +194,57 @@ const OnboardingWizard = () => {
     // --- Render Steps ---
 
     const renderStep1 = () => (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl mx-auto px-4 z-10">
-            <button
-                onClick={() => handleModeSelect('explorer')}
-                className="group relative h-96 rounded-3xl bg-gray-900/40 border border-gray-700/50 hover:border-violet-500/50 hover:bg-gray-900/60 transition-all duration-500 flex flex-col items-center justify-center p-8 overflow-hidden"
-            >
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative z-10 text-center">
-                    <div className="w-20 h-20 mb-6 mx-auto rounded-full bg-violet-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                        <Sparkles className="w-10 h-10 text-violet-400" />
-                    </div>
-                    <h3 className="text-3xl font-bold text-white mb-3">The Explorer</h3>
-                    <p className="text-gray-400 text-lg">"Start with tone and loose concepts."</p>
-                    <p className="text-sm text-gray-500 mt-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-500">
-                        Discover your story through visuals and mood.
-                    </p>
-                </div>
-            </button>
+        <div className="w-full max-w-4xl mx-auto px-4 z-10">
+            {/* Introductory Text */}
+            <div className="text-center mb-16 max-w-2xl mx-auto animate-fade-in">
+                <h2 className="text-4xl font-bold text-white mb-6">Choose Your Path</h2>
+                <p className="text-gray-400 text-lg leading-relaxed">
+                    Every story begins differently. Whether you prefer to build from a rigorous structural foundation or discover your narrative through tone and loose concepts, ArcWriter adapts to your creative process. Select the method that best fits your current workflow.
+                </p>
+            </div>
 
-            <button
-                onClick={() => handleModeSelect('architect')}
-                className="group relative h-96 rounded-3xl bg-gray-900/40 border border-gray-700/50 hover:border-emerald-500/50 hover:bg-gray-900/60 transition-all duration-500 flex flex-col items-center justify-center p-8 overflow-hidden"
-            >
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative z-10 text-center">
-                    <div className="w-20 h-20 mb-6 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                        <Wand2 className="w-10 h-10 text-emerald-400" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <button
+                    onClick={() => handleModeSelect('explorer')}
+                    className="group relative h-96 rounded-3xl bg-gray-900/40 border border-gray-700/50 hover:border-violet-500/50 hover:bg-gray-900/60 transition-all duration-500 flex flex-col items-center justify-center p-8 overflow-hidden"
+                >
+                    <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative z-10 text-center">
+                        <div className="w-20 h-20 mb-6 mx-auto rounded-full bg-violet-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                            <Sparkles className="w-10 h-10 text-violet-400" />
+                        </div>
+                        <h3 className="text-3xl font-bold text-white mb-3">The Discovery</h3>
+                        <p className="text-gray-400 text-lg">"Start with tone and loose concepts."</p>
+                        <p className="text-sm text-gray-500 mt-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-500">
+                            Discover your story through visuals and mood.
+                        </p>
                     </div>
-                    <h3 className="text-3xl font-bold text-white mb-3">The Architect</h3>
-                    <p className="text-gray-400 text-lg">"Start with structure and plot points."</p>
-                    <p className="text-sm text-gray-500 mt-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-500">
-                        Build from a strong foundation of structure.
-                    </p>
-                </div>
-            </button>
+                </button>
+
+                <button
+                    onClick={() => handleModeSelect('architect')}
+                    className="group relative h-96 rounded-3xl bg-gray-900/40 border border-gray-700/50 hover:border-emerald-500/50 hover:bg-gray-900/60 transition-all duration-500 flex flex-col items-center justify-center p-8 overflow-hidden"
+                >
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative z-10 text-center">
+                        <div className="w-20 h-20 mb-6 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                            <Pencil className="w-10 h-10 text-emerald-400" />
+                        </div>
+                        <h3 className="text-3xl font-bold text-white mb-3">The Blueprint</h3>
+                        <p className="text-gray-400 text-lg">"Start with structure and plot points."</p>
+                        <p className="text-sm text-gray-500 mt-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-500">
+                            Build from a strong foundation of structure.
+                        </p>
+                    </div>
+                </button>
+            </div>
         </div>
     );
 
     const renderStep2 = () => (
         <div className="w-full max-w-2xl mx-auto px-4 z-10">
             <div className="text-center mb-10">
-                <h2 className="text-4xl font-bold text-white mb-4">The DNA</h2>
+                <h2 className="text-4xl font-bold text-white mb-4">Story & Universe</h2>
                 <p className="text-xl text-gray-400">Select your universe and pitch your idea.</p>
             </div>
 
@@ -280,21 +252,32 @@ const OnboardingWizard = () => {
                 <div className="relative group">
                     <div className="flex justify-between items-center mb-2">
                         <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal block">Cinematic Universe</label>
-                        <button 
-                            onClick={() => {
-                                setShowNewUniverseInput(!showNewUniverseInput);
-                            }}
-                            className="text-[10px] uppercase font-bold text-gray-500 hover:text-white transition-colors"
-                        >
-                            {showNewUniverseInput ? "Select Existing" : "Create New +"}
-                        </button>
+                        {existingUniverses.length > 0 && (
+                            <button 
+                                onClick={() => {
+                                    const willShowNew = !showNewUniverseInput;
+                                    if (willShowNew) {
+                                        // Only clear if switching from an existing selection
+                                        const isExisting = existingUniverses.some(u => u.name === data.universe_name);
+                                        if (isExisting) setData(prev => ({ ...prev, universe_name: '' }));
+                                    } else {
+                                        // Revert to first existing when switching back
+                                        if (existingUniverses.length > 0) setData(prev => ({ ...prev, universe_name: existingUniverses[0].name }));
+                                    }
+                                    setShowNewUniverseInput(willShowNew);
+                                }}
+                                className="text-[10px] uppercase font-bold text-gray-500 hover:text-white transition-colors"
+                            >
+                                {showNewUniverseInput ? "Select Existing" : "Create New +"}
+                            </button>
+                        )}
                     </div>
 
                     {!showNewUniverseInput && existingUniverses.length > 0 ? (
                         <select
                             value={data.universe_name}
                             onChange={(e) => setData(prev => ({ ...prev, universe_name: e.target.value }))}
-                            className="w-full bg-gray-900/50 border border-gray-700 rounded-xl p-4 text-white focus:outline-none focus:border-arc-teal backdrop-blur-sm transition-all appearance-none"
+                            className="w-full bg-gray-900/50 border border-gray-700 rounded-xl p-4 text-white focus:outline-none focus:border-arc-teal backdrop-blur-sm transition-all appearance-none cursor-pointer"
                         >
                             {existingUniverses.map(u => (
                                 <option key={u.name} value={u.name}>{u.name}</option>
@@ -313,7 +296,7 @@ const OnboardingWizard = () => {
                 </div>
 
                 <div className="relative group">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-2 block">Elevator Pitch</label>
+                    <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-2 block">Story Notes & Brief</label>
                     <textarea
                         value={data.pitch}
                         onChange={(e) => setData(prev => ({ ...prev, pitch: e.target.value }))}
@@ -372,7 +355,7 @@ const OnboardingWizard = () => {
                     {loading ? (
                         <>
                             <div className="animate-spin w-6 h-6 border-2 border-black border-t-transparent rounded-full" />
-                            <span>Analyzing Story DNA...</span>
+                            <span>Analyzing Narrative Core...</span>
                         </>
                     ) : (
                         <>
@@ -386,20 +369,22 @@ const OnboardingWizard = () => {
 
     const renderStep3 = () => {
         const vibes = [
-            { id: 'noir', name: 'Neo Noir', color: 'from-gray-900 to-gray-600' },
             { id: 'scifi', name: 'Sci-Fi', color: 'from-blue-900 to-cyan-500' },
-            { id: 'western', name: 'Western', color: 'from-amber-900 to-orange-500' },
             { id: 'fantasy', name: 'Fantasy', color: 'from-purple-900 to-pink-500' },
             { id: 'horror', name: 'Horror', color: 'from-red-950 to-red-600' },
-            { id: 'indie', name: 'Indie Drama', color: 'from-stone-800 to-stone-400' },
             { id: 'comedy', name: 'Comedy', color: 'from-yellow-400 to-orange-500' },
+            { id: 'indie', name: 'Indie Drama', color: 'from-stone-800 to-stone-400' },
+            { id: 'noir', name: 'Neo Noir', color: 'from-gray-900 to-gray-600' },
+            { id: 'western', name: 'Western', color: 'from-amber-900 to-orange-500' },
             { id: 'romance', name: 'Romance', color: 'from-pink-300 to-rose-400' },
         ];
 
         return (
-            <div className="w-full max-w-5xl mx-auto px-4 z-10 text-center">
+            <div className="w-full max-w-6xl mx-auto px-4 z-10 text-center">
                 <h2 className="text-4xl font-bold text-white mb-4">Define Visual Aesthetic</h2>
-                <p className="text-xl text-gray-400 mb-12">Choose a visual style for your world.</p>
+                <p className="text-xl text-gray-400 mb-12 max-w-3xl mx-auto">
+                    Define the visual soul of your story. This selection will calibrate the AI's rendering engine for your concept art, posters, and atmospheric script feedback.
+                </p>
 
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20">
@@ -407,12 +392,12 @@ const OnboardingWizard = () => {
                         <h3 className="text-2xl font-light text-white animate-pulse">Rendering Concept Art...</h3>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                         {vibes.map(vibe => (
                             <button
                                 key={vibe.id}
                                 onClick={() => handleVibeSelect(vibe.id)}
-                                className={`group relative h-48 rounded-2xl overflow-hidden border border-white/10 hover:border-white/40 transition-all duration-300`}
+                                className={`group relative h-48 rounded-2xl overflow-hidden border border-white/10 hover:border-white/40 transition-all duration-300 shadow-xl`}
                             >
                                 <div className={`absolute inset-0 bg-gradient-to-br ${vibe.color} opacity-60 group-hover:opacity-80 transition-opacity`} />
                                 <span className="relative z-10 text-2xl font-bold text-white tracking-wider">{vibe.name}</span>
@@ -439,8 +424,10 @@ const OnboardingWizard = () => {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <div className="w-24 h-24 mb-6 rounded-full border-4 border-white/20 border-t-arc-orange animate-spin" />
-                        <h3 className="text-2xl font-light text-white animate-pulse">Initializing Studio...</h3>
-                        <p className="text-gray-500 mt-4">Preparing your universe and generating initial scenes.</p>
+                        <h3 className="text-2xl font-light text-white animate-pulse text-center">Initializing Studio...</h3>
+                        <p className="text-gray-500 mt-6 max-w-lg text-center leading-relaxed">
+                            The Art Department is bringing your vision to life and currently rendering your world. Assets will be delivered to your Project Bible and studio archives as soon as they are ready.
+                        </p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

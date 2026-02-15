@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, PlusCircle } from 'lucide-react';
+import React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface SourceMaterialDrawerProps {
     isOpen: boolean;
@@ -14,29 +14,6 @@ const SourceMaterialDrawer: React.FC<SourceMaterialDrawerProps> = ({
     content,
     onInsert,
 }) => {
-    const [selectedText, setSelectedText] = useState('');
-
-    const handleMouseUp = () => {
-        const selection = window.getSelection();
-        if (selection) {
-            const text = selection.toString();
-            if (text.trim().length > 0) {
-                setSelectedText(text);
-            } else {
-                setSelectedText('');
-            }
-        }
-    };
-
-    const handleInsertClick = () => {
-        if (selectedText) {
-            onInsert(selectedText);
-            setSelectedText('');
-            // Optional: Clear selection
-            window.getSelection()?.removeAllRanges();
-        }
-    };
-
     return (
         <div
             className={`bg-gray-900 border-r border-gray-800 transition-all duration-300 flex flex-col ${
@@ -57,21 +34,8 @@ const SourceMaterialDrawer: React.FC<SourceMaterialDrawerProps> = ({
                         <h2 className="font-bold text-gray-200 text-sm uppercase tracking-wider">Source Material</h2>
                     </div>
                     
-                    {/* Floating Insert Button (only shows when text is selected) */}
-                    {selectedText && (
-                        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-30">
-                            <button
-                                onClick={handleInsertClick}
-                                className="flex items-center gap-2 bg-arc-teal text-black font-bold px-4 py-2 rounded-full shadow-lg hover:bg-white transition-colors"
-                            >
-                                <PlusCircle size={16} /> Insert
-                            </button>
-                        </div>
-                    )}
-
                     <div 
                         className="flex-1 overflow-y-auto p-4 text-gray-400 text-sm whitespace-pre-wrap leading-relaxed font-mono custom-scrollbar selection:bg-arc-teal/30 selection:text-white"
-                        onMouseUp={handleMouseUp}
                     >
                         {content || (
                             <div className="text-gray-600 italic text-center mt-10">

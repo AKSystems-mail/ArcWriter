@@ -21,8 +21,13 @@ def initialize_firebase_admin():
 
             bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET")
             if not bucket_name:
-                # Try to infer it from project ID
-                project_id = os.getenv("FIREBASE_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
+                # Try to infer it from project ID (check all common cloud env vars)
+                project_id = (
+                    os.getenv("FIREBASE_PROJECT_ID") or 
+                    os.getenv("GOOGLE_CLOUD_PROJECT") or 
+                    os.getenv("GCP_PROJECT") or
+                    "arc-studio-box" # Explicit fallback for this project
+                )
                 if project_id:
                     bucket_name = f"{project_id}.firebasestorage.app"
             

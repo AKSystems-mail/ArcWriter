@@ -54,7 +54,8 @@ const ScriptEditor = ({ universeId, projectId }) => {
         const docSnap = await getDoc(projectRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setSourceContent(data.source_material || data.bible_content || "No source material available.");
+          // Restore: Prioritize bible_content which contains the formatted beat sheet
+          setSourceContent(data.bible_content || data.source_material || "No source material available.");
           setUniverseCharacters(data.characters || []);
         }
       } catch (error) {
@@ -223,12 +224,17 @@ const ScriptEditor = ({ universeId, projectId }) => {
     }
     if (e.key === 'Backspace' && blocks[index].text === '' && blocks.length > 1) {
       e.preventDefault();
+      const prevBlockId = blocks[index - 1]?.id;
       const newBlocks = blocks.filter(b => b.id !== blocks[index].id);
       setBlocks(newBlocks);
       setIsSaved(false);
       setTimeout(() => {
-        const prevBlock = blocks[index - 1];
-        if (prevBlock && blockRefs.current[prevBlock.id]) blockRefs.current[prevBlock.id].focus();
+        if (prevBlockId && blockRefs.current[prevBlockId]) {
+          blockRefs.current[prevBlockId].focus();
+          // Move cursor to end of previous block
+          const length = blockRefs.current[prevBlockId].value.length;
+          blockRefs.current[prevBlockId].setSelectionRange(length, length);
+        }
       }, 0);
     }
   };
@@ -408,21 +414,34 @@ const ScriptEditor = ({ universeId, projectId }) => {
   }, [blocks, isSaved, saveScriptToFirestore, universeId, projectId]);
 
   const renderPages = () => {
-    const LINES_PER_PAGE = 55;
+    const LINES_PER_PAGE = 52; // Standard 11" page minus 1" margins @ 6 lines/inch
     const pages = [];
     let currentPage = [];
     let currentLines = 0;
 
     blocks.forEach((block, index) => {
       const text = block.text || "";
-      const estimatedLines = Math.max(1, Math.ceil(text.length / 60));
-      if (currentLines + estimatedLines + 1 > LINES_PER_PAGE) {
+      
+      // Recalibrated for 6.0" printable area (8.5" total - 1.5" Left - 1.0" Right)
+      // Action/Slug: ~60 chars wide | Dialogue: ~35 chars wide | Parenthetical: ~20 chars wide
+      let charsPerLine = 60;
+      if (block.type === 'Dialogue') charsPerLine = 35;
+      if (block.type === 'Parenthetical') charsPerLine = 20;
+      if (block.type === 'Character') charsPerLine = 35;
+
+      const estimatedLines = Math.max(1, Math.ceil(text.length / charsPerLine));
+      
+      // Add extra line for margins (slugs, actions, and dialogue have margin-bottom: 1em)
+      const spacing = (block.type === 'Character' || block.type === 'Parenthetical') ? 0 : 1;
+
+      if (currentLines + estimatedLines + spacing > LINES_PER_PAGE) {
         pages.push(currentPage);
         currentPage = [];
         currentLines = 0;
       }
+
       currentPage.push({ ...block, index });
-      currentLines += estimatedLines + 1;
+      currentLines += estimatedLines + spacing;
     });
     if (currentPage.length > 0) pages.push(currentPage);
 

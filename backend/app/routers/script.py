@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.utils.firebase_auth_utils import get_current_user
 from app.services.logic_engine import LogicEngine
 

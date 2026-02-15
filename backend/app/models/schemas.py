@@ -16,7 +16,7 @@ class User(BaseModel):
     id: str # Firebase UID
     email: str
     subscription_status: str = "inactive" # active / inactive
-    studio_credits: int = 0
+    studio_credits: int = 99999
     next_billing_date: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

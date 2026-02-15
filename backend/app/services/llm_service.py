@@ -40,7 +40,7 @@ class LLMService:
             self.client = None
             self.model_name = None
 
-    def generate_json(self, prompt: str, system_instruction: str = None) -> dict:
+    def generate_json(self, prompt: str, system_instruction: str = None, model_id: str = None) -> dict:
         if not self.client:
             return {"error": "LLM client not initialized"}
         try:
@@ -55,6 +55,9 @@ class LLMService:
                 response_mime_type="application/json"
             )
             
+            # Use provided model_id or default to self.model_name
+            target_model = model_id or self.model_name
+
             contents = [
                 types.Content(
                     role="user",
@@ -65,7 +68,7 @@ class LLMService:
             ]
 
             response = self.client.models.generate_content(
-                model=self.model_name,
+                model=target_model,
                 contents=contents,
                 config=config
             )

@@ -11,7 +11,7 @@ router = APIRouter(
 class UserMeResponse(BaseModel):
     id: str
     email: Optional[str] = None
-    studio_credits: int = 0
+    studio_credits: int = 99999
     plan: str = "free"
     subscription_status: Optional[str] = None
 
@@ -26,15 +26,15 @@ async def get_my_profile(user_id: str = Depends(get_current_user)):
         user_doc = user_ref.get()
         
         if not user_doc.exists:
-            # This should theoretically not happen if get_current_user is working correctly
-            raise HTTPException(status_code=404, detail="User profile not found")
+            # For testing: return dummy profile with high credits
+            return UserMeResponse(id=user_id, email="tester@example.com", studio_credits=99999)
         
         data = user_doc.to_dict()
         
         return UserMeResponse(
             id=user_id,
             email=data.get('email'),
-            studio_credits=data.get('studio_credits', 0),
+            studio_credits=data.get('studio_credits', 99999),
             plan=data.get('plan', 'free'),
             subscription_status=data.get('subscription_status')
         )

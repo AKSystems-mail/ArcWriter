@@ -192,10 +192,13 @@ const Dashboard: React.FC = () => {
                                 className={`group relative bg-gray-900/40 border border-gray-800 rounded-[2rem] overflow-hidden transition-all duration-500 shadow-2xl flex flex-col h-full ${view === 'active' ? 'hover:border-arc-teal cursor-pointer hover:shadow-arc-teal/10' : 'opacity-80'}`}
                             >
                                 <div className="h-48 overflow-hidden relative">
-                                    {project.poster_url ? (
+                                    {project.poster_url && !project.poster_url.includes('placehold.co') ? (
                                         <img src={project.poster_url} alt={project.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                     ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center"><Film className="w-12 h-12 text-gray-700" /></div>
+                                        <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black flex flex-col items-center justify-center p-6 text-center">
+                                            <div className="w-12 h-12 border-2 border-arc-teal/20 border-t-arc-teal rounded-full animate-spin mb-4" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-arc-teal animate-pulse">Art Dept: Rendering...</span>
+                                        </div>
                                     )}
                                     <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-60" />
                                     <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">

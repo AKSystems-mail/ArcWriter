@@ -117,11 +117,11 @@ class LogicEngine:
                 return response
             else:
                 # Fallback if AI returns unstructured text
-                return ["INT. SCENE - DAY", "(AI generation format error, raw text below)", str(response)]
+                return [{"type": "Scene Heading", "text": "INT. SCENE - DAY"}, {"type": "Action", "text": str(response)}]
                 
         except Exception as e:
             print(f"LLM Generation Error: {e}")
-            return ["INT. ERROR - DAY", f"(Scene generation failed: {str(e)})"]
+            return [{"type": "Scene Heading", "text": "INT. ERROR - DAY"}, {"type": "Action", "text": f"(Scene generation failed: {str(e)})"}]
 
     def critique_scene(self, scene_text: str, persona_prompt: str, bible_context: str) -> Dict[str, Any]:
         """
@@ -181,27 +181,34 @@ class LogicEngine:
 
     def generate_project_metadata(self, pitch: str) -> Dict[str, Any]:
         """
-        Generates metadata (Genre, Logline, Structure) from a raw elevator pitch.
+        Generates metadata (Genre, Logline, Structure) from a raw elevator pitch or creative notes.
         """
         system_instruction = (
             "You are a legendary Hollywood script consultant. "
-            "Analyze the user's raw idea and distill it into professional project metadata. "
-            "Return JSON with keys: 'genre' (str), 'logline' (str, punchy 1-sentence), "
-            "'structure_suggestion' (str, e.g. 'Hero's Journey', 'Three Act', 'Non-linear'), "
-            "'title_ideas' (list of strings), 'title' (str), 'synopsis' (str), "
-            "'character_descriptions': (list of objects with 'name', 'role', and 'description'), "
-            "and a 'beat_sheet' object with these exact keys: "
-            "'opening_image', 'theme_stated', 'set_up', 'catalyst', 'debate', "
-            "'break_into_two', 'b_story', 'fun_and_games', 'midpoint', "
-            "'bad_guys_close_in', 'all_is_lost', 'dark_night_of_the_soul', "
-            "'break_into_three', 'finale', 'final_image'."
-            " IMPORTANT: If characters aren't named in the pitch, invent a compelling 3-4 person cast that fits the genre."
-            " IMPORTANT: Use 'dark_night_of_the_soul' NOT 'dark_night_of_soul'."
-            " IMPORTANT: Use 'set_up' NOT 'setup'."
+            "Analyze the user's raw idea (which may be a short pitch or lengthy notes) and distill it into professional project metadata.\n\n"
+            "Return a JSON object with keys:\n"
+            "- 'genre': (str)\n"
+            "- 'logline': (str, punchy 1-sentence)\n"
+            "- 'structure_suggestion': (str, e.g. 'Hero's Journey', 'Three Act', 'Non-linear')\n"
+            "- 'title_ideas': (list of strings)\n"
+            "- 'title': (str, the definitive title choice)\n"
+            "- 'synopsis': (str, a detailed 2-paragraph summary of the story)\n"
+            "- 'character_descriptions': (list of objects with 'name', 'role', and 'description')\n"
+            "- 'beat_sheet': (dict with EVERY ONE of these 15 keys: 'opening_image', 'theme_stated', 'set_up', 'catalyst', 'debate', "
+            "'break_into_two', 'b_story', 'fun_and_games', 'midpoint', 'bad_guys_close_in', 'all_is_lost', "
+            "'dark_night_of_the_soul', 'break_into_three', 'finale', 'final_image')\n\n"
+            "CRITICAL RULES:\n"
+            "1. You MUST provide detailed content for every single beat in the 'beat_sheet' object.\n"
+            "2. DO NOT leave the synopsis empty. Distill the user's notes into a professional narrative summary.\n"
+            "3. If the user provides long notes, DO NOT simply repeat them. Distill them into a clean vision.\n"
+            "4. Use 'dark_night_of_the_soul' NOT 'dark_night_of_soul'.\n"
+            "5. If characters aren't named, invent a compelling 3-4 person cast that fits the genre."
         )
-        user_prompt = f"Here is my idea: {pitch}"
+        user_prompt = f"Distill this project idea into a professional studio vision:\n\n{pitch[:15000]}"
         
-        response = self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+        # Use Gemini 2.5 Pro for this high-reasoning task
+        pro_model = self.llm.model_name.replace("flash", "pro")
+        response = self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction, model_id=pro_model)
 
         # Defense-in-depth: Un-listify if AI returns a list
         if isinstance(response, list) and len(response) > 0:

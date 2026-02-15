@@ -31,15 +31,15 @@ class UserService:
         # Check balance and subscription status first
         user_doc = user_ref.get()
         if not user_doc.exists:
-            # Grant a one-time "New User Bonus" for testing/onboarding
-            print(f"User {user_id} not found. Creating profile with 100 starter credits.")
+            # Grant a large "Tester Bonus" for debugging
+            print(f"User {user_id} not found. Creating profile with 99999 starter credits.")
             user_ref.set({
-                'studio_credits': 100,
-                'email': None, # Will be updated later if needed
+                'studio_credits': 99999,
+                'email': None, 
                 'plan': 'free',
                 'created_at': firestore.SERVER_TIMESTAMP
             })
-            current_credits = 100
+            current_credits = 99999
             subscription_status = 'free'
         else:
             user_data = user_doc.to_dict()

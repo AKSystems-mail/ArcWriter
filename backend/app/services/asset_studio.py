@@ -41,6 +41,22 @@ class AssetStudio:
                     raise fe
             raise e
 
+    def generate_and_update_poster(self, universe_id: str, project_id: str, title: str, tagline: str, genre: str, style: str):
+        """
+        Background task to generate a poster and update the project's Firestore document.
+        """
+        print(f"Background Visuals Dept: Working on poster for {project_id}...")
+        url = self.generate_poster(title, tagline, genre=genre, style=style)
+        
+        try:
+            from app.utils.firebase_auth_utils import get_firestore_db
+            db = get_firestore_db()
+            project_ref = db.collection("universes").document(universe_id).collection("projects").document(project_id)
+            project_ref.update({"poster_url": url})
+            print(f"Background Visuals Dept: Poster for {project_id} delivered.")
+        except Exception as e:
+            print(f"Background Visuals Dept: Failed to deliver poster: {e}")
+
     def generate_character_anchor(self, description: str, style_reference: str = None) -> str:
         print(f"Generating Character Anchor for: {description}")
         try:

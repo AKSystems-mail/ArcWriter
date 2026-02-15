@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from pydantic import BaseModel, field_validator
 from typing import List, Optional, Dict, Any
 from app.utils.firebase_auth_utils import get_current_user, get_firestore_db
@@ -29,7 +29,6 @@ class PitchAnalysisResponse(BaseModel):
 @router.post("/analyze_pitch", response_model=PitchAnalysisResponse)
 @router.post("/initialize", response_model=PitchAnalysisResponse)
 async def analyze_pitch(request: PitchRequest, user_id: str = Depends(get_current_user)):
-    # Analyzes the pitch using Gemini and returns metadata including genre, logline, structure, and title ideas.
     logic_engine = LogicEngine()
     try:
         metadata = logic_engine.generate_project_metadata(request.pitch)
@@ -50,7 +49,6 @@ async def analyze_file(file: UploadFile = File(...), user_id: str = Depends(get_
             tmp_path = tmp.name
         
         script_blocks, text = parse_pdf_to_editor_format(tmp_path)
-        
         if not text:
              pdf = PdfReader(tmp_path)
              text = ""
@@ -73,7 +71,6 @@ async def analyze_file(file: UploadFile = File(...), user_id: str = Depends(get_
         
         metadata["script_blocks"] = script_blocks
         metadata["raw_text"] = text
-        
         os.unlink(tmp_path)
         return metadata
     except Exception as e:
@@ -108,39 +105,37 @@ class FinalizeResponse(BaseModel):
     redirect_to: str = "beat-sheet"
 
 @router.post("/finalize", response_model=FinalizeResponse)
-async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_current_user)):
+async def finalize_onboarding(request: SetupRequest, background_tasks: BackgroundTasks, user_id: str = Depends(get_current_user)):
+    print(f"[{user_id}] Finalizing onboarding. Mode: {request.mode}, Vibe: {request.vibe}")
     try:
         db = get_firestore_db()
         logic_engine = LogicEngine()
         
-        title = request.metadata.get("title", "Untitled Project")
-        genre = request.metadata.get("genre", "Unknown Genre")
-        logline = request.metadata.get("logline", "")
+        metadata = request.metadata
+        title = metadata.get("title", "Untitled Project")
+        genre = metadata.get("genre", "Unknown Genre")
+        logline = metadata.get("logline", "")
         
+        beat_sheet = metadata.get("beat_sheet", {})
         beat_sheet_text = ""
-        if "beat_sheet" in request.metadata:
-            framework = request.metadata.get("structure_suggestion", "Save the Cat")
-            beat_sheet_text = f"BEAT SHEET ({framework})\n" + "="*20 + "\n\n"
-            for beat, desc in request.metadata["beat_sheet"].items():
-                beat_sheet_text += f"{beat.replace('_', ' ').upper()}:\n{desc}\n\n"
+        if beat_sheet:
+            framework = metadata.get("structure_suggestion", "Save the Cat")
+            beat_sheet_text = f"## BEAT SHEET ({framework})\n"
+            for beat, desc in beat_sheet.items():
+                beat_sheet_text += f"### {beat.replace('_', ' ').upper()}\n{desc}\n\n"
 
-        source_material_content = request.metadata.get("raw_text", "")
-        if not source_material_content or not source_material_content.strip():
-            source_material_content = beat_sheet_text
+        source_material_content = beat_sheet_text
 
         bible_intro = f"# Project Bible: {title}\n## Metadata\n- Genre: {genre}\n- Logline: {logline}\n- Vibe: {request.vibe}\n- Analysis Lens: {request.persona}\n\n"
-        synopsis = request.metadata.get("synopsis", request.pitch)
+        synopsis = metadata.get("synopsis", "")
         bible_content = bible_intro + f"## Synopsis\n{synopsis}\n\n" + beat_sheet_text
         
-        if "character_descriptions" in request.metadata:
+        if "character_descriptions" in metadata:
             bible_content += "\n## Characters\n"
-            for char in request.metadata["character_descriptions"]:
+            for char in metadata["character_descriptions"]:
                 bible_content += f"- **{char.get('name', 'Unknown')}**: {char.get('role', 'N/A')} - {char.get('description', '')}\n"
 
-        # --- Universe Grouping Logic ---
         universe_display_name = request.universe_name or "My First Universe"
-        
-        # Check for existing universe by name for this user
         existing_universes = db.collection("universes")\
             .where("owner_id", "==", user_id)\
             .where("name", "==", universe_display_name)\
@@ -161,7 +156,6 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
         project_id = f"project_{uuid.uuid4().hex[:8]}"
         project_ref = universe_ref.collection("projects").document(project_id)
         
-        beat_sheet = request.metadata.get("beat_sheet", {})
         project_data = {
             "title": title,
             "owner_id": user_id,
@@ -176,27 +170,43 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
             "beat_sheet": beat_sheet,
             "beat_sheet_data": beat_sheet,
             "synopsis": synopsis,
-            "characters": request.metadata.get("character_descriptions", [])
+            "characters": metadata.get("character_descriptions", [])
         }
-        
         project_ref.set(project_data)
 
+        # --- BACKGROUND VISUALS ---
+        try:
+            from main import services
+            background_tasks.add_task(
+                services.asset_studio.generate_and_update_poster,
+                universe_id=universe_id,
+                project_id=project_id,
+                title=title,
+                tagline=logline,
+                genre=genre,
+                style=request.vibe
+            )
+        except Exception as e:
+            print(f"Warning: Failed to queue visuals: {e}")
+
         redirect_to = "beat-sheet"
-        if request.is_script and "script_blocks" in request.metadata:
-            script_blocks = request.metadata["script_blocks"]
+        if request.is_script and "script_blocks" in metadata:
+            script_blocks = metadata["script_blocks"]
             if script_blocks:
                 script_ref = project_ref.collection("script").document("content")
                 script_ref.set({"blocks": script_blocks})
                 redirect_to = "editor"
         elif request.mode == "explorer":
-            first_beat = "Opening Image"
-            beat_desc = beat_sheet.get("opening_image", "The start of the journey.")
-            chars = [c.get("name", "Protagonist") for c in request.metadata.get("character_descriptions", [])[:2]]
-            if not chars: chars = ["Protagonist"]
+            print(f"[{user_id}] Explorer mode: Generating initial scene...")
+            first_beat_desc = beat_sheet.get("opening_image", "A striking visual start.")
+            chars = [c.get("name", "Protagonist") for c in metadata.get("character_descriptions", [])[:2]]
+            
+            # CRITICAL: Pass full context so AI doesn't hallucinate sci-fi for a mystery
+            full_context = f"GENRE: {genre}\nLOGLINE: {logline}\nBEAT: Opening Image - {first_beat_desc}"
             
             try:
                 initial_blocks = logic_engine.generate_scene_content(
-                    beat_context=f"{first_beat}: {beat_desc}",
+                    beat_context=full_context,
                     characters=chars,
                     game_theory_type="Cooperative"
                 )
@@ -205,13 +215,12 @@ async def finalize_onboarding(request: SetupRequest, user_id: str = Depends(get_
                     script_ref.set({"blocks": initial_blocks})
                     redirect_to = "editor"
             except Exception as e:
-                print(f"Error generating initial explorer scene: {e}")
+                print(f"Error: {e}")
                 redirect_to = "editor"
 
         return FinalizeResponse(project_id=project_id, universe_id=universe_id, redirect_to=redirect_to)
-
     except Exception as e:
-        print(f"Error in finalize_onboarding: {e}")
+        print(f"Error: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to finalize onboarding: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
