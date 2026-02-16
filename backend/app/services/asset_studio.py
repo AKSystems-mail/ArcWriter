@@ -4,6 +4,7 @@ from google.cloud import aiplatform
 import io
 import uuid
 import time
+import base64
 import traceback # Added for logging
 
 class AssetStudio:
