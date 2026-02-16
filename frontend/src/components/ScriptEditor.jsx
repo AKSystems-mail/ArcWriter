@@ -108,14 +108,32 @@ const ScriptEditor = ({ universeId, projectId }) => {
     loadScriptFromFirestore();
   }, [loadScriptFromFirestore]);
 
+  // Robust Auto-Resize Logic
+  const resizeBlock = useCallback((id) => {
+    const el = blockRefs.current[id];
+    if (el) {
+      el.style.height = '0px'; // Reset to get accurate scrollHeight
+      const newHeight = Math.max(24, el.scrollHeight);
+      el.style.height = newHeight + 'px';
+    }
+  }, []);
+
+  const resizeAllBlocks = useCallback(() => {
+    Object.keys(blockRefs.current).forEach(id => resizeBlock(id));
+  }, [resizeBlock]);
+
+  // Resize on blocks change
   useEffect(() => {
-    Object.values(blockRefs.current).forEach(ref => {
-      if (ref) {
-        ref.style.height = 'auto';
-        ref.style.height = ref.scrollHeight + 'px';
-      }
-    });
-  }, [blocks]);
+    // Small delay to ensure styles and fonts are applied
+    const timer = setTimeout(resizeAllBlocks, 50);
+    return () => clearTimeout(timer);
+  }, [blocks, resizeAllBlocks]);
+
+  // Resize on window resize
+  useEffect(() => {
+    window.addEventListener('resize', resizeAllBlocks);
+    return () => window.removeEventListener('resize', resizeAllBlocks);
+  }, [resizeAllBlocks]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
@@ -149,6 +167,9 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const handleTextChange = (id, text, type) => {
     const { text: formattedText } = formatLine(type, text);
     updateBlock(id, { text: formattedText });
+    
+    // Immediate resize
+    resizeBlock(id);
 
     // Autocomplete Logic
     if (type === 'Character' || type === 'Scene Heading') {
@@ -249,6 +270,8 @@ const ScriptEditor = ({ universeId, projectId }) => {
         return b;
       }));
       setIsSaved(false);
+      // Small delay to let React apply the new class before measuring
+      setTimeout(() => resizeBlock(focusedBlockId), 0);
     }
   };
 
@@ -460,10 +483,10 @@ const ScriptEditor = ({ universeId, projectId }) => {
                 onFocus={() => {
                   setFocusedBlockId(block.id);
                   setShowAutocomplete(false);
+                  resizeBlock(block.id); // Ensure resize on focus
                 }}
                 className={`${className} script-block resize-none overflow-hidden bg-transparent focus:outline-none focus:bg-blue-50/50 transition-colors`}
                 placeholder={block.type === 'Scene Heading' ? 'INT. LOCATION - TIME' : ''}
-                rows={1}
               />
               
               {/* Autocomplete Menu */}

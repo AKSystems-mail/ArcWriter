@@ -47,13 +47,17 @@ textarea.script-block {
   outline: none !important;
   padding: 0 !important;
   margin: 0;
-  line-height: 1.2;
+  line-height: 1.4; /* Slightly increased for readability */
   font-size: 12pt;
   color: black;
   background: transparent;
   resize: none;
   display: block;
   font-family: inherit;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow: hidden;
+  box-sizing: border-box !important;
 }
 
 textarea.script-block:focus {
