@@ -168,7 +168,7 @@ const ProjectHeader = ({ universeId, projectId, projectTitle, moodImageSrc }) =>
       {/* Content - Title and Accents */}
       <div className="relative z-10 flex flex-col items-center justify-center h-full text-center p-12">
         <h1 className="text-7xl font-black text-white leading-tight mb-6 tracking-tighter animate-fade-in drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
-          {projectData?.title || projectTitle || "Untitled Project"}
+          {projectData?.name || projectData?.title || projectTitle || "Untitled Project"}
         </h1>
         <div className="flex items-center gap-4 mb-6">
           <div className="h-0.5 w-16 bg-arc-teal rounded-full"></div>

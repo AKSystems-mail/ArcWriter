@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import BeatSheetForm from '../components/BeatSheetForm';
 import CharacterProfile from '../components/CharacterProfile';
 import ProjectHeader from '../components/ProjectHeader';
@@ -7,9 +7,11 @@ import MobilePitchDeck from '../components/MobilePitchDeck';
 import VisualsStudio from '../components/VisualsStudio';
 import { useResponsive } from '../hooks/useResponsive';
 import { auth } from '../firebase';
+import { BookOpen } from 'lucide-react';
 
 const Architect = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const params = useParams(); // Get ID from URL
     const { isMobile } = useResponsive();
     const [projectData, setProjectData] = useState(null);
@@ -32,18 +34,22 @@ const Architect = () => {
             const response = await fetch(`/api/project/${universeId}/${projectId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (response.ok) {
-                const data = await response.json();
-                setProjectData(data);
-
-                // Pre-fill form if beat_sheet_data exists
-                if (data.beat_sheet_data) {
-                    setFormData(data.beat_sheet_data);
-                } else if (data.beat_sheet) {
-                    setFormData(data.beat_sheet);
-                }
-            }
-        } catch (error) {
+                            if (response.ok) {
+                                const data = await response.json();
+                                console.log("DEBUG: Project Data received in Architect:", data);
+                                setProjectData(data);
+            
+                                // Pre-fill form if beat_sheet_data exists
+                                if (data.beat_sheet_data) {
+                                    console.log("DEBUG: Found beat_sheet_data:", data.beat_sheet_data);
+                                    setFormData(data.beat_sheet_data);
+                                } else if (data.beat_sheet) {
+                                    console.log("DEBUG: Found beat_sheet:", data.beat_sheet);
+                                    setFormData(data.beat_sheet);
+                                } else {
+                                    console.warn("DEBUG: No beat sheet data found in project document.");
+                                }
+                            }        } catch (error) {
             console.error("Error fetching project:", error);
         } finally {
             setLoading(false);
@@ -59,7 +65,7 @@ const Architect = () => {
         return (
             <div className="min-h-screen bg-obsidian-black">
                 <MobilePitchDeck
-                    projectTitle={projectData?.title || "My Awesome Project"}
+                    projectTitle={projectData?.name || projectData?.title || "Untitled Project"}
                     tagline={projectData?.logline || "A story worth telling"}
                     synopsis={projectData?.bible_content || "Loading synopsis..."}
                 />
@@ -75,7 +81,7 @@ const Architect = () => {
                 <ProjectHeader
                     universeId={universeId}
                     projectId={projectId}
-                    projectTitle={projectData?.title || "My Awesome Project"}
+                    projectTitle={projectData?.name || projectData?.title || "Untitled Project"}
                 />
             </div>
 
@@ -84,7 +90,17 @@ const Architect = () => {
                     <h1 className="text-4xl font-black text-white tracking-tight flex items-center gap-3">
                         <span className="text-arc-teal text-5xl">⬡</span> Architect Mode
                     </h1>
-                    <p className="text-gray-400 mt-2 text-lg">Structure your narrative using the Save the Cat framework.</p>
+                    <div className="flex items-center gap-6 mt-2">
+                        <p className="text-gray-400 text-lg">Structure your narrative using the Save the Cat framework.</p>
+                        <div className="h-4 w-px bg-gray-700"></div>
+                        <button 
+                            onClick={() => navigate(`/project/${projectId}/editor`, { state: { project_id: projectId, universe_id: universeId } })}
+                            className="text-xs font-bold text-gray-500 hover:text-arc-teal uppercase tracking-widest transition-colors flex items-center gap-2"
+                        >
+                            <BookOpen className="w-3.5 h-3.5" />
+                            Return to Script Editor
+                        </button>
+                    </div>
                 </div>
                 <img src="/Arc%20Main.png" alt="Arc" className="h-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-500" />
             </header>

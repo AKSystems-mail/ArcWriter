@@ -70,6 +70,20 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
         }
     };
 
+    const handleBulkGenerateAnchors = async () => {
+        if (!projectData?.characters || projectData.characters.length === 0) return;
+        
+        const charsToGenerate = projectData.characters.filter(c => !c.anchor_url);
+        if (charsToGenerate.length === 0) {
+            if (!window.confirm("All characters already have anchors. Regenerate all?")) return;
+            charsToGenerate.push(...projectData.characters);
+        }
+
+        for (const char of charsToGenerate) {
+            await handleRegenerate('character', char.name);
+        }
+    };
+
     return (
         <section className="bg-gray-900/40 border border-gray-800 rounded-[2.5rem] p-8 md:p-12 backdrop-blur-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10">
@@ -84,18 +98,27 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                         </h2>
                         <p className="text-gray-400 mt-2">Manage your project's cinematic assets and character anchors.</p>
                     </div>
-                    {message && (
-                        <div className="bg-arc-teal/20 border border-arc-teal/50 text-arc-teal px-4 py-2 rounded-xl flex items-center gap-2 animate-bounce">
-                            <Sparkles className="w-4 h-4" /> {message}
-                        </div>
-                    )}
+                    <div className="flex flex-col items-end gap-3">
+                        {message && (
+                            <div className="bg-arc-teal/20 border border-arc-teal/50 text-arc-teal px-4 py-2 rounded-xl flex items-center gap-2 animate-pulse">
+                                <Sparkles className="w-4 h-4" /> {message}
+                            </div>
+                        )}
+                        <button 
+                            onClick={handleBulkGenerateAnchors}
+                            disabled={!!regenerating}
+                            className="text-[10px] font-black uppercase tracking-widest bg-arc-teal/10 hover:bg-arc-teal/20 text-arc-teal border border-arc-teal/30 px-4 py-2 rounded-full transition-all disabled:opacity-50"
+                        >
+                            {regenerating ? "Art Dept Busy..." : "Bulk Generate Visual Anchors"}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                     {/* Poster Section */}
                     <div className="lg:col-span-1">
                         <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-4 block">Official Poster</label>
-                        <div className="aspect-[2/3] bg-gray-950 rounded-2xl overflow-hidden border border-gray-800 group relative">
+                        <div className="aspect-[2/3] bg-gray-950 rounded-none overflow-hidden border border-gray-800 group relative">
                             {projectData?.poster_url && !projectData.poster_url.includes('placehold.co') ? (
                                 <img src={projectData.poster_url} alt="Poster" className="w-full h-full object-cover" />
                             ) : (

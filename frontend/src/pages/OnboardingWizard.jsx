@@ -403,6 +403,14 @@ const OnboardingWizard = () => {
             <div className="text-center mb-10">
                 <h2 className="text-4xl font-bold text-white mb-2">Narrative Blueprint</h2>
                 <p className="text-lg text-gray-400">The AI has distilled your vision. Refine it before the studio initializes.</p>
+                <div className="flex justify-center gap-4 mt-4">
+                    <span className="bg-arc-teal/10 border border-arc-teal/30 text-arc-teal px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                        {data.metadata?.beat_sheet ? Object.keys(data.metadata.beat_sheet).length : 0} Narrative Beats Found
+                    </span>
+                    <span className="bg-purple-500/10 border border-purple-500/30 text-purple-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                        {data.metadata?.character_descriptions?.length || 0} Characters Distilled
+                    </span>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">

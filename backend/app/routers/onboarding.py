@@ -25,16 +25,23 @@ class PitchAnalysisResponse(BaseModel):
     logline: str
     structure_suggestion: str
     title_ideas: List[str]
+    title: str
+    synopsis: str
+    character_descriptions: List[Dict[str, Any]]
+    beat_sheet: Dict[str, str]
 
-@router.post("/analyze_pitch", response_model=PitchAnalysisResponse)
-@router.post("/initialize", response_model=PitchAnalysisResponse)
-async def analyze_pitch(request: PitchRequest, user_id: str = Depends(get_current_user)):
-    logic_engine = LogicEngine()
+@router.post("/initialize")
+async def initialize_project(request: PitchRequest, user_id: str = Depends(get_current_user)):
+    print(f"[{user_id}] Initializing project from pitch...")
     try:
+        logic_engine = LogicEngine()
         metadata = logic_engine.generate_project_metadata(request.pitch)
         return metadata
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        print(f"CRITICAL: Initialize failure: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Studio Engine Error: {str(e)}")
 
 @router.post("/analyze_file")
 async def analyze_file(file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
@@ -111,29 +118,58 @@ async def finalize_onboarding(request: SetupRequest, background_tasks: Backgroun
         db = get_firestore_db()
         logic_engine = LogicEngine()
         
+        # Defense-in-depth: Metadata can sometimes be wrapped in a list from LLM responses
         metadata = request.metadata
+        if isinstance(metadata, list) and len(metadata) > 0:
+            metadata = metadata[0]
+            
         title = metadata.get("title", "Untitled Project")
         genre = metadata.get("genre", "Unknown Genre")
         logline = metadata.get("logline", "")
         
         beat_sheet = metadata.get("beat_sheet", {})
-        beat_sheet_text = ""
-        if beat_sheet:
-            framework = metadata.get("structure_suggestion", "Save the Cat")
-            beat_sheet_text = f"## BEAT SHEET ({framework})\n"
-            for beat, desc in beat_sheet.items():
-                beat_sheet_text += f"### {beat.replace('_', ' ').upper()}\n{desc}\n\n"
-
-        source_material_content = beat_sheet_text
-
-        bible_intro = f"# Project Bible: {title}\n## Metadata\n- Genre: {genre}\n- Logline: {logline}\n- Vibe: {request.vibe}\n- Analysis Lens: {request.persona}\n\n"
-        synopsis = metadata.get("synopsis", "")
-        bible_content = bible_intro + f"## Synopsis\n{synopsis}\n\n" + beat_sheet_text
+        # Defense: If beat_sheet is a list (AI occasionally returns list of objects), convert to dict
+        if isinstance(beat_sheet, list):
+            print(f"WARNING: beat_sheet arrived as list, converting to dict.")
+            converted_beats = {}
+            for item in beat_sheet:
+                if isinstance(item, dict):
+                    # Try common key names
+                    name = item.get("beat_name") or item.get("beat") or item.get("name")
+                    desc = item.get("description") or item.get("text")
+                    if name and desc:
+                        # Convert to snake case and strip percentages/parentheses
+                        # e.g. "Opening Image (1%)" -> "opening_image"
+                        key = name.lower().split("(")[0].strip().replace(" ", "_").replace("-", "_")
+                        converted_beats[key] = desc
+            beat_sheet = converted_beats
+            
+        # Defense 2: If beat_sheet is ALREADY a dict but has messy keys
+        if isinstance(beat_sheet, dict):
+            cleaned_beats = {}
+            for k, v in beat_sheet.items():
+                clean_k = k.lower().split("(")[0].strip().replace(" ", "_").replace("-", "_")
+                cleaned_beats[clean_k] = v
+            beat_sheet = cleaned_beats
+            
+        print(f"DEBUG: Beat sheet keys received: {list(beat_sheet.keys()) if beat_sheet else 'EMPTY'}")
+        
+        # --- Construct Clean Source Material (ONLY Beats + Cast) ---
+        source_material_content = f"## NARRATIVE BEATS\n\n"
+        for beat, desc in beat_sheet.items():
+            source_material_content += f"### {beat.replace('_', ' ').upper()}\n{desc}\n\n"
         
         if "character_descriptions" in metadata:
-            bible_content += "\n## Characters\n"
+            source_material_content += "---\n## KEY CAST & PROFILES\n\n"
             for char in metadata["character_descriptions"]:
-                bible_content += f"- **{char.get('name', 'Unknown')}**: {char.get('role', 'N/A')} - {char.get('description', '')}\n"
+                source_material_content += f"**{char.get('name', 'Unknown').upper()}**\n"
+                source_material_content += f"ROLE: {char.get('role', 'N/A')}\n"
+                source_material_content += f"DESCRIPTION: {char.get('description', '')}\n\n\n"
+
+        # Construct Project Bible (Full comprehensive doc)
+        bible_intro = f"# Project Bible: {title}\n## Metadata\n- Genre: {genre}\n- Logline: {logline}\n- Vibe: {request.vibe}\n- Analysis Lens: {request.persona}\n\n"
+        synopsis = metadata.get("synopsis", "")
+        bible_content = bible_intro + f"## Synopsis\n{synopsis}\n\n" + source_material_content
 
         universe_display_name = request.universe_name or "My First Universe"
         existing_universes = db.collection("universes")\
@@ -156,6 +192,9 @@ async def finalize_onboarding(request: SetupRequest, background_tasks: Backgroun
         project_id = f"project_{uuid.uuid4().hex[:8]}"
         project_ref = universe_ref.collection("projects").document(project_id)
         
+        # Ensure beat_sheet is a dict for Firestore
+        final_beat_sheet = beat_sheet if isinstance(beat_sheet, dict) else {}
+
         project_data = {
             "title": title,
             "owner_id": user_id,
@@ -167,27 +206,14 @@ async def finalize_onboarding(request: SetupRequest, background_tasks: Backgroun
             "vibe": request.vibe,
             "persona": request.persona,
             "mode": request.mode,
-            "beat_sheet": beat_sheet,
-            "beat_sheet_data": beat_sheet,
+            "beat_sheet": final_beat_sheet,
+            "beat_sheet_data": final_beat_sheet,
             "synopsis": synopsis,
             "characters": metadata.get("character_descriptions", [])
         }
+        
+        print(f"DEBUG: Saving project {project_id} with {len(project_data['characters'])} characters and {len(final_beat_sheet)} beats")
         project_ref.set(project_data)
-
-        # --- BACKGROUND VISUALS ---
-        try:
-            from main import services
-            background_tasks.add_task(
-                services.asset_studio.generate_and_update_poster,
-                universe_id=universe_id,
-                project_id=project_id,
-                title=title,
-                tagline=logline,
-                genre=genre,
-                style=request.vibe
-            )
-        except Exception as e:
-            print(f"Warning: Failed to queue visuals: {e}")
 
         redirect_to = "beat-sheet"
         if request.is_script and "script_blocks" in metadata:

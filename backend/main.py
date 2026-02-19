@@ -13,6 +13,9 @@ import stripe
 from firebase_functions import https_fn
 from a2wsgi import ASGIMiddleware
 from flask import Response as FlaskResponse
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Lazy Service Registry
 class ServiceRegistry:
@@ -148,11 +151,14 @@ async def list_universes(user_id: str = Depends(get_current_user)):
 class ProjectResponse(BaseModel):
     id: str
     name: str
+    title: Optional[str] = None
     logline: Optional[str] = None
     genre: Optional[str] = None
     poster_url: Optional[str] = None
     created_at: Optional[Any] = None
     characters: Optional[List[Dict[str, Any]]] = None
+    beat_sheet_data: Optional[Dict[str, Any]] = None
+    source_material: Optional[str] = None
 
 @app.get("/api/project/{universe_name}/{project_id}", response_model=ProjectResponse)
 async def get_project_details(universe_name: str, project_id: str, user_id: str = Depends(get_current_user)):
@@ -165,11 +171,14 @@ async def get_project_details(universe_name: str, project_id: str, user_id: str 
     return ProjectResponse(
         id=project_id,
         name=project_config.get('title', project_id),
+        title=project_config.get('title', project_id),
         logline=project_config.get('logline'),
         genre=project_config.get('genre'),
         poster_url=project_config.get('poster_url'),
         created_at=project_config.get('created_at'),
-        characters=project_config.get('characters')
+        characters=project_config.get('characters'),
+        beat_sheet_data=project_config.get('beat_sheet_data'),
+        source_material=project_config.get('source_material')
     )
 
 # --- Scene & Critique Endpoints ---
@@ -240,41 +249,47 @@ async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(ge
     cost = 25 # Regeneration is more expensive
     await services.user_service.deduct_credits(user_id, cost)
     
-    from app.utils.firebase_auth_utils import get_firestore_db
-    db = get_firestore_db()
-    project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
-    project_doc = project_ref.get()
-    
-    if not project_doc.exists:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    data = project_doc.to_dict()
-    
-    if request.type == 'poster':
-        base64_data = services.asset_studio.generate_poster(
-            title=data.get("title", "Untitled"),
-            tagline=data.get("logline", ""),
-            genre=data.get("genre", "Drama"),
-            style=data.get("vibe", "Cinematic")
-        )
-        if not base64_data: raise HTTPException(status_code=500, detail="Generation failed")
-        return {"b64_data": base64_data}
+    try:
+        from app.utils.firebase_auth_utils import get_firestore_db
+        db = get_firestore_db()
+        project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
+        project_doc = project_ref.get()
         
-    elif request.type == 'character' and request.character_name:
-        characters = data.get("characters", [])
-        char_data = next((c for c in characters if c.get("name") == request.character_name), None)
+        if not project_doc.exists:
+            raise HTTPException(status_code=404, detail="Project not found")
         
-        if not char_data:
-            raise HTTPException(status_code=404, detail="Character not found")
+        data = project_doc.to_dict()
+        
+        if request.type == 'poster':
+            base64_data = services.asset_studio.generate_poster(
+                title=data.get("title", "Untitled"),
+                tagline=data.get("logline", ""),
+                genre=data.get("genre", "Drama"),
+                style=data.get("vibe", "Cinematic")
+            )
+            if not base64_data: raise HTTPException(status_code=500, detail="Poster generation failed")
+            return {"b64_data": base64_data}
             
-        base64_data = services.asset_studio.generate_character_anchor(
-            description=char_data.get("description", ""),
-            style=data.get("vibe", "Cinematic")
-        )
-        if not base64_data: raise HTTPException(status_code=500, detail="Generation failed")
-        return {"b64_data": base64_data}
-        
-    return {"error": "Invalid regeneration type"}
+        elif request.type == 'character' and request.character_name:
+            characters = data.get("characters", [])
+            char_data = next((c for c in characters if c.get("name") == request.character_name), None)
+            
+            if not char_data:
+                raise HTTPException(status_code=404, detail="Character not found")
+                
+            base64_data = services.asset_studio.generate_character_anchor(
+                description=char_data.get("description", ""),
+                style=data.get("vibe", "Cinematic")
+            )
+            if not base64_data: raise HTTPException(status_code=500, detail="Character anchor generation failed")
+            return {"b64_data": base64_data}
+            
+        return {"error": "Invalid regeneration type"}
+    except Exception as e:
+        import traceback
+        logger.error(f"Regenerate Asset Failure: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Export as Firebase Function
 @https_fn.on_request(

@@ -74,7 +74,7 @@ const MobilePitchDeck: React.FC<MobilePitchDeckProps> = ({
                     {/* Slide 1: Poster */}
                     <div className="min-w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-b from-obsidian-black via-gray-900 to-obsidian-black">
                         <div className="w-full max-w-sm animate-fade-in">
-                            <div className="relative group rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-gray-800">
+                            <div className="relative group rounded-none overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-gray-800">
                                 <img
                                     src={posterUrl}
                                     alt="Movie Poster"

@@ -1,4 +1,4 @@
-google-genai
+google-genai>=1.0.0
 google-cloud-storage
 google-cloud-aiplatform
 reportlab

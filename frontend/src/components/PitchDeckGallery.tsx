@@ -243,7 +243,7 @@ const PitchDeckGallery: React.FC<PitchDeckGalleryProps> = ({
             <div className="container mx-auto px-8 py-12 flex flex-col lg:flex-row gap-12">
                 {/* Left Section: Movie Poster */}
                 <div className="flex-shrink-0 lg:w-1/3 flex justify-center lg:justify-end">
-                    <div className="relative w-full max-w-sm rounded-lg overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-300">
+                    <div className="relative w-full max-w-sm rounded-none overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-300">
                         <img
                             src={generatedPosterUrl || 'https://via.placeholder.com/600x900?text=Movie+Poster'}
                             alt="Movie Poster"

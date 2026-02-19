@@ -54,8 +54,10 @@ const ScriptEditor = ({ universeId, projectId }) => {
         const docSnap = await getDoc(projectRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          // Restore: Prioritize bible_content which contains the formatted beat sheet
-          setSourceContent(data.bible_content || data.source_material || "No source material available.");
+          // User requested: Prioritize CLEAN source_material (Beats + Cast)
+          // Removing Project Bible fallback from top priority to ensure clean view
+          const cleanContent = data.source_material || data.bible_content || "No source material available.";
+          setSourceContent(cleanContent);
           setUniverseCharacters(data.characters || []);
         }
       } catch (error) {
@@ -521,7 +523,16 @@ const ScriptEditor = ({ universeId, projectId }) => {
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 transition-colors" title="Exit to Dashboard"><ArrowLeft className="w-5 h-5" /></button>
             <div className="h-4 w-px bg-gray-700"></div>
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Script Editor</span>
+            <div className="flex items-center gap-6">
+              <span className="text-xs font-bold text-arc-teal uppercase tracking-widest cursor-default">Script Editor</span>
+              <button 
+                onClick={() => navigate(`/project/${projectId}/beat-sheet`, { state: { project_id: projectId, universe_id: universeId } })}
+                className="text-xs font-bold text-gray-500 hover:text-arc-orange uppercase tracking-widest transition-colors flex items-center gap-2"
+              >
+                <Target className="w-3.5 h-3.5" />
+                Project Blueprint
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <span className={`text-[10px] uppercase tracking-tighter ${isSaved ? 'text-gray-600' : 'text-arc-orange animate-pulse'}`}>{isSaving ? 'Saving...' : isSaved ? 'All changes saved' : 'Unsaved Changes'}</span>

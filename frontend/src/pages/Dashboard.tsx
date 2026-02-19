@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { collectionGroup, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { Plus, Film, BookOpen, Clock, ChevronRight, Edit2, Trash2, RotateCcw, XCircle } from 'lucide-react';
+import { Plus, Film, BookOpen, Clock, ChevronRight, Edit2, Trash2, RotateCcw, XCircle, Target } from 'lucide-react';
 
 interface Project {
     id: string;
@@ -247,9 +247,20 @@ const Dashboard: React.FC = () => {
                                     <p className="text-gray-500 text-sm mb-6 line-clamp-2 italic font-light">{project.logline || "No logline generated yet."}</p>
                                     
                                     <div className="mt-auto pt-6 border-t border-gray-800/50 flex justify-between items-center text-gray-500">
-                                        <div className="flex items-center gap-2 text-xs uppercase font-black tracking-widest">
-                                            <BookOpen className="w-4 h-4 text-arc-teal" />
-                                            <span>{view === 'active' ? 'Editor' : 'Archived'}</span>
+                                        <div className="flex items-center gap-4">
+                                            <div onClick={(e) => { e.stopPropagation(); handleProjectClick(project); }} className="flex items-center gap-2 text-xs uppercase font-black tracking-widest text-gray-400 hover:text-arc-teal cursor-pointer transition-colors">
+                                                <BookOpen className="w-4 h-4 text-arc-teal" />
+                                                <span>Editor</span>
+                                            </div>
+                                            <div onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                navigate(`/project/${project.id}/beat-sheet`, {
+                                                    state: { project_id: project.id, universe_id: project.universe_id }
+                                                });
+                                            }} className="flex items-center gap-2 text-xs uppercase font-black tracking-widest text-gray-400 hover:text-arc-orange cursor-pointer transition-colors">
+                                                <Target className="w-4 h-4 text-arc-orange" />
+                                                <span>Blueprint</span>
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold">
                                             <Clock className="w-3.5 h-3.5" />
