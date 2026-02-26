@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
+import { Target, Save, RefreshCw, ChevronRight } from 'lucide-react';
 
 const SAVE_THE_CAT_BEATS = [
   { name: 'Opening Image', description: 'A visual that represents the struggle & tone of the story. A snapshot of the main character\'s problem before the adventure begins.' },
@@ -140,7 +141,7 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
       });
 
       if (response.ok) {
-        setMessage('Beat Sheet saved to Bible successfully!');
+        setMessage('SYNC SUCCESSFUL');
         setTimeout(() => {
           navigate(`/project/${projectId}/editor`, {
             state: {
@@ -151,12 +152,10 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
         }, 1000);
       } else {
         const err = await response.json();
-        console.error("Save failed:", err);
-        setMessage(`Failed to save: ${err.detail || 'Unknown error'}`);
+        setMessage(`SYNC ERROR: ${err.detail || 'Unknown'}`);
       }
     } catch (error) {
-      console.error('Save error:', error);
-      setMessage(`Error: ${error.message}`);
+      setMessage(`ERROR: ${error.message}`);
     } finally {
       setSaving(false);
     }
@@ -165,89 +164,109 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
   const readiness = calculateReadiness();
 
   return (
-    <div className="bg-gray-900/40 backdrop-blur-md p-10 rounded-[2.5rem] border border-gray-800 shadow-2xl max-w-5xl mx-auto mb-20 animate-fade-in-delayed">
-      <div className="flex justify-between items-center mb-10 border-b border-gray-800 pb-8">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-4xl font-black text-white tracking-tighter">
-            Beat Sheet
-          </h2>
-          <select 
-            value={framework}
-            onChange={(e) => setFramework(e.target.value)}
-            className="bg-gray-800 text-arc-teal text-xs font-black uppercase tracking-widest border-none rounded-lg p-2 focus:ring-1 focus:ring-arc-teal outline-none"
-          >
-            <option>Save the Cat</option>
-            <option>Hero's Journey</option>
-            <option>Story Circle</option>
-          </select>
+    <div className="bg-[#080808] p-10 md:p-16 rounded-sm border border-white/5 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-12 opacity-[0.03]">
+            <Target className="w-64 h-64 text-white" />
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="text-right">
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Pitch Readiness</p>
-            <p className="text-2xl font-black text-white">{readiness}%</p>
-          </div>
-          <div className="relative w-16 h-16">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle
-                cx="32"
-                cy="32"
-                r="28"
-                stroke="currentColor"
-                strokeWidth="4"
-                fill="transparent"
-                className="text-gray-800"
-              />
-              <circle
-                cx="32"
-                cy="32"
-                r="28"
-                stroke="currentColor"
-                strokeWidth="4"
-                fill="transparent"
-                strokeDasharray={175.9}
-                strokeDashoffset={175.9 - (175.9 * readiness) / 100}
-                className="text-arc-teal transition-all duration-1000 ease-out"
-              />
-            </svg>
-          </div>
-        </div>
-      </div>
+        <div className="relative z-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 mb-16 border-b border-white/5 pb-12">
+                <div className="flex-1">
+                    <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Section 02: Narrative Logic</span>
+                    <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-6">
+                        Structural <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Blueprint</span>
+                    </h2>
+                    <div className="relative w-64">
+                        <select 
+                            value={framework}
+                            onChange={(e) => setFramework(e.target.value)}
+                            className="w-full bg-black text-arc-teal text-[10px] font-black uppercase tracking-[0.3em] border border-white/10 rounded-sm p-4 focus:border-arc-teal outline-none appearance-none cursor-pointer"
+                        >
+                            <option>Save the Cat</option>
+                            <option>Hero's Journey</option>
+                            <option>Story Circle</option>
+                        </select>
+                        <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 rotate-90 text-gray-600 pointer-events-none" />
+                    </div>
+                </div>
 
-      <div className="space-y-12">
-        {getActiveFrameworkBeats().map((beat) => (
-          <div key={beat.name} className="relative group">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="h-2 w-2 bg-arc-orange rounded-full group-hover:scale-150 transition-transform"></span>
-              <label className="text-white font-bold text-xl tracking-tight">{beat.name}</label>
+                <div className="flex items-center gap-8 bg-black/50 p-6 border border-white/5 rounded-sm">
+                    <div className="text-right">
+                        <p className="text-[9px] font-black text-gray-600 uppercase tracking-[0.3em] mb-2">Pitch Readiness</p>
+                        <p className="text-3xl font-black text-white tracking-tighter">{readiness}%</p>
+                    </div>
+                    <div className="relative w-16 h-16">
+                        <svg className="w-full h-full transform -rotate-90">
+                            <circle
+                                cx="32"
+                                cy="32"
+                                r="30"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                fill="transparent"
+                                className="text-white/5"
+                            />
+                            <circle
+                                cx="32"
+                                cy="32"
+                                r="30"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                fill="transparent"
+                                strokeDasharray={188.5}
+                                strokeDashoffset={188.5 - (188.5 * readiness) / 100}
+                                className="text-arc-teal transition-all duration-1000 ease-out shadow-glow"
+                            />
+                        </svg>
+                    </div>
+                </div>
             </div>
 
-            <textarea
-              className="w-full bg-gray-800/30 border border-gray-700 rounded-2xl p-6 text-white font-courier text-lg focus:outline-none focus:border-arc-teal focus:ring-1 focus:ring-arc-teal transition-all min-h-[150px] shadow-inner leading-relaxed"
-              placeholder={`Outline your ${beat.name}...`}
-              value={beats[beat.name] || ''}
-              onChange={(e) => handleChange(beat.name, e.target.value)}
-            />
+            <div className="grid grid-cols-1 gap-12 max-w-4xl">
+                {getActiveFrameworkBeats().map((beat, idx) => (
+                    <div key={beat.name} className="relative group">
+                        <div className="flex items-center gap-4 mb-6">
+                            <span className="text-[10px] font-black text-gray-700 w-6">{(idx + 1).toString().padStart(2, '0')}</span>
+                            <div className="h-px flex-1 bg-white/5" />
+                            <label className="text-white font-black text-xs uppercase tracking-[0.2em]">{beat.name}</label>
+                        </div>
 
-            <p className="mt-3 text-gray-500 text-sm font-light italic px-2">
-              {beat.description}
-            </p>
-          </div>
-        ))}
-      </div>
+                        <div className="relative">
+                            <textarea
+                                className="w-full bg-black border border-white/10 rounded-sm p-8 text-white font-courier text-lg focus:outline-none focus:border-arc-teal transition-all min-h-[180px] leading-relaxed placeholder:text-gray-900"
+                                placeholder={`DRAFTING: ${beat.name.toUpperCase()}...`}
+                                value={beats[beat.name] || ''}
+                                onChange={(e) => handleChange(beat.name, e.target.value)}
+                            />
+                            <div className="absolute top-0 left-0 w-[1px] h-0 bg-arc-orange group-focus-within:h-full transition-all duration-500" />
+                        </div>
 
-      <div className="mt-16 pt-10 border-t border-gray-800 flex items-center justify-between">
-        <span className="text-arc-teal font-black uppercase tracking-widest text-xs animate-pulse">{message}</span>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`px-10 py-4 rounded-xl font-black text-white transition-all transform active:scale-95 ${saving ? 'bg-gray-700 cursor-not-allowed' : 'bg-arc-teal hover:bg-opacity-90 shadow-xl shadow-arc-teal/20'}`}
-        >
-          {saving ? 'SYNCING...' : 'SAVE TO BIBLE'}
-        </button>
-      </div>
+                        <p className="mt-4 text-[10px] text-gray-600 font-bold uppercase tracking-widest pl-2">
+                            {beat.description}
+                        </p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="mt-24 pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="flex items-center gap-4">
+                    <div className={`w-2 h-2 rounded-full ${message.includes('ERROR') ? 'bg-red-500' : 'bg-arc-teal'} animate-pulse`} />
+                    <span className="text-gray-500 font-black uppercase tracking-[0.2em] text-[9px]">{message || 'SYSTEM READY'}</span>
+                </div>
+                
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="group relative bg-white hover:bg-arc-teal text-black hover:text-white px-16 py-6 rounded-sm font-black text-[10px] uppercase tracking-[0.4em] transition-all disabled:opacity-50 shadow-2xl flex items-center gap-4"
+                >
+                    {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {saving ? 'SYNCHRONIZING...' : 'COMMIT TO BIBLE'}
+                </button>
+            </div>
+        </div>
     </div>
   );
 };
 
 export default BeatSheetForm;
+

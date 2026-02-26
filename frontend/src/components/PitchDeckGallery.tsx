@@ -247,7 +247,7 @@ const PitchDeckGallery: React.FC<PitchDeckGalleryProps> = ({
                         <img
                             src={generatedPosterUrl || 'https://via.placeholder.com/600x900?text=Movie+Poster'}
                             alt="Movie Poster"
-                            className="w-full h-auto object-cover"
+                            className="w-full h-[600px] object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-70"></div>
                         <div className="absolute bottom-4 left-4 right-4">

@@ -80,7 +80,7 @@ async def get_current_user(authorization: str = Header(...)):
         try:
             user_ref.set({
                 'plan': 'free',
-                'studio_credits': 0,
+                'studio_credits': 999999,
                 'created_at': firestore.SERVER_TIMESTAMP,
                 'email': decoded_token.get('email', 'unknown@example.com') # Store email from token
             })
@@ -91,3 +91,22 @@ async def get_current_user(authorization: str = Header(...)):
             print(f"Error creating user doc: {e}")
     
     return user_id
+
+async def verify_project_ownership(universe_id: str, project_id: str, user_id: str):
+    """
+    Helper to verify that the project exists and is owned by the user.
+    Raises HTTPException if unauthorized.
+    """
+    db = get_firestore_db()
+    project_ref = db.collection("universes").document(universe_id).collection("projects").document(project_id)
+    project_doc = project_ref.get()
+    
+    if not project_doc.exists:
+        raise HTTPException(status_code=404, detail="Project not found.")
+        
+    data = project_doc.to_dict()
+    if data.get("owner_id") != user_id:
+        print(f"SECURITY ALERT: User {user_id} attempted unauthorized access to project {project_id}")
+        raise HTTPException(status_code=403, detail="Unauthorized access to this project.")
+    
+    return data

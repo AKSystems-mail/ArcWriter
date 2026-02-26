@@ -74,18 +74,28 @@ class LLMService:
             try:
                 return json.loads(raw_text)
             except json.JSONDecodeError:
+                # 1. Try stripping markdown blocks and whitespace
                 cleaned = re.sub(r"```json\s*|\s*```", "", raw_text).strip()
                 try:
                     return json.loads(cleaned)
                 except json.JSONDecodeError:
-                    match = re.search(r"(\{.*\})", cleaned, re.DOTALL)
-                    if match:
+                    # 2. Try finding the outermost { and } using balanced search
+                    # This is more robust than simple regex for nested JSON
+                    start_idx = cleaned.find('{')
+                    end_idx = cleaned.rfind('}')
+                    if start_idx != -1 and end_idx != -1:
+                        potential_json = cleaned[start_idx:end_idx+1]
                         try:
-                            return json.loads(match.group(1))
+                            return json.loads(potential_json)
                         except json.JSONDecodeError:
-                            pass
+                            # 3. Final attempt: Try fixing common trailing comma issue
+                            fixed = re.sub(r",\s*([\]\}])", r"\1", potential_json)
+                            try:
+                                return json.loads(fixed)
+                            except:
+                                pass
                 
-                logger.error(f"JSON parsing failed. Raw: {raw_text}")
+                logger.error(f"JSON parsing failed. Raw response snippet: {raw_text[:500]}...")
                 return {"error": "JSON parsing failed", "raw": raw_text}
 
         except Exception as e:

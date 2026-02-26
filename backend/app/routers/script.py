@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-from app.utils.firebase_auth_utils import get_current_user
+from app.utils.firebase_auth_utils import get_current_user, verify_project_ownership
 from app.services.logic_engine import LogicEngine
 
 router = APIRouter(
@@ -26,6 +26,27 @@ class DialogueSuggestionRequest(BaseModel):
 class HookScanRequest(BaseModel):
     script_text: str
     genre: str
+
+class MacroAuditRequest(BaseModel):
+    full_script: str
+    universe_id: str
+    project_id: str
+
+@router.post("/macro_audit")
+async def macro_audit(request: MacroAuditRequest, user_id: str = Depends(get_current_user)):
+    from app.services.bible_manager import BibleManager
+    # SECURITY: Verify ownership before auditing
+    await verify_project_ownership(request.universe_id, request.project_id, user_id)
+    
+    logic_engine = LogicEngine()
+    try:
+        manager = BibleManager(universe_name=request.universe_id, project_id=request.project_id)
+        bible_context = manager.get_context_string()
+        result = logic_engine.audit_full_structure(request.full_script, bible_context)
+        return result
+    except Exception as e:
+        print(f"Error in macro audit endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/hook_scan")
 async def hook_scan(request: HookScanRequest, user_id: str = Depends(get_current_user)):

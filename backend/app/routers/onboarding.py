@@ -5,6 +5,7 @@ from app.utils.firebase_auth_utils import get_current_user, get_firestore_db
 from app.services.logic_engine import LogicEngine
 from app.services.script_parser import parse_pdf_to_editor_format
 from pypdf import PdfReader
+import pdfplumber
 import io
 import os
 import uuid
@@ -51,28 +52,28 @@ async def analyze_file(file: UploadFile = File(...), user_id: str = Depends(get_
     
     tmp_path = None
     try:
+        # Use streaming upload to handle large files efficiently
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             shutil.copyfileobj(file.file, tmp)
             tmp_path = tmp.name
         
-        script_blocks, text = parse_pdf_to_editor_format(tmp_path)
+        # 1. Structural Parse & Page Count (Unified for Memory Efficiency)
+        script_blocks, text, page_count = parse_pdf_to_editor_format(tmp_path)
+        
+        # 2. Basic Extraction Fallback (if structural parse failed)
         if not text:
-             pdf = PdfReader(tmp_path)
-             text = ""
-             for page in pdf.pages:
-                 text += page.extract_text() + "\n"
-
-        try:
-             pdf = PdfReader(tmp_path)
-             page_count = len(pdf.pages)
-        except:
-             page_count = 0
+             with pdfplumber.open(tmp_path) as pdf:
+                 text = "\n".join([p.extract_text() or "" for p in pdf.pages])
+                 page_count = len(pdf.pages)
 
         logic_engine = LogicEngine()
-        if page_count > 10:
+        # THRESHOLD: Scripts are usually >= 3 pages. 
+        if page_count >= 3:
+             # Deep reverse engineer
              metadata = logic_engine.reverse_engineer_script(text)
              metadata["source_type"] = "script"
         else:
+             # Fast notes distillation
              metadata = logic_engine.distill_notes(text)
              metadata["source_type"] = "notes"
         
@@ -216,19 +217,26 @@ async def finalize_onboarding(request: SetupRequest, background_tasks: Backgroun
         project_ref.set(project_data)
 
         redirect_to = "beat-sheet"
-        if request.is_script and "script_blocks" in metadata:
-            script_blocks = metadata["script_blocks"]
-            if script_blocks:
-                script_ref = project_ref.collection("script").document("content")
-                script_ref.set({"blocks": script_blocks})
-                redirect_to = "editor"
+        # PRIORITY: If script content was imported, use it and skip auto-generation
+        if request.is_script and request.script_content:
+            print(f"[{user_id}] Screenplay Mode: Saving {len(request.script_content)} blocks to editor...")
+            script_ref = project_ref.collection("script").document("content")
+            script_ref.set({"blocks": request.script_content})
+            redirect_to = "editor"
         elif request.mode == "explorer":
             print(f"[{user_id}] Explorer mode: Generating initial scene...")
             first_beat_desc = beat_sheet.get("opening_image", "A striking visual start.")
-            chars = [c.get("name", "Protagonist") for c in metadata.get("character_descriptions", [])[:2]]
+            # Pass all extracted characters for maximum context
+            chars = [c.get("name", "Protagonist") for c in metadata.get("character_descriptions", [])]
             
-            # CRITICAL: Pass full context so AI doesn't hallucinate sci-fi for a mystery
-            full_context = f"GENRE: {genre}\nLOGLINE: {logline}\nBEAT: Opening Image - {first_beat_desc}"
+            # CRITICAL: Pass full narrative DNA so AI stays true to the 1940s Georgia/Lottie setting
+            full_context = (
+                f"GENRE: {genre}\n"
+                f"LOGLINE: {logline}\n"
+                f"STORY VIBE: {request.vibe}\n"
+                f"STORY SUMMARY: {synopsis}\n"
+                f"CURRENT BEAT: Opening Image - {first_beat_desc}"
+            )
             
             try:
                 initial_blocks = logic_engine.generate_scene_content(

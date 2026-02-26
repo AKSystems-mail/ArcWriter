@@ -7,6 +7,7 @@ import uuid
 import json
 import os
 import shutil
+import requests
 from fastapi.responses import StreamingResponse
 from google.oauth2 import service_account
 import stripe
@@ -27,26 +28,6 @@ class ServiceRegistry:
         self._pdf_service = None
         self._user_service = None
         self._stripe_service = None
-        self._vertex_initialized = False
-
-    def _ensure_vertex_init(self):
-        if not self._vertex_initialized:
-            try:
-                import vertexai
-                if os.path.exists('serviceAccountKey.json'):
-                    vertex_creds = service_account.Credentials.from_service_account_file('serviceAccountKey.json')
-                else:
-                    vertex_creds = None 
-                
-                vertexai.init(
-                    project=os.getenv('GOOGLE_CLOUD_PROJECT') or "arc-studio-box", 
-                    location=os.getenv('GOOGLE_CLOUD_LOCATION', 'us-central1'), 
-                    credentials=vertex_creds
-                )
-                self._vertex_initialized = True
-                print("Vertex AI Lazy Initialization Complete")
-            except Exception as e:
-                print(f"Warning: Lazy Vertex AI init failed: {e}")
 
     @property
     def logic_engine(self):
@@ -65,7 +46,6 @@ class ServiceRegistry:
     @property
     def asset_studio(self):
         if self._asset_studio is None:
-            self._ensure_vertex_init()
             from app.services.asset_studio import AssetStudio
             self._asset_studio = AssetStudio()
         return self._asset_studio
@@ -100,8 +80,8 @@ class ServiceRegistry:
 
 services = ServiceRegistry()
 
-from app.utils.firebase_auth_utils import verify_token, get_firestore_db, initialize_firebase_admin, get_current_user
-from app.routers import onboarding, users, pitchdeck, script
+from app.utils.firebase_auth_utils import verify_token, get_firestore_db, initialize_firebase_admin, get_current_user, verify_project_ownership
+from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing
 
 # Initialize Firebase Admin SDK (v2 bridge)
 initialize_firebase_admin()
@@ -126,6 +106,10 @@ app.include_router(onboarding.router)
 app.include_router(users.router)
 app.include_router(pitchdeck.router)
 app.include_router(script.router)
+app.include_router(bible.router)
+app.include_router(manual.router)
+app.include_router(public.router)
+app.include_router(billing.router)
 
 @app.get("/")
 async def root():
@@ -147,6 +131,38 @@ async def list_universes(user_id: str = Depends(get_current_user)):
         universes.append(UniverseResponse(name="My First Universe"))
     return universes
 
+class UpdateAnchorRequest(BaseModel):
+    universe_id: str
+    project_id: str
+    character_name: str
+    anchor_url: str
+
+@app.post("/api/project/character/update_anchor")
+async def update_character_anchor(request: UpdateAnchorRequest, user_id: str = Depends(get_current_user)):
+    db = get_firestore_db()
+    try:
+        project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
+        project_doc = project_ref.get()
+        
+        if not project_doc.exists:
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        data = project_doc.to_dict()
+        characters = data.get("characters", [])
+        
+        # Update the specific character's anchor
+        updated_characters = []
+        for char in characters:
+            if char.get("name") == request.character_name:
+                char["anchor_url"] = request.anchor_url
+            updated_characters.append(char)
+            
+        project_ref.update({"characters": updated_characters})
+        return {"status": "success", "message": f"Anchor locked for {request.character_name}"}
+    except Exception as e:
+        logger.error(f"Failed to lock anchor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # --- Project Management Endpoints ---
 class ProjectResponse(BaseModel):
     id: str
@@ -155,6 +171,8 @@ class ProjectResponse(BaseModel):
     logline: Optional[str] = None
     genre: Optional[str] = None
     poster_url: Optional[str] = None
+    teaser_url: Optional[str] = None
+    bible_content: Optional[str] = None
     created_at: Optional[Any] = None
     characters: Optional[List[Dict[str, Any]]] = None
     beat_sheet_data: Optional[Dict[str, Any]] = None
@@ -162,12 +180,8 @@ class ProjectResponse(BaseModel):
 
 @app.get("/api/project/{universe_name}/{project_id}", response_model=ProjectResponse)
 async def get_project_details(universe_name: str, project_id: str, user_id: str = Depends(get_current_user)):
-    db = get_firestore_db()
-    project_ref = db.collection("universes").document(universe_name).collection("projects").document(project_id)
-    project_doc = project_ref.get()
-    if not project_doc.exists:
-        raise HTTPException(status_code=404, detail=f"Project '{project_id}' not found.")
-    project_config = project_doc.to_dict()
+    project_config = await verify_project_ownership(universe_name, project_id, user_id)
+        
     return ProjectResponse(
         id=project_id,
         name=project_config.get('title', project_id),
@@ -175,6 +189,8 @@ async def get_project_details(universe_name: str, project_id: str, user_id: str 
         logline=project_config.get('logline'),
         genre=project_config.get('genre'),
         poster_url=project_config.get('poster_url'),
+        teaser_url=project_config.get('teaser_url'),
+        bible_content=project_config.get('bible_content'),
         created_at=project_config.get('created_at'),
         characters=project_config.get('characters'),
         beat_sheet_data=project_config.get('beat_sheet_data'),
@@ -223,7 +239,7 @@ class AssetRequest(BaseModel):
 
 @app.post("/api/assets/generate")
 async def generate_asset(request: AssetRequest, user_id: str = Depends(get_current_user)):
-    cost = 10 # Default cost
+    cost = 10 
     await services.user_service.deduct_credits(user_id, cost)
     
     if request.type == 'poster':
@@ -236,6 +252,18 @@ async def generate_asset(request: AssetRequest, user_id: str = Depends(get_curre
         if not base64_data:
             raise HTTPException(status_code=500, detail="Generation failed")
         return {"b64_data": base64_data}
+        
+    elif request.type == 'character_concepts':
+        # Step 8: System returns 4 headshots
+        variants = services.asset_studio.generate_character_anchor(
+            description=request.description or "",
+            style=request.style
+        )
+        if not variants:
+            raise HTTPException(status_code=500, detail="Character generation failed")
+        
+        return {"variants": variants}
+        
     return {"error": "Invalid type"}
 
 class RegenerateRequest(BaseModel):
@@ -250,7 +278,6 @@ async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(ge
     await services.user_service.deduct_credits(user_id, cost)
     
     try:
-        from app.utils.firebase_auth_utils import get_firestore_db
         db = get_firestore_db()
         project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
         project_doc = project_ref.get()
@@ -261,11 +288,27 @@ async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(ge
         data = project_doc.to_dict()
         
         if request.type == 'poster':
+            # Step 9: Consistent Poster Logic
+            # 1. Look for locked anchors in the character list
+            characters = data.get("characters", [])
+            image_references = []
+            for char in characters:
+                anchor_url = char.get("anchor_url")
+                if anchor_url and 'placehold.co' not in anchor_url:
+                    # Fetch image and convert to B64 for reference
+                    try:
+                        resp = requests.get(anchor_url)
+                        if resp.ok:
+                            image_references.append(base64.b64encode(resp.content).decode('utf-8'))
+                    except:
+                        logger.warning(f"Failed to fetch anchor for {char.get('name')}")
+
             base64_data = services.asset_studio.generate_poster(
                 title=data.get("title", "Untitled"),
                 tagline=data.get("logline", ""),
                 genre=data.get("genre", "Drama"),
-                style=data.get("vibe", "Cinematic")
+                style=data.get("vibe", "Cinematic"),
+                image_references=image_references
             )
             if not base64_data: raise HTTPException(status_code=500, detail="Poster generation failed")
             return {"b64_data": base64_data}
@@ -277,12 +320,13 @@ async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(ge
             if not char_data:
                 raise HTTPException(status_code=404, detail="Character not found")
                 
-            base64_data = services.asset_studio.generate_character_anchor(
+            # Step 8 Sync: Regeneration also returns 4 variants for selection
+            variants = services.asset_studio.generate_character_anchor(
                 description=char_data.get("description", ""),
                 style=data.get("vibe", "Cinematic")
             )
-            if not base64_data: raise HTTPException(status_code=500, detail="Character anchor generation failed")
-            return {"b64_data": base64_data}
+            if not variants: raise HTTPException(status_code=500, detail="Character anchor generation failed")
+            return {"variants": variants}
             
         return {"error": "Invalid regeneration type"}
     except Exception as e:
@@ -291,11 +335,50 @@ async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(ge
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+class TeaserRequest(BaseModel):
+    universe_id: str
+    project_id: str
+
+@app.post("/api/assets/generate_teaser")
+async def generate_teaser(request: TeaserRequest, user_id: str = Depends(get_current_user)):
+    cost = 50 
+    await services.user_service.deduct_credits(user_id, cost)
+    
+    try:
+        db = get_firestore_db()
+        project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
+        project_doc = project_ref.get()
+        if not project_doc.exists:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        data = project_doc.to_dict()
+        prompt = f"Cinematic scene from a {data.get('genre')} film. {data.get('logline')}. Visual vibe: {data.get('vibe')}."
+        
+        # Async Pivot: Get operation object immediately
+        operation = services.asset_studio.generate_teaser(prompt=prompt)
+        if not operation:
+            raise HTTPException(status_code=500, detail="Failed to initialize motion render")
+            
+        return {"operation_id": operation.name}
+    except Exception as e:
+        logger.error(f"Teaser Initialization Failure: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/assets/teaser_status")
+async def get_teaser_status(operation_id: str, user_id: str = Depends(get_current_user)):
+    """Checks the status of a long-running motion operation via query param."""
+    try:
+        status = services.asset_studio.get_operation_status(operation_id)
+        return status
+    except Exception as e:
+        logger.error(f"Status Check Failure: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Export as Firebase Function
 @https_fn.on_request(
     region="us-central1",
-    memory=2048,
-    timeout_sec=300,
+    memory=4096, 
+    timeout_sec=540, # Max timeout for feature-length script analysis
     min_instances=0,
     invoker="public",
     secrets=["GEMINI_API_KEY"]

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronRight, FileText, ArrowLeft, Save, Target, BrainCircuit } from 'lucide-react';
+import { ChevronRight, FileText, ArrowLeft, Save, Target, BrainCircuit, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatLine } from '../utils/formatUtils';
 import StoryInsights from './StoryInsights';
@@ -22,10 +22,12 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const [logicScore, setLogicScore] = useState(null);
   const [sceneDynamics, setSceneDynamics] = useState(null);
   const [hookScanResult, setHookScanResult] = useState(null); 
+  const [macroAuditResult, setMacroAuditResult] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
   const lastSavedBlocksRef = useRef(blocks);
   const [isSourceDrawerOpen, setIsSourceDrawerOpen] = useState(false);
+  const [isInsightsDrawerOpen, setIsInsightsDrawerOpen] = useState(true);
   const [sourceContent, setSourceContent] = useState('');
   const [isGeneratingScene, setIsGeneratingScene] = useState(false);
   const [isMagicMenuOpen, setIsMagicMenuOpen] = useState(false);
@@ -376,7 +378,8 @@ const ScriptEditor = ({ universeId, projectId }) => {
       }));
 
       if (generatedBlocks.length > 0) {
-        setBlocks(generatedBlocks);
+        // APPEND blocks instead of replacing
+        setBlocks(prev => [...prev, ...generatedBlocks]);
         setIsSaved(false);
       }
     } catch (error) {
@@ -390,7 +393,10 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const handleHookScan = async () => {
     setIsAnalyzing(true);
     setHookScanResult(null);
-    const scriptText = blocks.map(block => block.text).join('\n');
+    
+    // OPTIMIZATION: Only send the first ~15 pages (approx 600 blocks) for the audit
+    const scriptText = blocks.slice(0, 600).map(block => block.text).join('\n');
+    
     try {
       const projectRef = getProjectRef();
       const projectSnap = await getDoc(projectRef);
@@ -413,17 +419,62 @@ const ScriptEditor = ({ universeId, projectId }) => {
     }
   };
 
+  const handleMacroAudit = async () => {
+    setIsAnalyzing(true);
+    setMacroAuditResult(null);
+    const fullScriptText = blocks.map(block => block.text).join('\n');
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/script/macro_audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ full_script: fullScriptText, universe_id: universeId, project_id: projectId }),
+      });
+      if (!response.ok) throw new Error('Macro Audit Failed');
+      const data = await response.json();
+      setMacroAuditResult(data);
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Structural Audit failed. Ensure script is long enough.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleAnalyzeSceneRequest = useCallback(async (persona) => {
     setIsAnalyzing(true);
     setLogicScore(null);
     if (!isSaved) await saveScriptToFirestore(blocks);
-    const scriptText = blocks.map(block => block.text).join('\n');
+
+    // OPTIMIZATION: Only send the current scene context to avoid 502/OOM on large scripts
+    let relevantBlocks = [];
+    const focusedIndex = blocks.findIndex(b => b.id === focusedBlockId);
+    
+    if (focusedIndex !== -1) {
+      // Find start of current scene (nearest heading above)
+      let start = focusedIndex;
+      while (start > 0 && blocks[start].type !== 'Scene Heading') {
+        start--;
+      }
+      // Find end of current scene (next heading below)
+      let end = focusedIndex + 1;
+      while (end < blocks.length && blocks[end].type !== 'Scene Heading') {
+        end++;
+      }
+      relevantBlocks = blocks.slice(start, end);
+    } else {
+      // Fallback: Last 50 blocks if no focus
+      relevantBlocks = blocks.slice(-50);
+    }
+
+    const sceneText = relevantBlocks.map(block => block.text).join('\n');
+    
     try {
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/critique', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ persona, scene_text: scriptText, universe_name: universeId, project_id: projectId }),
+        body: JSON.stringify({ persona, scene_text: sceneText, universe_name: universeId, project_id: projectId }),
       });
       if (!response.ok) throw new Error('Failed');
       const data = await response.json();
@@ -436,10 +487,11 @@ const ScriptEditor = ({ universeId, projectId }) => {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [blocks, isSaved, saveScriptToFirestore, universeId, projectId]);
+  }, [blocks, focusedBlockId, isSaved, saveScriptToFirestore, universeId, projectId]);
 
   const renderPages = () => {
-    const LINES_PER_PAGE = 52; // Standard 11" page minus 1" margins @ 6 lines/inch
+    // Recalibrated: 9" printable height / ~0.22" per line (12pt @ 1.4 line-height) = ~40 lines max
+    const LINES_PER_PAGE = 40; 
     const pages = [];
     let currentPage = [];
     let currentLines = 0;
@@ -471,7 +523,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
     if (currentPage.length > 0) pages.push(currentPage);
 
     return pages.map((pageBlocks, pageIndex) => (
-      <div key={pageIndex} className="script-page relative mb-8 shadow-2xl">
+      <div key={pageIndex} className="script-page relative mb-8 shadow-2xl border-b-2 border-dashed border-gray-200">
         <div className="absolute top-4 right-8 text-gray-400 text-xs font-mono select-none">{pageIndex + 1}.</div>
         {pageBlocks.map((block) => {
           const { className } = formatLine(block.type, block.text);
@@ -487,7 +539,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
                   setShowAutocomplete(false);
                   resizeBlock(block.id); // Ensure resize on focus
                 }}
-                className={`${className} script-block resize-none overflow-hidden bg-transparent focus:outline-none focus:bg-blue-50/50 transition-colors`}
+                className={`${className} script-block resize-none overflow-hidden bg-transparent focus:outline-none focus:bg-arc-teal/[0.03] transition-colors`}
                 placeholder={block.type === 'Scene Heading' ? 'INT. LOCATION - TIME' : ''}
               />
               
@@ -516,56 +568,116 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const activeFormat = blocks.find(b => b.id === focusedBlockId)?.type || 'Action';
 
   return (
-    <div className="flex h-screen bg-black overflow-hidden selection:bg-arc-teal/30">
+    <div className="flex h-screen bg-black overflow-hidden selection:bg-arc-teal/30 font-sans">
       <SourceMaterialDrawer isOpen={isSourceDrawerOpen} onToggle={() => setIsSourceDrawerOpen(!isSourceDrawerOpen)} content={sourceContent} onInsert={handleInsertSourceMaterial} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="h-14 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-6 z-50">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 transition-colors" title="Exit to Dashboard"><ArrowLeft className="w-5 h-5" /></button>
-            <div className="h-4 w-px bg-gray-700"></div>
-            <div className="flex items-center gap-6">
-              <span className="text-xs font-bold text-arc-teal uppercase tracking-widest cursor-default">Script Editor</span>
+      
+      <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">
+        {/* Workspace Top Toolbar */}
+        <div className="h-16 bg-[#050505] border-b border-white/5 flex items-center justify-between px-8 z-50 shadow-2xl">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate('/dashboard')}>
+                <img src="/ArcWriter_logo.png" alt="ArcWriter" className="h-6 opacity-80 group-hover:opacity-100 transition-opacity" />
+                <div className="h-4 w-px bg-gray-800"></div>
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 group-hover:text-arc-teal transition-colors">Studio</span>
+            </div>
+            <div className="h-4 w-px bg-gray-800"></div>
+            <div className="flex items-center gap-4">
               <button 
                 onClick={() => navigate(`/project/${projectId}/beat-sheet`, { state: { project_id: projectId, universe_id: universeId } })}
-                className="text-xs font-bold text-gray-500 hover:text-arc-orange uppercase tracking-widest transition-colors flex items-center gap-2"
+                className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 hover:text-white transition-all group"
               >
-                <Target className="w-3.5 h-3.5" />
-                Project Blueprint
+                <Target className="w-3.5 h-3.5 text-arc-orange group-hover:scale-110 transition-transform" />
+                <span>Blueprint</span>
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <span className={`text-[10px] uppercase tracking-tighter ${isSaved ? 'text-gray-600' : 'text-arc-orange animate-pulse'}`}>{isSaving ? 'Saving...' : isSaved ? 'All changes saved' : 'Unsaved Changes'}</span>
-            <button onClick={() => saveScriptToFirestore(blocks)} className="p-2 hover:bg-gray-800 rounded-lg text-arc-teal transition-colors"><Save className="w-4 h-4" /></button>
+
+          <div className="flex items-center gap-6">
+            <div className="flex flex-col items-end">
+                <span className={`text-[8px] font-black uppercase tracking-widest ${isSaved ? 'text-gray-700' : 'text-arc-orange animate-pulse'}`}>
+                    {isSaving ? 'Synchronizing...' : isSaved ? 'Asset Integrity: Verified' : 'Unsaved Changes'}
+                </span>
+            </div>
+            <button onClick={() => saveScriptToFirestore(blocks)} className="p-2.5 bg-white/5 border border-white/10 hover:bg-arc-teal hover:text-white rounded-sm text-arc-teal transition-all shadow-xl">
+                <Save className="w-4 h-4" />
+            </button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-8 bg-gray-900 flex flex-col items-center custom-scrollbar">{renderPages()}<div className="h-64"></div></div>
-        <div className="h-20 bg-gray-900 border-t border-gray-800 flex items-center justify-center gap-4 px-6 z-50 shadow-lg">
-          <FormatButton label="Slug" shortcut="1" isActive={activeFormat === 'Scene Heading'} onClick={() => handleFormatChange('Scene Heading')} />
-          <FormatButton label="Action" shortcut="2" isActive={activeFormat === 'Action'} onClick={() => handleFormatChange('Action')} />
-          <FormatButton label="Char" shortcut="3" isActive={activeFormat === 'Character'} onClick={() => handleFormatChange('Character')} />
-          <FormatButton label="Dial" shortcut="4" isActive={activeFormat === 'Dialogue'} onClick={() => handleFormatChange('Dialogue')} />
-          <FormatButton label="Par" shortcut="5" isActive={activeFormat === 'Parenthetical'} onClick={() => handleFormatChange('Parenthetical')} />
-          <div className="w-px h-8 bg-gray-800 mx-2"></div>
+
+        {/* Script Content Area */}
+        <div className="flex-1 overflow-y-auto p-12 bg-[#0a0a0a] flex flex-col items-center custom-scrollbar relative">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/[0.02] via-transparent to-transparent pointer-events-none"></div>
+            {renderPages()}
+            <div className="h-64"></div>
+        </div>
+
+        {/* Workspace Bottom Toolbar (Instrumentation) */}
+        <div className="h-24 bg-[#050505] border-t border-white/5 flex items-center justify-between px-10 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+          <div className="flex items-center gap-2">
+            <FormatButton label="Slugline" shortcut="1" isActive={activeFormat === 'Scene Heading'} onClick={() => handleFormatChange('Scene Heading')} />
+            <FormatButton label="Action" shortcut="2" isActive={activeFormat === 'Action'} onClick={() => handleFormatChange('Action')} />
+            <FormatButton label="Character" shortcut="3" isActive={activeFormat === 'Character'} onClick={() => handleFormatChange('Character')} />
+            <FormatButton label="Dialogue" shortcut="4" isActive={activeFormat === 'Dialogue'} onClick={() => handleFormatChange('Dialogue')} />
+            <FormatButton label="Parenthetical" shortcut="5" isActive={activeFormat === 'Parenthetical'} onClick={() => handleFormatChange('Parenthetical')} />
+          </div>
+
           <div className="relative">
-            <button onClick={() => setIsMagicMenuOpen(!isMagicMenuOpen)} disabled={isGeneratingScene} className="px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-200 bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50 shadow-[0_0_20px_rgba(168,85,247,0.3)] flex items-center gap-2">{isGeneratingScene ? 'Thinking...' : 'Draft Assist'}<ChevronRight className={`w-4 h-4 transition-transform ${isMagicMenuOpen ? 'rotate-90' : ''}`} /></button>
+            <button 
+                onClick={() => setIsMagicMenuOpen(!isMagicMenuOpen)} 
+                disabled={isGeneratingScene} 
+                className="group px-10 py-4 bg-white hover:bg-purple-600 text-black hover:text-white font-black text-[10px] uppercase tracking-[0.4em] transition-all duration-500 rounded-sm flex items-center gap-4 shadow-2xl shadow-white/5 disabled:opacity-50"
+            >
+                {isGeneratingScene ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BrainCircuit className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                {isGeneratingScene ? 'Analyzing...' : 'Draft Assist'}
+                <ChevronRight className={`w-4 h-4 transition-transform duration-500 ${isMagicMenuOpen ? 'rotate-90' : ''}`} />
+            </button>
+
             {isMagicMenuOpen && (
-              <div className="absolute bottom-full mb-4 right-0 w-64 bg-gray-900 border border-arc-teal rounded-2xl shadow-2xl overflow-hidden animate-fade-in z-50">
-                <button onClick={handleMagicWand} className="w-full text-left p-4 hover:bg-purple-600/20 text-white text-xs font-bold uppercase tracking-widest border-b border-gray-800 transition-colors">Auto-Draft Scene</button>
-                <button onClick={handleSuggestDialogue} className="w-full text-left p-4 hover:bg-purple-600/20 text-white text-xs font-bold uppercase tracking-widest border-b border-gray-800 transition-colors">Suggest Dialogue</button>
+              <div className="absolute bottom-full mb-6 right-0 w-72 bg-black border border-white/10 rounded-sm shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden animate-fade-in z-50">
+                <button onClick={handleMagicWand} className="w-full text-left p-6 hover:bg-purple-600/10 text-white text-[10px] font-black uppercase tracking-[0.3em] border-b border-white/5 transition-all flex items-center justify-between group">
+                    Auto-Draft Scene <ChevronRight className="w-3 h-3 text-gray-700 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <button onClick={handleSuggestDialogue} className="w-full text-left p-6 hover:bg-purple-600/10 text-white text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-between group">
+                    Suggest Dialogue <ChevronRight className="w-3 h-3 text-gray-700 group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
             )}
+
             {isSuggestionModalOpen && (
-               <div className="absolute bottom-full mb-4 right-0 w-96 bg-gray-900 border-2 border-arc-teal rounded-2xl shadow-[0_0_50px_rgba(0,206,201,0.2)] overflow-hidden z-[60] p-4 flex flex-col gap-3">
-                  <div className="text-arc-teal text-xs font-black uppercase tracking-widest mb-2">Select Dialogue Option</div>
-                  {suggestions.map((option, idx) => (<button key={idx} onClick={() => handleInsertSuggestion(option)} className="text-left p-3 rounded-lg bg-gray-800 hover:bg-arc-teal/20 hover:border-arc-teal border border-transparent transition-all text-sm text-gray-200">"{option}"</button>))}
-                  <button onClick={() => setIsSuggestionModalOpen(false)} className="mt-2 text-xs text-gray-500 hover:text-white uppercase tracking-widest">Cancel</button>
+               <div className="absolute bottom-full mb-6 right-0 w-[400px] bg-black border border-arc-teal/30 rounded-sm shadow-[0_0_60px_rgba(45,212,191,0.1)] overflow-hidden z-[60] p-8 flex flex-col gap-4">
+                  <div className="text-arc-teal text-[10px] font-black uppercase tracking-[0.4em] mb-4 border-b border-white/5 pb-4">Dialogue Variants</div>
+                  {suggestions.map((option, idx) => (
+                    <button 
+                        key={idx} 
+                        onClick={() => handleInsertSuggestion(option)} 
+                        className="text-left p-5 bg-[#080808] hover:bg-arc-teal/5 border border-white/5 hover:border-arc-teal/30 rounded-sm transition-all text-sm text-gray-300 font-light italic leading-relaxed group"
+                    >
+                        "{option}"
+                    </button>
+                  ))}
+                  <button onClick={() => setIsSuggestionModalOpen(false)} className="mt-4 text-[9px] text-gray-600 hover:text-white uppercase font-black tracking-widest transition-colors">Discard Suggestions</button>
                </div>
             )}
           </div>
         </div>
       </div>
-      <StoryInsights onAnalyzeScene={handleAnalyzeSceneRequest} onHookScan={handleHookScan} messages={aiFeedbackMessages} isAnalyzing={isAnalyzing} hookScanResult={hookScanResult} score={logicScore} dynamics={sceneDynamics} totalLines={blocks.length} isSaving={isSaving} isSaved={isSaved} />
+
+      <StoryInsights 
+        onAnalyzeScene={handleAnalyzeSceneRequest} 
+        onHookScan={handleHookScan} 
+        onMacroAudit={handleMacroAudit}
+        messages={aiFeedbackMessages} 
+        isAnalyzing={isAnalyzing} 
+        hookScanResult={hookScanResult} 
+        macroAuditResult={macroAuditResult}
+        score={logicScore} 
+        dynamics={sceneDynamics} 
+        totalLines={blocks.length} 
+        isSaving={isSaving} 
+        isSaved={isSaved}
+        isOpen={isInsightsDrawerOpen}
+        onToggle={() => setIsInsightsDrawerOpen(!isInsightsDrawerOpen)}
+      />
     </div>
   );
 };
@@ -573,8 +685,9 @@ const ScriptEditor = ({ universeId, projectId }) => {
 const FormatButton = ({ label, shortcut, isActive, onClick }) => (
   <button
     onMouseDown={(e) => { e.preventDefault(); onClick(); }}
-    className={`relative px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 ${isActive ? 'bg-arc-teal text-black shadow-[0_0_10px_rgba(0,206,201,0.4)]' : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'}`}
+    className={`relative px-6 py-3 rounded-sm font-black text-[9px] uppercase tracking-[0.2em] transition-all duration-500 border group ${isActive ? 'bg-arc-teal border-arc-teal text-black shadow-glow' : 'bg-transparent border-white/5 text-gray-600 hover:text-white hover:border-white/20'}`}
   >
+    <span className={`absolute top-1 left-1.5 text-[7px] font-black transition-opacity ${isActive ? 'opacity-50' : 'opacity-20 group-hover:opacity-100'}`}>{shortcut}</span>
     {label}
   </button>
 );

@@ -1,150 +1,279 @@
 import React, { useRef, useEffect } from 'react';
-import { AlertCircle, CheckCircle2, Terminal, Activity, BrainCircuit, BarChart3, Scale, Target } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Terminal, Activity, BrainCircuit, BarChart3, Scale, Target, ChevronRight, ChevronLeft, Zap, RefreshCw, Layers, FileText } from 'lucide-react';
 import SceneSeismograph from './SceneSeismograph';
 
 const StoryInsights = ({ 
   onAnalyzeScene, 
-  onHookScan, // New prop
+  onHookScan, 
+  onMacroAudit,
   messages, 
   isAnalyzing, 
-  hookScanResult, // New prop
+  hookScanResult, 
+  macroAuditResult,
   score, 
   dynamics, 
   totalLines, 
   isSaving, 
-  isSaved 
+  isSaved,
+  isOpen,
+  onToggle
 }) => {
-  const [activeTab, setActiveTab] = React.useState('scene'); // 'scene' or 'hook'
-
-  const analysisDetails = dynamics?.analysis_details || {};
-  const hasAnalysis = !!dynamics;
+  const [activeTab, setActiveTab] = React.useState('scene'); // 'scene' | 'macro' | 'hook'
 
   const PillarScore = ({ label, score }) => (
-    <div className="flex flex-col gap-1">
-        <div className="flex justify-between items-center text-[9px] uppercase tracking-tighter text-gray-500 font-bold">
+    <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-center text-[8px] uppercase tracking-widest text-gray-600 font-black">
             <span>{label}</span>
-            <span>{score}%</span>
+            <span className="text-white">{score}%</span>
         </div>
-        <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
-            <div className="h-full bg-arc-teal transition-all duration-1000" style={{ width: `${score}%` }} />
+        <div className="h-[1px] w-full bg-white/5 overflow-hidden">
+            <div className="h-full bg-arc-teal transition-all duration-1000 shadow-glow" style={{ width: `${score}%` }} />
         </div>
     </div>
   );
 
   return (
-    <div className="w-96 bg-gray-900 border-l border-gray-800 flex flex-col h-full shadow-2xl z-40 font-sans">
-      {/* Header */}
-      <div className="h-16 border-b border-gray-800 flex items-center justify-between px-6 bg-gray-900/50 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-            <Activity className="w-5 h-5 text-arc-teal" />
-            <h2 className="font-bold text-sm tracking-widest uppercase text-gray-200">Insights</h2>
-        </div>
-        <div className="flex bg-gray-800 p-1 rounded-lg">
-            <button 
-                onClick={() => setActiveTab('scene')}
-                className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'scene' ? 'bg-arc-teal text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
-            >
-                Scene
-            </button>
-            <button 
-                onClick={() => setActiveTab('hook')}
-                className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'hook' ? 'bg-arc-teal text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
-            >
-                Hook
-            </button>
-        </div>
-      </div>
+    <div className={`bg-[#050505] border-l border-white/5 transition-all duration-500 flex flex-col h-full shadow-2xl z-40 font-sans relative ${isOpen ? 'w-[400px]' : 'w-14'}`}>
+      
+      {/* Minimalist Toggle */}
+      <button
+          onClick={onToggle}
+          className="absolute -left-3 top-24 bg-black border border-white/10 rounded-full p-1.5 text-gray-600 hover:text-white hover:border-white/30 z-50 transition-all shadow-2xl"
+      >
+          {isOpen ? <ChevronRight size={12} strokeWidth={3} /> : <ChevronLeft size={12} strokeWidth={3} />}
+      </button>
 
-      {/* Diagnostic Panel */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {activeTab === 'scene' ? (
-            <div className="p-6 space-y-8">
-                {/* ... (Existing Scene Analysis UI) */}
-                <button
-                    onClick={() => onAnalyzeScene("market_viability")}
-                    disabled={isAnalyzing || totalLines < 5}
-                    className="w-full py-3 bg-arc-teal/10 hover:bg-arc-teal/20 border border-arc-teal/50 text-arc-teal rounded-lg font-bold text-xs uppercase tracking-widest transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
-                >
-                    {isAnalyzing ? <div className="w-4 h-4 border-2 border-arc-teal border-t-transparent rounded-full animate-spin" /> : <BrainCircuit className="w-4 h-4" />}
-                    Run Scene Diagnostics
-                </button>
-
-                {/* Logic Score */}
-                <div className="flex items-center justify-between p-4 bg-gray-900/50 border border-gray-800 rounded-xl">
-                    <div className="flex items-center gap-3">
-                        <Scale className="w-5 h-5 text-gray-400" />
-                        <span className="text-xs text-gray-400 uppercase tracking-widest font-semibold">Logic Score</span>
-                    </div>
-                    <div className={`text-3xl font-black font-mono ${score >= 80 ? 'text-green-400' : score >= 50 ? 'text-yellow-400' : score !== null ? 'text-red-400' : 'text-gray-600'}`}>{score !== null ? score : '--'}</div>
-                </div>
-
-                {/* Seismograph */}
-                {dynamics && dynamics.tension_curve && (
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 mb-1"><Activity className="w-4 h-4 text-gray-500" /><span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Scene Dynamics</span></div>
-                        <div className="h-24 w-full bg-gray-950 rounded-lg border border-gray-800 overflow-hidden relative"><SceneSeismograph data={dynamics.tension_curve} /></div>
-                    </div>
-                )}
-
-                {/* Report */}
-                {messages.length > 0 && (
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 mb-1"><BarChart3 className="w-4 h-4 text-gray-500" /><span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Analysis Report</span></div>
-                        <div className="bg-gray-950/50 border border-gray-800 rounded-xl p-4 font-mono text-sm space-y-4">
-                            {messages.slice(-1).map((msg, idx) => (
-                                <div key={idx} className="animate-fade-in text-gray-300"><p className="whitespace-pre-wrap leading-relaxed">{msg.replace(/^\[.*?\]\s*/, '')}</p></div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+      {isOpen ? (
+        <>
+          {/* Sidebar Header */}
+          <div className="h-16 border-b border-white/5 flex items-center justify-between px-8 bg-black/50 backdrop-blur-sm">
+            <div className="flex items-center gap-4">
+                <Activity className="w-4 h-4 text-arc-teal opacity-50" />
+                <h2 className="font-black text-[10px] tracking-[0.2em] uppercase text-gray-400">Insights</h2>
             </div>
-          ) : (
-            <div className="p-6 space-y-8">
-                <button
-                    onClick={onHookScan}
-                    disabled={isAnalyzing || totalLines < 50}
-                    className="w-full py-3 bg-arc-orange/10 hover:bg-arc-orange/20 border border-arc-orange/50 text-arc-orange rounded-lg font-bold text-xs uppercase tracking-widest transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
-                >
-                    {isAnalyzing ? <div className="w-4 h-4 border-2 border-arc-orange border-t-transparent rounded-full animate-spin" /> : <Target className="w-4 h-4" />}
-                    Gatekeeper Audit
-                </button>
+            <div className="flex bg-white/5 p-1 rounded-sm border border-white/5">
+                {['scene', 'macro', 'hook'].map((tab) => (
+                    <button 
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-3 py-1.5 rounded-sm text-[8px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-black shadow-xl' : 'text-gray-600 hover:text-white'}`}
+                    >
+                        {tab}
+                    </button>
+                ))}
+            </div>
+          </div>
 
-                {hookScanResult ? (
-                    <div className="space-y-8 animate-fade-in">
-                        {/* Verdict Card */}
-                        <div className={`p-6 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 ${hookScanResult.gatekeeper_verdict === 'READ' ? 'bg-green-500/10 border-green-500/50' : 'bg-red-500/10 border-red-500/50'}`}>
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Verdict</span>
-                            <span className={`text-5xl font-black italic tracking-tighter ${hookScanResult.gatekeeper_verdict === 'READ' ? 'text-green-400' : 'text-red-400'}`}>
-                                {hookScanResult.gatekeeper_verdict}
-                            </span>
-                        </div>
+          {/* Diagnostic Panel Content */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {activeTab === 'scene' && (
+                <div className="p-10 space-y-12">
+                    <button
+                        onClick={() => onAnalyzeScene("structural_integrity")}
+                        disabled={isAnalyzing || totalLines < 5}
+                        className="group w-full py-5 bg-white hover:bg-arc-teal text-black hover:text-white border border-transparent rounded-sm font-black text-[10px] uppercase tracking-[0.4em] transition-all duration-500 disabled:opacity-20 shadow-2xl flex items-center justify-center gap-4"
+                    >
+                        {isAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BrainCircuit className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                        Initialize Diagnostic
+                    </button>
 
-                        {/* Pillar Scores */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <PillarScore label="Theme" score={hookScanResult.pillar_scores.theme} />
-                            <PillarScore label="Motivation" score={hookScanResult.pillar_scores.motivation} />
-                            <PillarScore label="Tone" score={hookScanResult.pillar_scores.tone} />
-                            <PillarScore label="Catalyst" score={hookScanResult.pillar_scores.catalyst} />
-                        </div>
-
-                        {/* Audit Report */}
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 mb-1"><Target className="w-4 h-4 text-gray-500" /><span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pillar Audit</span></div>
-                            <div className="bg-gray-950/50 border border-gray-800 rounded-xl p-4 font-mono text-[11px] text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                {hookScanResult.detailed_audit}
+                    {/* Logic Score Instrument */}
+                    <div className="flex flex-col gap-6 p-8 bg-[#080808] border border-white/5 rounded-sm shadow-xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-0 bg-arc-teal transition-all duration-1000" style={{ h: score !== null ? '100%' : '0%' }} />
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Scale className="w-4 h-4 text-gray-600" />
+                                <span className="text-[9px] text-gray-600 uppercase tracking-[0.3em] font-black">Rationality Score</span>
+                            </div>
+                            <div className={`text-4xl font-black tracking-tighter ${score >= 80 ? 'text-arc-teal' : score >= 50 ? 'text-arc-orange' : score !== null ? 'text-red-500' : 'text-gray-800'}`}>
+                                {score !== null ? score : '--'}
                             </div>
                         </div>
+                        <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden">
+                            <div className={`h-full transition-all duration-1000 ${score >= 80 ? 'bg-arc-teal' : 'bg-arc-orange'}`} style={{ width: `${score || 0}%` }} />
+                        </div>
                     </div>
-                ) : (
-                    <div className="py-20 text-center space-y-4">
-                        <Target className="w-12 h-12 text-gray-800 mx-auto" />
-                        <p className="text-gray-600 text-sm italic">"The first 10 pages are a contract. Have you fulfilled yours?"</p>
-                        <p className="text-gray-700 text-[10px] uppercase font-bold tracking-widest">(Requires ~50 lines of text)</p>
-                    </div>
-                )}
-            </div>
-          )}
-      </div>
+
+                    {/* Emotional Rhythm (Seismograph) */}
+                    {dynamics && dynamics.tension_curve && isOpen && (
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Activity className="w-4 h-4 text-gray-600" />
+                                    <span className="text-[9px] text-gray-600 font-black uppercase tracking-[0.3em]">Emotional Rhythm</span>
+                                </div>
+                                <span className="text-[8px] font-black text-arc-teal uppercase tracking-widest italic">Dynamic Curve</span>
+                            </div>
+                            <SceneSeismograph 
+                                tensionCurve={dynamics.tension_curve} 
+                                milestones={dynamics.milestones}
+                                labelType="Line"
+                            />
+                        </div>
+                    )}
+
+                    {/* Analysis Log */}
+                    {messages.length > 0 && (
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                                <BarChart3 className="w-4 h-4 text-gray-600" />
+                                <span className="text-[9px] text-gray-600 font-black uppercase tracking-[0.3em]">Audit Log</span>
+                            </div>
+                            <div className="space-y-8">
+                                {messages.slice(-1).map((msg, idx) => (
+                                    <div key={idx} className="animate-fade-in">
+                                        <p className="text-gray-400 text-sm font-light leading-relaxed italic whitespace-pre-wrap pl-4 border-l border-white/5">
+                                            {msg.replace(/^\[.*?\]\s*/, '')}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+              )}
+
+              {activeTab === 'macro' && (
+                <div className="p-10 space-y-12">
+                    <button
+                        onClick={onMacroAudit}
+                        disabled={isAnalyzing || totalLines < 100}
+                        className="group w-full py-5 bg-white hover:bg-arc-orange text-black hover:text-white border border-transparent rounded-sm font-black text-[10px] uppercase tracking-[0.4em] transition-all duration-500 disabled:opacity-20 shadow-2xl flex items-center justify-center gap-4"
+                    >
+                        {isAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                        Structural Audit
+                    </button>
+
+                    {macroAuditResult ? (
+                        <div className="space-y-12 animate-fade-in">
+                            <div className="flex flex-col gap-6 p-8 bg-[#080808] border border-white/5 rounded-sm shadow-xl relative overflow-hidden">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Layers className="w-4 h-4 text-gray-600" />
+                                        <span className="text-[9px] text-gray-600 uppercase tracking-[0.3em] font-black">Macro Integrity</span>
+                                    </div>
+                                    <div className="text-4xl font-black tracking-tighter text-arc-orange">
+                                        {macroAuditResult.structural_integrity_score}%
+                                    </div>
+                                </div>
+                                <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden">
+                                    <div className="h-full bg-arc-orange transition-all duration-1000" style={{ width: `${macroAuditResult.structural_integrity_score}%` }} />
+                                </div>
+                            </div>
+
+                            {macroAuditResult.plothole_warnings?.length > 0 && (
+                                <div className="space-y-4">
+                                    <div className="text-[9px] font-black text-red-500 uppercase tracking-[0.3em] mb-4">Critical Logic Gaps</div>
+                                    {macroAuditResult.plothole_warnings.map((warn, i) => (
+                                        <div key={i} className="p-4 bg-red-500/5 border border-red-500/20 rounded-sm text-xs text-red-200 italic font-light leading-relaxed">
+                                            {warn}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                                    <FileText className="w-4 h-4 text-gray-600" />
+                                    <span className="text-[9px] text-gray-600 font-black uppercase tracking-[0.3em]">Full Audit Log</span>
+                                </div>
+                                <div className="font-light text-sm text-gray-400 whitespace-pre-wrap leading-relaxed italic pl-4 border-l border-white/5">
+                                    {macroAuditResult.full_audit_report}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="py-32 text-center space-y-8 opacity-20">
+                            <Layers className="w-16 h-16 text-white mx-auto mb-4" />
+                            <div className="space-y-2">
+                                <p className="text-white text-xs font-black uppercase tracking-[0.3em]">Structural Engine Idle</p>
+                                <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">(Minimum 100 Line Requirement)</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+              )}
+
+              {activeTab === 'hook' && (
+                <div className="p-10 space-y-12">
+                    <button
+                        onClick={onHookScan}
+                        disabled={isAnalyzing || totalLines < 50}
+                        className="group w-full py-5 bg-black border border-white/10 hover:border-arc-orange/50 text-gray-500 hover:text-white rounded-sm font-black text-[10px] uppercase tracking-[0.4em] transition-all duration-500 disabled:opacity-20 flex items-center justify-center gap-4"
+                    >
+                        {isAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                        Audit First 10 Pages
+                    </button>
+
+                    {hookScanResult ? (
+                        <div className="space-y-12 animate-fade-in">
+                            {/* Hook Velocity Instrument */}
+                            {hookScanResult.velocity_curve && isOpen && (
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <Zap className="w-4 h-4 text-gray-600" />
+                                            <span className="text-[9px] text-gray-600 font-black uppercase tracking-[0.3em]">Hook Velocity</span>
+                                        </div>
+                                        <span className="text-[8px] font-black text-arc-orange uppercase tracking-widest italic">Interest Curve</span>
+                                    </div>
+                                    <SceneSeismograph 
+                                        tensionCurve={hookScanResult.velocity_curve} 
+                                        milestones={hookScanResult.hook_milestones}
+                                        labelType="Page"
+                                    />
+                                </div>
+                            )}
+
+                            <div className={`p-10 rounded-sm border flex flex-col items-center justify-center gap-4 shadow-2xl relative overflow-hidden ${hookScanResult.gatekeeper_verdict === 'READ' ? 'bg-arc-teal/5 border-arc-teal/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                                <div className="absolute top-0 left-0 w-full h-[1px] bg-white/5" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-gray-600">Executive Verdict</span>
+                                <span className={`text-6xl font-black italic tracking-tighter ${hookScanResult.gatekeeper_verdict === 'READ' ? 'text-arc-teal shadow-glow' : 'text-red-500'}`}>
+                                    {hookScanResult.gatekeeper_verdict}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-8 bg-[#080808] p-8 border border-white/5 rounded-sm">
+                                <PillarScore label="Theme Convergence" score={hookScanResult.pillar_scores.theme} />
+                                <PillarScore label="Motivation Drift" score={hookScanResult.pillar_scores.motivation} />
+                                <PillarScore label="Tonal Integrity" score={hookScanResult.pillar_scores.tone} />
+                                <PillarScore label="Narrative Catalyst" score={hookScanResult.pillar_scores.catalyst} />
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                                    <Target className="w-4 h-4 text-gray-600" />
+                                    <span className="text-[9px] text-gray-600 font-black uppercase tracking-[0.3em]">Pillar Specification</span>
+                                </div>
+                                <div className="font-light text-sm text-gray-400 whitespace-pre-wrap leading-relaxed italic pl-4 border-l border-white/5">
+                                    {hookScanResult.detailed_audit}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="py-32 text-center space-y-8 opacity-20">
+                            <Target className="w-16 h-16 text-white mx-auto mb-4" />
+                            <div className="space-y-2">
+                                <p className="text-white text-xs font-black uppercase tracking-[0.3em]">Gatekeeper Protocol Idle</p>
+                                <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">(Minimum 50 Line Requirement)</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+              )}
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 flex flex-col items-center pt-32 gap-8 bg-black/20">
+            <span 
+                className="transform rotate-90 whitespace-nowrap text-gray-700 text-[10px] font-black uppercase tracking-[0.5em] cursor-pointer hover:text-arc-teal transition-colors"
+                onClick={onToggle}
+            >
+                Insights
+            </span>
+            <div className="w-px h-24 bg-gradient-to-b from-gray-900 to-transparent" />
+        </div>
+      )}
     </div>
   );
 };

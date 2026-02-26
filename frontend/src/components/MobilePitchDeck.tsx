@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ChevronRight } from 'lucide-react';
 
 interface MobilePitchDeckProps {
     projectTitle?: string;
@@ -6,21 +7,36 @@ interface MobilePitchDeckProps {
     synopsis?: string;
     posterUrl?: string;
     teaserUrl?: string | null;
-    characterUrl?: string;
+    characters?: any[];
 }
 
 const MobilePitchDeck: React.FC<MobilePitchDeckProps> = ({
-    projectTitle = 'ArcWriter - The Genesis',
+    projectTitle = 'ArcWriter',
     tagline = 'A new beginning for humanity.',
-    synopsis = 'Year 2077. The megacity of Neo-Veridia thrives under the iron fist of the omniscient Aethel Corp, a company that controls every aspect of its citizens\' lives through advanced neural implants. Kael, a former data architect now living off-grid, stumbles upon a suppressed historical archive revealing Aethel Corp\'s true origins: a brutal coup that erased the true founding principles of the city.',
+    synopsis = 'Loading project details...',
     posterUrl = 'https://via.placeholder.com/600x900?text=Movie+Poster',
     teaserUrl = null,
-    characterUrl = 'https://via.placeholder.com/150?text=Character',
+    characters = [],
 }) => {
     const [currentSlide, setCurrentSlide] = useState(0);
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+
+    // Helper to extract clean synopsis from Project Master Blueprint (Markdown)
+    const cleanSynopsis = (raw: string) => {
+        if (!raw) return "No story summary available.";
+        if (!raw.includes('## Synopsis')) return raw.slice(0, 500) + (raw.length > 500 ? '...' : '');
+        
+        try {
+            const parts = raw.split('## Synopsis');
+            if (parts.length < 2) return raw;
+            const content = parts[1].split('##')[0].trim();
+            return content || "Summary in production...";
+        } catch (e) {
+            return raw.slice(0, 500);
+        }
+    };
 
     const slides = [
         { id: 'poster', title: 'Poster' },
@@ -95,12 +111,12 @@ const MobilePitchDeck: React.FC<MobilePitchDeckProps> = ({
                             <h2 className="text-sm font-black text-arc-orange uppercase tracking-[0.3em] mb-4 text-center">
                                 The Story
                             </h2>
-                            <h3 className="text-3xl font-bold text-white mb-8 text-center leading-tight">
+                            <h3 className="text-2xl font-bold text-white mb-8 text-center leading-tight">
                                 {tagline}
                             </h3>
-                            <div className="bg-gray-900/40 backdrop-blur-md rounded-3xl p-8 border border-gray-800 shadow-2xl">
-                                <p className="text-xl text-gray-300 leading-relaxed font-light italic text-center">
-                                    {synopsis}
+                            <div className="bg-gray-900/40 backdrop-blur-md rounded-3xl p-8 border border-white/5 shadow-2xl overflow-y-auto max-h-[50vh]">
+                                <p className="text-lg text-gray-300 leading-relaxed font-light italic text-center">
+                                    {cleanSynopsis(synopsis)}
                                 </p>
                             </div>
                         </div>
@@ -138,23 +154,29 @@ const MobilePitchDeck: React.FC<MobilePitchDeckProps> = ({
                     </div>
 
                     {/* Slide 4: Character Gallery */}
-                    <div className="min-w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-b from-obsidian-black via-gray-900 to-obsidian-black">
+                    <div className="min-w-full h-full flex flex-col items-center justify-start p-8 bg-gradient-to-b from-obsidian-black via-gray-900 to-obsidian-black overflow-y-auto pt-20">
                         <div className="w-full max-w-2xl animate-fade-in">
                             <h2 className="text-sm font-black text-arc-orange uppercase tracking-[0.3em] mb-12 text-center">
                                 Principal Cast
                             </h2>
-                            <div className="grid grid-cols-1 gap-8 px-4">
-                                <div className="relative group rounded-3xl overflow-hidden border border-gray-800 shadow-2xl">
-                                    <img
-                                        src={characterUrl}
-                                        alt="Main Character"
-                                        className="w-full h-80 object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-obsidian-black p-8 flex flex-col justify-end">
-                                        <p className="text-arc-orange text-xs font-black uppercase tracking-widest mb-1">Lead Character</p>
-                                        <p className="text-white font-bold text-2xl uppercase tracking-tighter">The Protagonist</p>
-                                    </div>
-                                </div>
+                            <div className="grid grid-cols-1 gap-12 px-4 pb-32">
+                                {characters && characters.length > 0 ? (
+                                    characters.map((char, idx) => (
+                                        <div key={idx} className="relative group rounded-none overflow-hidden border border-white/5 shadow-2xl bg-black">
+                                            <img
+                                                src={char.anchor_url || 'https://via.placeholder.com/400?text=Awaiting+Render'}
+                                                alt={char.name}
+                                                className="w-full h-80 object-cover grayscale transition-all duration-700"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent p-8 flex flex-col justify-end">
+                                                <p className="text-arc-teal text-[10px] font-black uppercase tracking-[0.3em] mb-1 italic">{char.role}</p>
+                                                <p className="text-white font-black text-3xl uppercase tracking-tighter">{char.name}</p>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center text-gray-600 italic py-20">No characters identified.</div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -178,10 +200,11 @@ const MobilePitchDeck: React.FC<MobilePitchDeckProps> = ({
 
             {/* Swipe Hint (only on first slide) */}
             {currentSlide === 0 && (
-                <div className="absolute bottom-24 left-0 right-0 flex justify-center animate-bounce">
+                <div className="absolute bottom-24 left-0 right-0 flex items-center justify-center gap-2">
                     <div className="text-gray-500 uppercase tracking-[0.4em] text-[10px] font-black">
                         Swipe to Reveal
                     </div>
+                    <ChevronRight className="w-4 h-4 text-arc-orange animate-horizontal-bounce" />
                 </div>
             )}
         </div>

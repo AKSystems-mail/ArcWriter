@@ -8,119 +8,109 @@ interface SceneSeismographProps {
     totalLines?: number;
 }
 
-const SceneSeismograph: React.FC<SceneSeismographProps> = ({ tensionPeaks = [], tensionCurve = [], totalLines = 50 }) => {
-    // Process data: transform tensionCurve or tensionPeaks into graph data
+interface Milestone {
+    index?: number;
+    page?: number;
+    label: string;
+    description?: string;
+}
+
+interface SceneSeismographProps {
+    tensionCurve?: number[];
+    milestones?: Milestone[];
+    labelType?: 'Line' | 'Page';
+}
+
+const SceneSeismograph: React.FC<SceneSeismographProps> = ({ tensionCurve = [], milestones = [], labelType = 'Line' }) => {
     const data = useMemo(() => {
-        // 1. Prefer precision curve if available
-        if (tensionCurve && tensionCurve.length > 0) {
-            return tensionCurve.map((val, idx) => ({
-                line: idx,
-                tension: val * 10 // Scale 0-10 to 0-100
-            }));
-        }
-
-        // 2. Fallback to Peaks logic
-        if (!tensionPeaks || tensionPeaks.length === 0) {
+        if (!tensionCurve || tensionCurve.length === 0) {
             return Array.from({ length: 10 }, (_, i) => ({
-                line: i * (totalLines / 10),
-                tension: 50 // Flatline
+                x: i,
+                tension: 50
             }));
         }
 
-        // Create data points
-        // We'll create a point for every peak, and some intermediate points
-        let points = [];
+        return tensionCurve.map((val, idx) => {
+            const milestone = milestones.find(m => (m.index === idx || m.page === (idx + 1)));
+            return {
+                x: idx,
+                tension: val * 10,
+                label: milestone?.label || null,
+                desc: milestone?.description || null
+            };
+        });
+    }, [tensionCurve, milestones]);
 
-        // Sort peaks just in case
-        // We need to parse them first to sort numbers
-        const parsedPeaks = tensionPeaks.map(p => {
-            if (typeof p === 'number') return p;
-            const match = String(p).match(/\d+/);
-            return match ? parseInt(match[0], 10) : 0;
-        }).sort((a, b) => a - b);
+    const isFlatline = !tensionCurve || tensionCurve.length === 0;
 
-        // Generate a baseline curve with spikes at peaks
-        const numPoints = 20;
-        const step = totalLines / numPoints;
-
-        for (let i = 0; i <= numPoints; i++) {
-            const lineNum = Math.floor(i * step);
-            let tension = 30 + Math.random() * 20; // Base tension noise
-
-            // Check proximity to a peak
-            // If close to a peak, spike tension
-            for (let peakLine of parsedPeaks) {
-                if (Math.abs(lineNum - peakLine) < (totalLines / 10)) {
-                    tension = 80 + Math.random() * 15; // Spike
-                }
-            }
-
-            points.push({
-                line: lineNum,
-                tension: Math.min(100, Math.max(0, tension))
-            });
+    const CustomTooltip = ({ active, payload }: any) => {
+        if (active && payload && payload.length) {
+            const point = payload[0].payload;
+            return (
+                <div className="bg-black border border-white/10 p-4 shadow-2xl rounded-sm backdrop-blur-xl">
+                    <div className="flex items-center gap-3 mb-2">
+                        <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest">{labelType} {point.x + (labelType === 'Page' ? 1 : 0)}</span>
+                        <div className="h-px w-4 bg-gray-800" />
+                        <span className="text-[10px] font-black text-arc-teal tracking-widest">{Math.round(payload[0].value)}% TENSION</span>
+                    </div>
+                    {point.label && (
+                        <div className="mt-3 animate-fade-in">
+                            <p className="text-[10px] font-black text-white uppercase tracking-tight mb-1">{point.label}</p>
+                            {point.desc && <p className="text-[10px] text-gray-500 font-light italic leading-relaxed">{point.desc}</p>}
+                        </div>
+                    )}
+                </div>
+            );
         }
-
-        return points;
-    }, [tensionPeaks, totalLines]);
-
-    const isFlatline = !tensionPeaks || tensionPeaks.length === 0;
+        return null;
+    };
 
     return (
-        <div className="w-full bg-gray-900/50 rounded-xl p-4 border border-gray-700 mt-4">
-            <div className="flex items-center gap-2 mb-4">
-                <Activity className="text-arc-teal w-4 h-4" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Emotional Graph</h3>
-            </div>
-
-            <div className="h-40 w-full mb-2">
+        <div className="w-full bg-black border border-white/5 p-6 shadow-inner relative group">
+            <div className="h-40 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data}>
-                        <XAxis
-                            dataKey="line"
-                            hide
-                            domain={[0, 'dataMax']}
-                        />
-                        <YAxis
-                            hide
-                            domain={[0, 100]}
-                        />
-                        <Tooltip
-                            contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', color: '#F3F4F6', fontSize: '12px' }}
-                            itemStyle={{ color: '#F3F4F6' }}
-                            labelStyle={{ display: 'none' }}
-                            formatter={(value: number | undefined) => [value !== undefined ? `${Math.round(value)}%` : '', 'Tension']}
-                        />
+                        <XAxis dataKey="x" hide />
+                        <YAxis hide domain={[0, 100]} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(45, 212, 191, 0.1)', strokeWidth: 20 }} />
                         <Line
                             type="monotone"
                             dataKey="tension"
-                            stroke={isFlatline ? "#EF4444" : "#2DD4BF"} // Red if flat, Teal if good
+                            stroke="#2DD4BF"
                             strokeWidth={2}
-                            dot={false}
-                            activeDot={{ r: 4, fill: '#fff' }}
+                            dot={(props) => {
+                                const { cx, cy, payload } = props;
+                                if (payload.label) {
+                                    return (
+                                        <g key={`dot-${payload.x}`}>
+                                            <circle cx={cx} cy={cy} r={4} fill="#2DD4BF" className="animate-pulse" />
+                                            <circle cx={cx} cy={cy} r={8} stroke="#2DD4BF" strokeWidth={1} fill="transparent" opacity={0.3} />
+                                        </g>
+                                    );
+                                }
+                                return null;
+                            }}
+                            activeDot={{ r: 6, fill: '#fff', stroke: '#2DD4BF', strokeWidth: 2 }}
                         />
-                        {isFlatline && (
-                            <ReferenceLine y={50} stroke="#EF4444" strokeDasharray="3 3" />
-                        )}
+                        {/* Milestone Indicators */}
+                        {data.filter(d => d.label).map((m, i) => (
+                            <ReferenceLine key={i} x={m.x} stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                        ))}
                     </LineChart>
                 </ResponsiveContainer>
             </div>
 
-            {isFlatline && (
-                <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                    <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                        <p className="text-xs text-red-200 font-bold">Flatline Detected: No Push/Pull found. Consider shifting the power dynamic.</p>
-                    </div>
+            <div className="mt-4 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    <Activity className="w-3 h-3 text-arc-teal opacity-50" />
+                    <span className="text-[8px] font-black text-gray-700 uppercase tracking-[0.3em] italic">Atmospheric Analysis Active</span>
                 </div>
-            )}
-
-            {!isFlatline && (
-                <div className="flex justify-between text-[10px] text-gray-500 px-1">
-                    <span>Start</span>
-                    <span>End</span>
+                <div className="flex gap-4 text-[8px] font-black text-gray-800 uppercase tracking-widest">
+                    <span>{labelType === 'Line' ? 'Start' : 'Page 01'}</span>
+                    <div className="w-8 h-px bg-gray-900 self-center" />
+                    <span>{labelType === 'Line' ? 'End' : 'Page 10'}</span>
                 </div>
-            )}
+            </div>
         </div>
     );
 };

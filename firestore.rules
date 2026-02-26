@@ -1,8 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    
+    // 1. User Profiles: Only the owner can read. NOBODY can write (Backend only).
+    // This prevents users from manually setting their own credits or subscription status.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; 
+    }
+    
+    // 2. Universes: Only the owner can read/write.
+    match /universes/{universeId} {
+      allow read, write: if request.auth != null && resource.data.owner_id == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.owner_id == request.auth.uid;
+      
+      // Sub-collections (Projects, etc)
+      match /{allChildren=**} {
+        allow read, write: if request.auth != null && get(/databases/$(database)/documents/universes/$(universeId)).data.owner_id == request.auth.uid;
+      }
+    }
+    
+    // 3. Leads & Mail Queue: Backend ONLY. 
+    // This prevents users from spamming your email service or seeing other leads.
+    match /leads/{leadId} {
+      allow read, write: if false;
+    }
+    match /mail_queue/{mailId} {
+      allow read, write: if false;
+    }
+    
+    // 4. Temporary Analyses: Public Create, Private Read (by ID).
+    match /temporary_analyses/{analysisId} {
+      allow create: if true; // Needed for public tool
+      allow read: if true;   // Frontend needs to see teaser
+      allow write: if false;
     }
   }
 }

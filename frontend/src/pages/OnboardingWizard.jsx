@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, Pencil, Film, User, CheckCircle2, FileUp } from 'lucide-react';
+import { Sparkles, ArrowRight, Pencil, Film, User, CheckCircle2, FileUp, Zap, Hexagon, Compass, Target } from 'lucide-react';
 import { auth, db, storage } from '../firebase';
 import { apiClient } from '../api/client';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
@@ -23,7 +23,8 @@ const OnboardingWizard = () => {
         vibe: null,
         poster_url: null,
         persona: null,      
-        is_script: false    
+        is_script: false,
+        script_blocks: null // Moved out of metadata for stability
     });
 
     const updateMetadataField = (field, value) => {
@@ -37,6 +38,7 @@ const OnboardingWizard = () => {
     };
 
     const updateCharacter = (index, field, value) => {
+        if (!data.metadata?.character_descriptions) return;
         const newChars = [...data.metadata.character_descriptions];
         newChars[index] = { ...newChars[index], [field]: value };
         updateMetadataField('character_descriptions', newChars);
@@ -100,12 +102,14 @@ const OnboardingWizard = () => {
             setData(prev => ({
                 ...prev,
                 metadata: metadata,
+                script_blocks: metadata.script_blocks, // Store blocks separately
                 uploaded_file_name: file.name,
-                pitch: metadata.logline || prev.pitch
+                pitch: metadata.logline || prev.pitch,
+                is_script: metadata.source_type === "script"
             }));
 
             setLoading(false);
-            nextStep();
+            // DO NOT auto-advance. Let user check "Screenplay Mode" box if needed.
         } catch (error) {
             console.error("Error uploading file:", error);
             alert(`Error: ${error.message}`);
@@ -180,7 +184,7 @@ const OnboardingWizard = () => {
                     metadata: cleanMetadata,
                     persona,
                     is_script: data.is_script,
-                    script_content: cleanMetadata?.script_blocks || null
+                    script_content: data.script_blocks // Use the separate blocks state
                 })
             });            
             
@@ -228,45 +232,49 @@ const OnboardingWizard = () => {
     };
 
     const renderStep1 = () => (
-        <div className="w-full max-w-4xl mx-auto px-4 z-10">
-            <div className="text-center mb-16 max-w-2xl mx-auto animate-fade-in">
-                <h2 className="text-4xl font-bold text-white mb-6">Choose Your Path</h2>
-                <p className="text-gray-400 text-lg leading-relaxed">
-                    Every story begins differently. Whether you prefer to build from a rigorous structural foundation or discover your narrative through tone and loose concepts, ArcWriter adapts to your creative process. Select the method that best fits your current workflow.
+        <div className="w-full max-w-5xl mx-auto px-4 z-10">
+            <div className="text-center mb-20 max-w-3xl mx-auto animate-fade-in">
+                <img src="/ArcWriter_logo.png" alt="ArcWriter" className="h-10 mx-auto mb-12" />
+                <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] mb-4 block">Initialization Phase</span>
+                <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter uppercase leading-none">Choose Your <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Workflow</span></h2>
+                <p className="text-gray-500 text-xl font-light leading-relaxed">
+                    Select the architectural path that fits your current creative phase.
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                 <button
                     onClick={() => handleModeSelect('explorer')}
-                    className="group relative h-96 rounded-3xl bg-gray-900/40 border border-gray-700/50 hover:border-violet-500/50 hover:bg-gray-900/60 transition-all duration-500 flex flex-col items-center justify-center p-8 overflow-hidden"
+                    className="group relative h-[450px] rounded-sm bg-[#080808] border border-white/5 hover:border-arc-teal/30 transition-all duration-700 flex flex-col items-center justify-center p-12 overflow-hidden shadow-2xl"
                 >
-                    <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="absolute top-0 left-0 w-full h-[2px] bg-arc-teal scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left" />
                     <div className="relative z-10 text-center">
-                        <div className="w-20 h-20 mb-6 mx-auto rounded-full bg-violet-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                            <Sparkles className="w-10 h-10 text-violet-400" />
+                        <div className="w-24 h-24 mb-10 mx-auto rounded-full bg-arc-teal/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-700 border border-white/5">
+                            <Compass className="w-10 h-10 text-arc-teal" />
                         </div>
-                        <h3 className="text-3xl font-bold text-white mb-3">The Discovery</h3>
-                        <p className="text-gray-400 text-lg">"Start with tone and loose concepts."</p>
-                        <p className="text-sm text-gray-500 mt-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-500">
-                            Discover your story through visuals and mood.
+                        <h3 className="text-3xl font-black text-white mb-4 uppercase tracking-tighter">The Discovery</h3>
+                        <p className="text-gray-500 text-lg font-light italic mb-8">"Start with tone and loose concepts."</p>
+                        <div className="h-px w-12 bg-gray-800 mx-auto mb-8" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 group-hover:text-arc-teal transition-colors">
+                            CALIBRATE MOOD & AESTHETIC
                         </p>
                     </div>
                 </button>
 
                 <button
                     onClick={() => handleModeSelect('architect')}
-                    className="group relative h-96 rounded-3xl bg-gray-900/40 border border-gray-700/50 hover:border-emerald-500/50 hover:bg-gray-900/60 transition-all duration-500 flex flex-col items-center justify-center p-8 overflow-hidden"
+                    className="group relative h-[450px] rounded-sm bg-[#080808] border border-white/5 hover:border-arc-orange/30 transition-all duration-700 flex flex-col items-center justify-center p-12 overflow-hidden shadow-2xl"
                 >
-                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="absolute top-0 left-0 w-full h-[2px] bg-arc-orange scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left" />
                     <div className="relative z-10 text-center">
-                        <div className="w-20 h-20 mb-6 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                            <Pencil className="w-10 h-10 text-emerald-400" />
+                        <div className="w-24 h-24 mb-10 mx-auto rounded-full bg-arc-orange/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-700 border border-white/5">
+                            <Target className="w-10 h-10 text-arc-orange" />
                         </div>
-                        <h3 className="text-3xl font-bold text-white mb-3">The Blueprint</h3>
-                        <p className="text-gray-400 text-lg">"Start with structure and plot points."</p>
-                        <p className="text-sm text-gray-500 mt-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-500">
-                            Build from a strong foundation of structure.
+                        <h3 className="text-3xl font-black text-white mb-4 uppercase tracking-tighter">The Blueprint</h3>
+                        <p className="text-gray-500 text-lg font-light italic mb-8">"Start with structure and plot points."</p>
+                        <div className="h-px w-12 bg-gray-800 mx-auto mb-8" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600 group-hover:text-arc-orange transition-colors">
+                            ENGINEER NARRATIVE LOGIC
                         </p>
                     </div>
                 </button>
@@ -275,16 +283,16 @@ const OnboardingWizard = () => {
     );
 
     const renderStep2 = () => (
-        <div className="w-full max-w-2xl mx-auto px-4 z-10">
+        <div className="w-full max-w-3xl mx-auto px-4 z-10">
             <div className="text-center mb-10">
-                <h2 className="text-4xl font-bold text-white mb-4">Story & Universe</h2>
-                <p className="text-xl text-gray-400">Select your universe and pitch your idea.</p>
+                <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Asset Configuration</span>
+                <h2 className="text-5xl md:text-6xl font-black text-white mb-4 tracking-tighter uppercase leading-none text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Story DNA</h2>
             </div>
 
             <div className="flex flex-col gap-6">
-                <div className="relative group">
-                    <div className="flex justify-between items-center mb-2">
-                        <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal block">Cinematic Universe</label>
+                <div className="relative group bg-[#080808] p-8 border border-white/5 rounded-sm shadow-2xl">
+                    <div className="flex justify-between items-center mb-4">
+                        <label className="text-[10px] uppercase font-black tracking-widest text-gray-500 block">Cinematic Universe</label>
                         {existingUniverses.length > 0 && (
                             <button 
                                 onClick={() => {
@@ -297,54 +305,59 @@ const OnboardingWizard = () => {
                                     }
                                     setShowNewUniverseInput(willShowNew);
                                 }}
-                                className="text-[10px] uppercase font-bold text-gray-500 hover:text-white transition-colors"
+                                className="text-[9px] font-black uppercase tracking-widest text-arc-teal hover:text-white transition-colors"
                             >
-                                {showNewUniverseInput ? "Select Existing" : "Create New +"}
+                                {showNewUniverseInput ? "Select Existing" : "Initialize New +"}
                             </button>
                         )}
                     </div>
 
                     {!showNewUniverseInput && existingUniverses.length > 0 ? (
-                        <select
-                            value={data.universe_name}
-                            onChange={(e) => setData(prev => ({ ...prev, universe_name: e.target.value }))}
-                            className="w-full bg-gray-900/50 border border-gray-700 rounded-xl p-4 text-white focus:outline-none focus:border-arc-teal backdrop-blur-sm transition-all appearance-none cursor-pointer"
-                        >
-                            {existingUniverses.map(u => (
-                                <option key={u.name} value={u.name}>{u.name}</option>
-                            ))}
-                        </select>
+                        <div className="relative">
+                            <select
+                                value={data.universe_name}
+                                onChange={(e) => setData(prev => ({ ...prev, universe_name: e.target.value }))}
+                                className="w-full bg-black border border-white/10 rounded-sm p-4 text-white focus:outline-none focus:border-arc-teal backdrop-blur-sm transition-all appearance-none cursor-pointer text-lg font-bold uppercase tracking-tight"
+                            >
+                                {existingUniverses.map(u => (
+                                    <option key={u.name} value={u.name}>{u.name}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600">
+                                <ArrowRight className="w-4 h-4 rotate-90" />
+                            </div>
+                        </div>
                     ) : (
                         <input
                             type="text"
                             value={data.universe_name}
                             onChange={(e) => setData(prev => ({ ...prev, universe_name: e.target.value }))}
-                            placeholder="e.g. The Quantum Noir Saga"
-                            className="w-full bg-gray-900/50 border border-gray-700 rounded-xl p-4 text-white focus:outline-none focus:border-arc-teal backdrop-blur-sm transition-all animate-fade-in"
+                            placeholder="e.g. THE QUANTUM NOIR SAGA"
+                            className="w-full bg-black border border-white/10 rounded-sm p-4 text-white focus:outline-none focus:border-arc-teal backdrop-blur-sm transition-all animate-fade-in text-lg font-bold uppercase tracking-tight placeholder:text-gray-800"
                             autoFocus
                         />
                     )}
                 </div>
 
-                <div className="relative group">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-2 block">Story Notes & Brief</label>
+                <div className="relative group bg-[#080808] p-8 border border-white/5 rounded-sm shadow-2xl">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-gray-500 mb-4 block">Narrative Brief (Pitch Notes)</label>
                     <textarea
                         value={data.pitch}
                         onChange={(e) => setData(prev => ({ ...prev, pitch: e.target.value }))}
-                        placeholder="In a world where..."
+                        placeholder="Distill your vision here. Focus on stakes, conflict, and the core mystery..."
                         disabled={data.uploaded_file_name}
-                        className={`w-full bg-gray-900/50 border border-gray-700 rounded-2xl p-6 text-xl text-white placeholder-gray-600 focus:outline-none focus:border-arc-teal min-h-[200px] resize-none backdrop-blur-sm transition-all ${data.uploaded_file_name ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`w-full bg-black border border-white/10 rounded-sm p-6 text-lg text-white placeholder-gray-800 focus:outline-none focus:border-arc-teal min-h-[200px] resize-none backdrop-blur-sm transition-all font-light leading-relaxed ${data.uploaded_file_name ? 'opacity-50 cursor-not-allowed' : ''}`}
                     />
 
                     {data.uploaded_file_name && (
-                        <div className="absolute bottom-4 right-4 bg-arc-teal/20 text-arc-teal px-3 py-1 rounded-full text-sm flex items-center gap-2 border border-arc-teal/30 z-20">
+                        <div className="absolute bottom-10 right-10 bg-arc-teal/10 text-arc-teal px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-arc-teal/30 z-20">
                             <CheckCircle2 className="w-4 h-4" /> {data.uploaded_file_name}
                         </div>
                     )}
                 </div>
             </div>
 
-            <div className="mt-8 flex justify-center gap-4">
+            <div className="mt-10 flex justify-center gap-6">
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -357,10 +370,10 @@ const OnboardingWizard = () => {
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={loading}
-                        className="bg-gray-800 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-700 transition-colors flex items-center gap-3 disabled:opacity-50 min-w-[200px] justify-center border border-gray-600"
+                        className="bg-black text-gray-500 px-10 py-5 rounded-sm font-black text-[10px] uppercase tracking-[0.3em] hover:text-white border border-white/10 transition-all disabled:opacity-50 min-w-[220px] justify-center flex items-center gap-3"
                     >
-                        <FileUp className="w-5 h-5" />
-                        {loading ? "Analyzing..." : "Upload PDF"}
+                        <FileUp className="w-4 h-4" />
+                        {loading ? "PROCESSING..." : "IMPORT MANUSCRIPT"}
                     </button>
                     {data.uploaded_file_name && (
                         <div className="flex items-center gap-2 justify-center mt-2">
@@ -369,10 +382,10 @@ const OnboardingWizard = () => {
                                 id="is_script"
                                 checked={data.is_script}
                                 onChange={(e) => setData(prev => ({ ...prev, is_script: e.target.checked }))}
-                                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-arc-teal focus:ring-arc-teal focus:ring-offset-gray-900"
+                                className="w-3 h-3 rounded-none border-white/10 bg-black text-arc-teal focus:ring-0"
                             />
-                            <label htmlFor="is_script" className="text-gray-300 text-sm cursor-pointer select-none">
-                                This is a screenplay (import to editor)
+                            <label htmlFor="is_script" className="text-gray-600 text-[9px] font-black uppercase tracking-widest cursor-pointer select-none">
+                                Screenplay Mode
                             </label>
                         </div>
                     )}
@@ -381,16 +394,16 @@ const OnboardingWizard = () => {
                 <button
                     onClick={data.uploaded_file_name ? nextStep : handleGenerate}
                     disabled={(!data.pitch.trim() && !data.uploaded_file_name) || loading}
-                    className="bg-white text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px] justify-center"
+                    className="bg-white text-black px-12 py-5 rounded-sm font-black text-[10px] uppercase tracking-[0.4em] hover:bg-arc-teal hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[220px] justify-center flex items-center gap-3 shadow-2xl shadow-white/5"
                 >
                     {loading ? (
                         <>
-                            <div className="animate-spin w-6 h-6 border-2 border-black border-t-transparent rounded-full" />
+                            <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
                             <span>{loadingText}</span>
                         </>
                     ) : (
                         <>
-                            {data.uploaded_file_name ? "Continue" : "Analyze Concept"} <ArrowRight className="w-5 h-5" />
+                            {data.uploaded_file_name ? "CONTINUE" : "ANALYZE CONCEPT"} <ArrowRight className="w-4 h-4" />
                         </>
                     )}
                 </button>
@@ -399,85 +412,96 @@ const OnboardingWizard = () => {
     );
 
     const renderStep3 = () => (
-        <div className="w-full max-w-4xl mx-auto px-4 z-10">
-            <div className="text-center mb-10">
-                <h2 className="text-4xl font-bold text-white mb-2">Narrative Blueprint</h2>
-                <p className="text-lg text-gray-400">The AI has distilled your vision. Refine it before the studio initializes.</p>
-                <div className="flex justify-center gap-4 mt-4">
-                    <span className="bg-arc-teal/10 border border-arc-teal/30 text-arc-teal px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
-                        {data.metadata?.beat_sheet ? Object.keys(data.metadata.beat_sheet).length : 0} Narrative Beats Found
-                    </span>
-                    <span className="bg-purple-500/10 border border-purple-500/30 text-purple-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
-                        {data.metadata?.character_descriptions?.length || 0} Characters Distilled
-                    </span>
-                </div>
+        <div className="w-full max-w-6xl mx-auto px-4 z-10">
+            <div className="text-center mb-16">
+                <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Phase 02: Verification</span>
+                <h2 className="text-5xl md:text-7xl font-black text-white mb-4 tracking-tighter uppercase leading-none">The Blueprint</h2>
+                <p className="text-gray-500 text-lg font-light">Refine the distilled Story DNA before initializing the studio.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                <div className="flex flex-col gap-6">
-                    <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm">
-                        <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-3 block">Working Title</label>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mb-16 items-start">
+                <div className="lg:col-span-2 flex flex-col gap-8">
+                    <div className="bg-[#080808] border border-white/5 rounded-sm p-10 shadow-2xl">
+                        <label className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-4 block">Asset Title</label>
                         <input
                             type="text"
                             value={data.metadata?.title || ""}
                             onChange={(e) => updateMetadataField('title', e.target.value)}
-                            className="w-full bg-transparent border-b border-gray-700 focus:border-arc-teal py-2 text-2xl font-bold text-white outline-none transition-colors"
+                            className="w-full bg-transparent border-b border-white/10 focus:border-arc-teal py-4 text-4xl font-black text-white outline-none transition-colors uppercase tracking-tighter"
                         />
                     </div>
 
-                    <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm">
-                        <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-3 block">Distilled Logline</label>
+                    <div className="bg-[#080808] border border-white/5 rounded-sm p-10 shadow-2xl">
+                        <label className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-4 block">Distilled Logline</label>
                         <textarea
                             value={data.metadata?.logline || ""}
                             onChange={(e) => updateMetadataField('logline', e.target.value)}
-                            className="w-full bg-transparent text-gray-300 leading-relaxed outline-none resize-none min-h-[80px]"
+                            className="w-full bg-transparent text-xl text-gray-400 font-light leading-relaxed outline-none resize-none min-h-[120px] italic"
                         />
                     </div>
 
-                    <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm">
-                        <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-3 block">Story Structure</label>
-                        <select
-                            value={data.metadata?.structure_suggestion || ""}
-                            onChange={(e) => updateMetadataField('structure_suggestion', e.target.value)}
-                            className="w-full bg-transparent text-white font-bold outline-none appearance-none cursor-pointer"
-                        >
-                            <option value="Hero's Journey">Hero's Journey</option>
-                            <option value="Save the Cat">Save the Cat</option>
-                            <option value="Story Circle">Story Circle</option>
-                            <option value="Three Act">Three Act</option>
-                            <option value="Fichtean Curve">Fichtean Curve</option>
-                        </select>
+                    <div className="bg-[#080808] border border-white/5 rounded-sm p-10 shadow-2xl">
+                        <label className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-6 block">Structural Framework</label>
+                        <div className="relative">
+                            <select
+                                value={data.metadata?.structure_suggestion || ""}
+                                onChange={(e) => updateMetadataField('structure_suggestion', e.target.value)}
+                                className="w-full bg-black border border-white/10 rounded-sm p-5 text-white font-black text-[10px] uppercase tracking-widest outline-none cursor-pointer appearance-none"
+                            >
+                                {[
+                                    "Hero's Journey",
+                                    "Save the Cat",
+                                    "Story Circle",
+                                    "Three Act",
+                                    "Fichtean Curve"
+                                ].map(structure => (
+                                    <option key={structure} value={structure} className="bg-black text-white">{structure}</option>
+                                ))}
+                                {data.metadata?.structure_suggestion && ![
+                                    "Hero's Journey", "Save the Cat", "Story Circle", "Three Act", "Fichtean Curve"
+                                ].includes(data.metadata.structure_suggestion) && (
+                                    <option value={data.metadata.structure_suggestion} className="bg-black text-white">
+                                        {data.metadata.structure_suggestion}
+                                    </option>
+                                )}
+                            </select>
+                            <ArrowRight className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 rotate-90 text-gray-600 pointer-events-none" />
+                        </div>
                     </div>
                 </div>
 
-                <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm flex flex-col">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-arc-teal mb-4 block">Key Cast (Visual Anchors)</label>
-                    <div className="flex flex-col gap-4 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
+                <div className="bg-[#080808] border border-white/5 rounded-sm p-10 shadow-2xl flex flex-col h-full max-h-[700px]">
+                    <div className="flex justify-between items-center mb-8">
+                        <label className="text-[9px] uppercase font-black tracking-widest text-gray-600 block">Identified Cast</label>
+                        <span className="text-[9px] font-black text-arc-teal uppercase tracking-widest">{data.metadata?.character_descriptions?.length || 0} Entities</span>
+                    </div>
+                    <div className="flex flex-col gap-6 overflow-y-auto pr-4 custom-scrollbar">
                         {data.metadata?.character_descriptions?.map((char, idx) => (
-                            <div key={idx} className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 group hover:border-gray-500 transition-colors">
-                                <div className="flex gap-4 items-start">
-                                    <div className="w-10 h-10 rounded-full bg-arc-teal/10 flex items-center justify-center shrink-0">
-                                        <User className="w-5 h-5 text-arc-teal" />
-                                    </div>
-                                    <div className="flex-1">
+                            <div key={idx} className="bg-black border border-white/5 rounded-sm p-6 group hover:border-arc-teal/20 transition-all duration-500">
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+                                        <div className="w-8 h-8 rounded-full bg-arc-teal/5 flex items-center justify-center border border-white/5">
+                                            <User className="w-4 h-4 text-arc-teal" />
+                                        </div>
                                         <input
                                             type="text"
                                             value={char.name}
                                             onChange={(e) => updateCharacter(idx, 'name', e.target.value)}
-                                            className="bg-transparent text-white font-bold outline-none block w-full mb-1"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={char.role}
-                                            onChange={(e) => updateCharacter(idx, 'role', e.target.value)}
-                                            className="bg-transparent text-[10px] text-arc-teal uppercase tracking-widest outline-none block w-full"
-                                        />
-                                        <textarea
-                                            value={char.description}
-                                            onChange={(e) => updateCharacter(idx, 'description', e.target.value)}
-                                            className="bg-transparent text-xs text-gray-400 mt-2 w-full outline-none resize-none leading-relaxed"
+                                            className="bg-transparent text-white font-black uppercase text-sm tracking-tight outline-none w-full"
                                         />
                                     </div>
+                                    <input
+                                        type="text"
+                                        value={char.role}
+                                        onChange={(e) => updateCharacter(idx, 'role', e.target.value)}
+                                        className="bg-transparent text-[9px] text-arc-teal uppercase font-black tracking-[0.2em] outline-none block w-full mb-2"
+                                    />
+                                    <textarea
+                                        value={char.description}
+                                        rows={4}
+                                        onChange={(e) => updateCharacter(idx, 'description', e.target.value)}
+                                        className="bg-transparent text-xs text-gray-500 font-light leading-relaxed outline-none resize-none min-h-[6rem] border-t border-white/5 pt-4"
+                                    />
                                 </div>
                             </div>
                         ))}
@@ -488,9 +512,9 @@ const OnboardingWizard = () => {
             <div className="flex justify-center">
                 <button
                     onClick={nextStep}
-                    className="bg-arc-teal text-black px-12 py-4 rounded-full font-bold text-lg hover:bg-opacity-90 transition-all flex items-center gap-3 shadow-[0_0_20px_rgba(45,212,191,0.3)]"
+                    className="bg-white text-black px-20 py-8 rounded-sm font-black text-[10px] uppercase tracking-[0.5em] hover:bg-arc-teal hover:text-white transition-all duration-500 flex items-center gap-4 shadow-2xl shadow-white/5"
                 >
-                    Confirm Blueprint <ArrowRight className="w-5 h-5" />
+                    Confirm Architecture <ArrowRight className="w-5 h-5" />
                 </button>
             </div>
         </div>
@@ -510,26 +534,28 @@ const OnboardingWizard = () => {
 
         return (
             <div className="w-full max-w-6xl mx-auto px-4 z-10 text-center">
-                <h2 className="text-4xl font-bold text-white mb-4">Define Visual Aesthetic</h2>
-                <p className="text-xl text-gray-400 mb-12 max-w-3xl mx-auto">
-                    Define the visual soul of your story. This selection will calibrate the AI's rendering engine for your concept art, posters, and atmospheric script feedback.
+                <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Phase 03: Atmosphere</span>
+                <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter uppercase leading-none">Visual Soul</h2>
+                <p className="text-xl text-gray-500 font-light mb-16 max-w-3xl mx-auto leading-relaxed">
+                    Define the aesthetic profile. This selection calibrates the AI rendering engine for concept art, posters, and atmospheric script feedback.
                 </p>
 
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20">
-                        <div className="w-24 h-24 mb-6 rounded-full border-4 border-white/20 border-t-arc-teal animate-spin" />
-                        <h3 className="text-2xl font-light text-white animate-pulse">{loadingText}</h3>
+                        <div className="w-20 h-20 mb-8 rounded-full border-2 border-white/5 border-t-arc-teal animate-spin" />
+                        <h3 className="text-xl font-black uppercase tracking-widest text-white animate-pulse">{loadingText}</h3>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-white/5 border border-white/5 shadow-2xl">
                         {vibes.map(vibe => (
                             <button
                                 key={vibe.id}
                                 onClick={() => handleVibeSelect(vibe.id)}
-                                className={`group relative h-48 rounded-2xl overflow-hidden border border-white/10 hover:border-white/40 transition-all duration-300 shadow-xl`}
+                                className={`group relative h-56 overflow-hidden bg-black transition-all duration-500`}
                             >
-                                <div className={`absolute inset-0 bg-gradient-to-br ${vibe.color} opacity-60 group-hover:opacity-80 transition-opacity`} />
-                                <span className="relative z-10 text-2xl font-bold text-white tracking-wider">{vibe.name}</span>
+                                <div className={`absolute inset-0 bg-gradient-to-br ${vibe.color} opacity-0 group-hover:opacity-40 transition-all duration-700`} />
+                                <div className="absolute top-0 left-0 w-full h-[1px] bg-white/10" />
+                                <span className="relative z-10 text-lg font-black uppercase tracking-widest text-gray-500 group-hover:text-white group-hover:scale-110 transition-all duration-500 block">{vibe.name}</span>
                             </button>
                         ))}
                     </div>
@@ -540,22 +566,23 @@ const OnboardingWizard = () => {
 
     const renderStep5 = () => {
         const personas = [
-            { id: 'market_viability', name: 'Market Viability Mode', desc: 'Optimizes for high stakes, pacing, and commercial audience appeal.' },
-            { id: 'thematic_consistency', name: 'Thematic Consistency Mode', desc: 'Focuses on subtext, emotional resonance, and narrative motifs.' },
-            { id: 'structural_integrity', name: 'Structural Integrity Mode', desc: 'Rigorous stress-testing of plot logic, beat sheet adherence, and pacing.' },
+            { id: 'market_viability', name: 'Market Viability', icon: <Compass className="w-8 h-8" />, desc: 'Optimizes for high stakes, commercial appeal, and executive interest.' },
+            { id: 'thematic_consistency', name: 'Thematic Consistency', icon: <Hexagon className="w-8 h-8" />, desc: 'Focuses on subtext, emotional resonance, and consistent motifs.' },
+            { id: 'structural_integrity', name: 'Structural Integrity', icon: <Target className="w-8 h-8" />, desc: 'Rigorous stress-testing of plot logic, pacing, and beat sheet adherence.' },
         ];
 
         return (
-            <div className="w-full max-w-4xl mx-auto px-4 z-10 text-center">
-                <h2 className="text-4xl font-bold text-white mb-4">Select Analysis Lens</h2>
-                <p className="text-xl text-gray-400 mb-12">How should the logic engine prioritize feedback?</p>
+            <div className="w-full max-w-5xl mx-auto px-4 z-10 text-center">
+                <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Final Phase: Analysis</span>
+                <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter uppercase leading-none">Diagnostic Lens</h2>
+                <p className="text-xl text-gray-500 font-light mb-16">How should the logic engine prioritize feedback during the script review?</p>
 
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20">
-                        <div className="w-24 h-24 mb-6 rounded-full border-4 border-white/20 border-t-arc-orange animate-spin" />
-                        <h3 className="text-2xl font-light text-white animate-pulse text-center">{loadingText}</h3>
-                        <p className="text-gray-500 mt-6 max-w-lg text-center leading-relaxed">
-                            The Art Department is bringing your vision to life and currently rendering your world. Assets will be delivered to your Project Bible and studio archives as soon as they are ready.
+                        <div className="w-24 h-24 mb-10 rounded-full border-2 border-white/5 border-t-arc-orange animate-spin" />
+                        <h3 className="text-xl font-black uppercase tracking-[0.3em] text-white animate-pulse text-center">{loadingText}</h3>
+                        <p className="text-gray-600 mt-10 max-w-md text-sm font-bold uppercase tracking-widest mx-auto leading-loose">
+                            The Art Department is rendering your world. Assets will be delivered to your Project Bible as soon as they are ready.
                         </p>
                     </div>
                 ) : (
@@ -565,13 +592,16 @@ const OnboardingWizard = () => {
                                 key={persona.id}
                                 onClick={() => handlePersonaSelect(persona.id)}
                                 disabled={loading}
-                                className="bg-gray-900/40 border border-gray-700 hover:border-arc-teal/50 hover:bg-gray-800/60 p-8 rounded-2xl transition-all duration-300 flex flex-col items-center text-center group disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="bg-[#080808] border border-white/5 hover:border-arc-teal/30 p-12 rounded-sm transition-all duration-700 flex flex-col items-center text-center group disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl relative overflow-hidden"
                             >
-                                <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                    <User className="w-8 h-8 text-white" />
+                                <div className="absolute top-0 left-0 w-1 h-0 bg-arc-teal group-hover:h-full transition-all duration-700" />
+                                <div className="w-20 h-20 rounded-full bg-black flex items-center justify-center mb-8 border border-white/5 group-hover:scale-110 transition-transform duration-700">
+                                    <div className="text-arc-teal opacity-50 group-hover:opacity-100 transition-opacity">
+                                        {persona.icon}
+                                    </div>
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-2">{persona.name}</h3>
-                                <p className="text-gray-400 text-sm">{persona.desc}</p>
+                                <h3 className="text-xl font-black text-white mb-4 uppercase tracking-tighter group-hover:text-arc-teal transition-colors">{persona.name}</h3>
+                                <p className="text-gray-600 text-sm font-light leading-relaxed">{persona.desc}</p>
                             </button>
                         ))}
                     </div>
@@ -581,8 +611,8 @@ const OnboardingWizard = () => {
     };
 
     return (
-        <div className="fixed inset-0 bg-obsidian-black bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-obsidian-black to-black flex flex-col items-center justify-center overflow-hidden">
-            <div className={`transition-all duration-500 transform ${animateOut ? 'opacity-0 scale-95 translate-y-4' : 'opacity-100 scale-100 translate-y-0'} w-full`}>
+        <div className="fixed inset-0 bg-black bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-gray-900/40 via-black to-black flex flex-col items-center justify-start overflow-y-auto custom-scrollbar">
+            <div className={`transition-all duration-700 transform ${animateOut ? 'opacity-0 scale-95 translate-y-8' : 'opacity-100 scale-100 translate-y-0'} w-full pt-20 pb-40 flex flex-col items-center`}>
                 {step === 1 && renderStep1()}
                 {step === 2 && renderStep2()}
                 {step === 3 && renderStep3()}
@@ -590,9 +620,10 @@ const OnboardingWizard = () => {
                 {step === 5 && renderStep5()}
             </div>
 
-            <div className="absolute bottom-10 flex gap-4">
+            {/* Fixed Progress Navigation */}
+            <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex gap-6 z-[100] bg-black/50 backdrop-blur-md p-4 rounded-full border border-white/5 shadow-2xl">
                 {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i <= step ? 'w-12 bg-white' : 'w-2 bg-gray-700'}`} />
+                    <div key={i} className={`h-[2px] transition-all duration-1000 ${i <= step ? 'w-16 bg-white' : 'w-4 bg-white/10'}`} />
                 ))}
             </div>
         </div>

@@ -12,8 +12,11 @@ import UniverseDashboard from './pages/UniverseDashboard';
 import PitchDeckGallery from './components/PitchDeckGallery';
 import LoginScreen from './pages/LoginScreen';
 import LandingPage from './pages/LandingPage';
+import Analyze from './pages/Analyze';
+import Billing from './pages/Billing';
 import OnboardingWizard from './pages/OnboardingWizard';
 import ScriptEditorPage from './pages/ScriptEditorPage';
+import NotFoundPage from './pages/NotFoundPage';
 import './index.css';
 
 // This checks if the user has completed onboarding or has projects
@@ -106,6 +109,7 @@ function App() {
                     {/* Public Routes */}
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/login" element={<LoginScreen />} />
+                    <Route path="/analyze" element={<Analyze />} />
 
                     {/* The Traffic Controller (Default Logged-in Route) */}
                     <Route
@@ -174,6 +178,15 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
+                    <Route
+                        path="/billing"
+                        element={
+                            <ProtectedRoute>
+                                <Billing />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route path="*" element={<NotFoundPage />} />
                 </Routes>
             </div>
         </Router>

@@ -1,29 +1,34 @@
 import pdfplumber
 import re
 import uuid
+import gc
 
 def parse_pdf_to_editor_format(file_path):
     """
     Parses a PDF script into a JSON format compatible with the ScriptEditor.
-    Uses pdfplumber to extract text and layout information to categorize lines.
+    Uses pdfplumber with aggressive memory management.
+    Returns (blocks, full_text, page_count).
     """
     blocks = []
     full_text = ""
+    page_count = 0
     
     try:
         with pdfplumber.open(file_path) as pdf:
-            for page in pdf.pages:
-                # Accumulate raw text
-                page_text = page.extract_text()
-                if page_text:
-                    full_text += page_text + "\n"
+            page_count = len(pdf.pages)
+            for i, page in enumerate(pdf.pages):
+                # 1. Quick text extraction for LLM
+                p_text = page.extract_text()
+                if p_text:
+                    full_text += p_text + "\n"
 
-                # Extract words with position data
-                words = page.extract_words(x_tolerance=2, y_tolerance=2)
+                # 2. Layout analysis for Editor Blocks
+                # We limit word extraction to help memory
+                words = page.extract_words(x_tolerance=2, y_tolerance=2, use_text_flow=True)
                 if not words:
+                    page.flush_cache()
                     continue
 
-                # Group words into lines based on 'top' coordinate
                 line_map = {}
                 for word in words:
                     top = round(word['top'], 0)
@@ -31,68 +36,40 @@ def parse_pdf_to_editor_format(file_path):
                         line_map[top] = []
                     line_map[top].append(word)
 
-                sorted_tops = sorted(line_map.keys())
-                
-                for top in sorted_tops:
+                for top in sorted(line_map.keys()):
                     line_words = sorted(line_map[top], key=lambda w: w['x0'])
-                    
-                    # Clean and join text
                     text = " ".join([w['text'] for w in line_words]).strip()
-                    if not text:
-                        continue
+                    if not text: continue
                     
-                    # 1. Ignore Page Numbers (Top/Bottom of page, numeric)
-                    is_numeric = re.match(r'^\d+\.?$', text)
-                    if is_numeric and (top < 70 or top > 750):
-                        continue
+                    # Ignore Page Numbers
+                    if re.match(r'^\d+\.?$', text) and (top < 70 or top > 750): continue
 
-                    # 2. Get the left-most position (x0)
                     x0 = line_words[0]['x0']
-                    
-                    # 3. Apply Heuristics based on x0 (Standard PDF points: 72 dpi)
-                    # Action: ~72-100
-                    # Dialogue: ~180-220
-                    # Character: ~250-280
-                    # Parenthetical: ~210-230
-                    
-                    block_type = 'Action' # Default
+                    block_type = 'Action'
                     
                     if x0 < 140:
-                        # Action or Slugline
-                        if is_scene_heading(text):
-                            block_type = 'Scene Heading'
-                        else:
-                            block_type = 'Action'
-                    
+                        block_type = 'Scene Heading' if is_scene_heading(text) else 'Action'
                     elif 140 <= x0 < 240:
-                        # Dialogue or Parenthetical
-                        if text.startswith("(") and text.endswith(")"):
-                            block_type = 'Parenthetical'
-                        else:
-                            block_type = 'Dialogue'
-                    
+                        block_type = 'Parenthetical' if text.startswith("(") else 'Dialogue'
                     elif x0 >= 240:
-                        # Character Name or Transition
-                        if text.isupper():
-                            block_type = 'Character'
-                        else:
-                            # Fallback for centered text that isn't a character
-                            block_type = 'Action'
-
-                    # Clean extra whitespace
-                    text = re.sub(r'\s+', ' ', text).strip()
+                        block_type = 'Character' if text.isupper() else 'Action'
 
                     blocks.append({
                         "id": str(uuid.uuid4()),
                         "type": block_type,
-                        "text": text
+                        "text": re.sub(r'\s+', ' ', text).strip()
                     })
+                
+                # AGGRESSIVE CLEANUP
+                page.flush_cache()
+                if i % 10 == 0:
+                    gc.collect() # Force garbage collection every 10 pages
 
     except Exception as e:
         print(f"Error parsing PDF: {e}")
-        return [], ""
+        return [], "", 0
 
-    return blocks, full_text
+    return blocks, full_text, page_count
 
 def is_scene_heading(text):
     """Checks if text looks like a scene heading."""
