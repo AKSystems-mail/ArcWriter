@@ -86,6 +86,7 @@ from app.routers import onboarding, users, pitchdeck, script, bible, manual, pub
 # Initialize Firebase Admin SDK (v2 bridge)
 initialize_firebase_admin()
 
+# Arc Studio API - Initialized with Security Hardening
 app = FastAPI(title="Arc Studio API")
 
 # Enable CORS
@@ -381,7 +382,14 @@ async def get_teaser_status(operation_id: str, user_id: str = Depends(get_curren
     timeout_sec=540, # Max timeout for feature-length script analysis
     min_instances=0,
     invoker="public",
-    secrets=["GEMINI_API_KEY"]
+    secrets=[
+        "GEMINI_API_KEY", 
+        "STRIPE_SECRET_KEY", 
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_PRICE_WR_MONTHLY",
+        "STRIPE_PRICE_WR_ANNUAL",
+        "STRIPE_PRICE_STUDIO_PASS"
+    ]
 )
 def api(req: https_fn.Request) -> https_fn.Response:
     # Quick health check for Cloud Run

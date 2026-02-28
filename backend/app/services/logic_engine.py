@@ -237,55 +237,64 @@ class LogicEngine:
         
         # Create the teaser (First 3 beats)
         teaser_beats = []
-        beat_names = [
-            "Opening Image", "Theme Stated", "Set-up", "Catalyst", "Debate", 
-            "Break into Two", "B Story", "Fun and Games", "Midpoint", 
-            "Bad Guys Close In", "All Is Lost", "Dark Night of the Soul", 
-            "Break into Three", "Finale", "Final Image"
+        # Standard Save the Cat order: 
+        # 1. Opening Image
+        # 2. Theme Stated
+        # 3. Set-up
+        target_beats = [
+            {"id": 1, "name": "Opening Image", "aliases": ["opening image", "opening"]},
+            {"id": 2, "name": "Theme Stated", "aliases": ["theme stated", "theme"]},
+            {"id": 3, "name": "Set-up", "aliases": ["set-up", "setup"]}
         ]
         
-        # Handle both dict and list formats from AI
-        for i, name in enumerate(beat_names[:3]):
+        for target in target_beats:
             content = None
-            idx_str = str(i + 1)
+            name = target["name"]
+            aliases = target["aliases"]
+            idx_str = str(target["id"])
             
+            # 1. Search in Dict
             if isinstance(full_beats, dict) and full_beats:
-                # Fuzzy matching for keys
-                content = full_beats.get(name) or full_beats.get(idx_str)
-                if not content:
-                    name_lower = name.lower()
+                # Try aliases
+                for alias in aliases:
                     for k, v in full_beats.items():
-                        k_str = str(k).lower()
-                        if name_lower in k_str or (idx_str in k_str and "beat" in k_str):
+                        if alias in str(k).lower():
                             content = v
                             break
+                    if content: break
+                
+                # Try index fallback
+                if not content:
+                    content = full_beats.get(idx_str)
             
+            # 2. Search in List
             elif isinstance(full_beats, list) and full_beats:
-                # Try to find by name or index
-                if i < len(full_beats):
-                    item = full_beats[i]
+                # Try finding by name in list items
+                for item in full_beats:
                     if isinstance(item, dict):
-                        content = item.get("content") or item.get("text") or item.get("description")
-                        # If the dict is just { "Opening Image": "..." }
-                        if not content:
-                            content = item.get(name) or list(item.values())[0]
+                        item_name = (item.get("beat") or item.get("name") or item.get("title") or "").lower()
+                        if any(a in item_name for a in aliases) or idx_str == item_name:
+                            content = item.get("description") or item.get("content") or item.get("text")
+                            if content: break
+                
+                # Strict index fallback if no name match
+                if not content and target["id"] <= len(full_beats):
+                    item = full_beats[target["id"] - 1]
+                    if isinstance(item, dict):
+                        content = item.get("description") or item.get("content") or item.get("text") or list(item.values())[0]
                     else:
                         content = str(item)
 
-            # FINAL FALLBACK: If we still have nothing, grab a chunk of the synopsis or structure suggestion
+            # FINAL FALLBACK
             if not content or content == "Analyzing...":
-                if i == 0:
-                    content = full_analysis.get("logline") or full_analysis.get("synopsis")
-                elif i == 1:
-                    content = full_analysis.get("structure_suggestion")
-                
-                if not content:
-                    content = "Our Logic Engine is mapping this phase of your narrative arc..."
+                if target["id"] == 1: content = full_analysis.get("logline") or full_analysis.get("synopsis")
+                elif target["id"] == 2: content = "The core truth your protagonist must learn during this journey."
+                else: content = "Establishing the world and the status quo before the journey begins."
 
             teaser_beats.append({
-                "id": i+1, 
+                "id": target["id"], 
                 "title": name, 
-                "content": str(content)[:300] # Cap length
+                "content": str(content)[:300]
             })
             
         print(f"DEBUG: teaser_beats: {teaser_beats}")

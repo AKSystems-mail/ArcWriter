@@ -45,6 +45,7 @@ async def public_analyze(
         db = get_firestore_db()
         analysis_id = str(uuid.uuid4())
         
+        # Firestore synchronous calls (No await needed for this client)
         db.collection("temporary_analyses").document(analysis_id).set({
             "full_analysis": result["full_analysis"],
             "created_at": datetime.utcnow(),
@@ -87,29 +88,61 @@ async def capture_lead(request: LeadRequest):
         
         # 3. Trigger Email via Firebase Extension (mail_queue)
         # Format the beat sheet for HTML
-        beat_html = "<ul>"
+        # Use 15-point standard but add spacing
+        beat_html = ""
         beats = full_analysis.get("beat_sheet", {})
-        for name, content in beats.items():
-            beat_html += f"<li><strong>{name}:</strong> {content}</li>"
-        beat_html += "</ul>"
+        
+        # Robust iteration for dict or list of objects
+        if isinstance(beats, dict):
+            for name, content in beats.items():
+                label = name.replace('_', ' ').title()
+                beat_html += f"<div style='margin-bottom: 20px;'><strong style='color: #00cec9; display: block; margin-bottom: 4px;'>{label}</strong><p style='margin: 0; font-style: italic; color: #444;'>{content}</p></div>"
+        elif isinstance(beats, list):
+            for b in beats:
+                if isinstance(b, dict):
+                    name = b.get("beat") or b.get("name") or b.get("title") or "Beat"
+                    content = b.get("description") or b.get("content") or b.get("text") or ""
+                    if not content and len(b) == 1:
+                        name, content = list(b.items())[0]
+                    beat_html += f"<div style='margin-bottom: 20px;'><strong style='color: #00cec9; display: block; margin-bottom: 4px;'>{name}</strong><p style='margin: 0; font-style: italic; color: #444;'>{content}</p></div>"
+                else:
+                    beat_html += f"<div style='margin-bottom: 20px; color: #444;'>{str(b)}</div>"
+
+        # Public URL for the logo
+        logo_url = "https://arc-studio-box.web.app/ArcWriter_logo.png"
 
         db.collection("mail_queue").add({
             "to": request.email,
             "message": {
                 "subject": f"Your 15-Point Beat Sheet: {full_analysis.get('title', 'Untitled Project')}",
                 "html": f"""
-                    <h1>Arc Studio: Structural Analysis Complete</h1>
-                    <p>Here is your professional 15-point structural breakdown based on your notes.</p>
-                    <hr/>
-                    <h3>{full_analysis.get('title', 'Project Concept')}</h3>
-                    <p><strong>Logline:</strong> {full_analysis.get('logline')}</p>
-                    {beat_html}
-                    <hr/>
-                    <p>Ready to see your movie? <a href="https://arc-studio-box.web.app/login">Join the Writer's Room</a> to generate cinematic posters and motion teasers.</p>
+                    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: auto; color: #111; line-height: 1.6;">
+                        <div style="text-align: center; margin-bottom: 40px;">
+                            <img src="{logo_url}" alt="ArcWriter" style="height: 40px; width: auto;" />
+                        </div>
+                        <h2 style="text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #f97316; padding-bottom: 10px; margin-bottom: 30px;">Structural Analysis Complete</h2>
+                        <p>Here is your professional 15-point structural breakdown based on your notes.</p>
+                        
+                        <div style="background: #fdfdfd; padding: 30px; border-radius: 4px; border: 1px solid #eee; margin-bottom: 40px;">
+                            <h3 style="margin-top: 0; color: #111; font-size: 24px; text-transform: uppercase; letter-spacing: -1px;">{full_analysis.get('title', 'Project Concept')}</h3>
+                            <p style="font-weight: bold; color: #666; margin-bottom: 30px;">Logline: <span style="font-weight: normal; font-style: italic;">{full_analysis.get('logline')}</span></p>
+                            
+                            {beat_html}
+                        </div>
+                        
+                        <div style="text-align: center; background: #050505; color: white; padding: 40px; border-radius: 4px;">
+                            <h3 style="margin-top: 0; color: #00cec9; text-transform: uppercase; letter-spacing: 2px;">Ready to see your movie?</h3>
+                            <p style="color: #888; font-size: 14px; margin-bottom: 25px;">Bring your characters to life and generate cinematic trailers using our full Studio suite.</p>
+                            <a href="https://arc-studio-box.web.app/login" style="display: inline-block; background: white; color: black; padding: 15px 35px; text-decoration: none; border-radius: 2px; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">Enter The Writer's Room</a>
+                        </div>
+                        
+                        <p style="text-align: center; font-size: 10px; color: #999; margin-top: 40px; text-transform: uppercase; letter-spacing: 3px;">
+                            Built by Arc Studio &copy; 2026
+                        </p>
+                    </div>
                 """
             }
-        })
-        
+        })        
         # Mark as claimed
         analysis_ref.update({"claimed": True})
         

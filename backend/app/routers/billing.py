@@ -8,6 +8,10 @@ router = APIRouter(prefix="/api/billing", tags=["billing"])
 class CheckoutRequest(BaseModel):
     tier: str # 'WRITER_ROOM_MONTHLY' | 'WRITER_ROOM_ANNUAL' | 'STUDIO_PASS'
 
+@router.get("/health")
+async def billing_health():
+    return {"status": "billing router is live"}
+
 @router.post("/create-session")
 async def create_session(request: CheckoutRequest, user_id: str = Depends(get_current_user)):
     """Creates a Stripe Checkout session for the requested tier."""

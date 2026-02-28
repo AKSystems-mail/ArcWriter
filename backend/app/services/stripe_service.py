@@ -14,7 +14,7 @@ class StripeService:
         self.user_service = user_service
         
         # Base Frontend URL for redirection
-        self.frontend_url = os.getenv("FRONTEND_URL") or "http://localhost:5173"
+        self.frontend_url = os.getenv("FRONTEND_URL") or "https://arc-studio-box.web.app"
 
         # Price IDs from Dashboard
         self.prices = {

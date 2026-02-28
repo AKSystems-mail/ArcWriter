@@ -35,5 +35,3 @@ backend/universes/
 !README.md
 !GEMINI.md
 !*deploy_log*.txt
-
-backend/serviceAccountKey.json
