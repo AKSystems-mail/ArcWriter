@@ -33,13 +33,26 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const [snapshots, setSnapshots] = useState([]);
   const [sourceContent, setSourceContent] = useState('');
   const [isGeneratingScene, setIsGeneratingScene] = useState(false);
-# ... (rest of states)
-  useEffect(() => {
-    fetchData();
-    fetchSnapshots();
-  }, [getProjectRef]);
+  const [isMagicMenuOpen, setIsMagicMenuOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
+  const blockRefs = useRef({});
 
-  const fetchSnapshots = async () => {
+  // Autocomplete State
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteIndex, setAutocompleteIndex] = useState(0);
+  const [universeCharacters, setUniverseCharacters] = useState([]);
+
+  const getDocumentRef = useCallback(() => {
+    return doc(db, 'universes', universeId, 'projects', projectId, 'script', 'content');
+  }, [universeId, projectId]);
+
+  const getProjectRef = useCallback(() => {
+    return doc(db, 'universes', universeId, 'projects', projectId);
+  }, [universeId, projectId]);
+
+  const fetchSnapshots = useCallback(async () => {
     try {
         const token = await auth.currentUser?.getIdToken();
         const response = await fetch(`/api/script/list_snapshots/${universeId}/${projectId}`, {
@@ -52,7 +65,26 @@ const ScriptEditor = ({ universeId, projectId }) => {
     } catch (err) {
         console.error("Failed to fetch history:", err);
     }
-  };
+  }, [universeId, projectId]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const projectRef = getProjectRef();
+        const docSnap = await getDoc(projectRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const cleanContent = data.source_material || data.bible_content || "No source material available.";
+          setSourceContent(cleanContent);
+          setUniverseCharacters(data.characters || []);
+        }
+      } catch (error) {
+        console.error("Error loading project data:", error);
+      }
+    };
+    fetchData();
+    fetchSnapshots();
+  }, [getProjectRef, fetchSnapshots]);
 
   const saveSnapshot = async (name = "Auto-save") => {
     try {
@@ -67,7 +99,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
                 name: name
             })
         });
-        fetchSnapshots(); // Refresh list
+        fetchSnapshots();
     } catch (err) {
         console.error("Snapshot failed:", err);
     }
@@ -93,7 +125,6 @@ const ScriptEditor = ({ universeId, projectId }) => {
                 snapshot_id: snapId
             })
         });
-        // Reload
         window.location.reload(); 
     } catch (err) {
         alert("Restore failed.");
@@ -101,46 +132,6 @@ const ScriptEditor = ({ universeId, projectId }) => {
         setIsSaving(false);
     }
   };
-
-  const saveScriptToFirestore = useCallback(async (currentBlocks) => {
-  const [isMagicMenuOpen, setIsMagicMenuOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
-  const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
-  const blockRefs = useRef({});
-
-  // Autocomplete State
-  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
-  const [showAutocomplete, setShowAutocomplete] = useState(false);
-  const [autocompleteIndex, setAutocompleteIndex] = useState(0);
-  const [universeCharacters, setUniverseCharacters] = useState([]);
-
-  const getDocumentRef = useCallback(() => {
-    return doc(db, 'universes', universeId, 'projects', projectId, 'script', 'content');
-  }, [universeId, projectId]);
-
-  const getProjectRef = useCallback(() => {
-    return doc(db, 'universes', universeId, 'projects', projectId);
-  }, [universeId, projectId]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const projectRef = getProjectRef();
-        const docSnap = await getDoc(projectRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          // User requested: Prioritize CLEAN source_material (Beats + Cast)
-          // Removing Project Bible fallback from top priority to ensure clean view
-          const cleanContent = data.source_material || data.bible_content || "No source material available.";
-          setSourceContent(cleanContent);
-          setUniverseCharacters(data.characters || []);
-        }
-      } catch (error) {
-        console.error("Error loading project data:", error);
-      }
-    };
-    fetchData();
-  }, [getProjectRef]);
 
   const saveScriptToFirestore = useCallback(async (currentBlocks) => {
     setIsSaving(true);
@@ -185,11 +176,10 @@ const ScriptEditor = ({ universeId, projectId }) => {
     loadScriptFromFirestore();
   }, [loadScriptFromFirestore]);
 
-  // Robust Auto-Resize Logic
   const resizeBlock = useCallback((id) => {
     const el = blockRefs.current[id];
     if (el) {
-      el.style.height = '0px'; // Reset to get accurate scrollHeight
+      el.style.height = '0px'; 
       const newHeight = Math.max(24, el.scrollHeight);
       el.style.height = newHeight + 'px';
     }
@@ -199,14 +189,11 @@ const ScriptEditor = ({ universeId, projectId }) => {
     Object.keys(blockRefs.current).forEach(id => resizeBlock(id));
   }, [resizeBlock]);
 
-  // Resize on blocks change
   useEffect(() => {
-    // Small delay to ensure styles and fonts are applied
     const timer = setTimeout(resizeAllBlocks, 50);
     return () => clearTimeout(timer);
   }, [blocks, resizeAllBlocks]);
 
-  // Resize on window resize
   useEffect(() => {
     window.addEventListener('resize', resizeAllBlocks);
     return () => window.removeEventListener('resize', resizeAllBlocks);
@@ -244,15 +231,11 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const handleTextChange = (id, text, type) => {
     const { text: formattedText } = formatLine(type, text);
     updateBlock(id, { text: formattedText });
-    
-    // Immediate resize
     resizeBlock(id);
 
-    // Autocomplete Logic
     if (type === 'Character' || type === 'Scene Heading') {
       const query = text.toUpperCase();
       let matches = [];
-      
       if (type === 'Character') {
         matches = universeCharacters
           .map(c => c.name.toUpperCase())
@@ -263,7 +246,6 @@ const ScriptEditor = ({ universeId, projectId }) => {
           .map(b => b.text.toUpperCase())))
           .filter(loc => loc.startsWith(query) && query.length > 0);
       }
-
       setAutocompleteSuggestions(matches.slice(0, 5));
       setShowAutocomplete(matches.length > 0);
       setAutocompleteIndex(0);
@@ -329,7 +311,6 @@ const ScriptEditor = ({ universeId, projectId }) => {
       setTimeout(() => {
         if (prevBlockId && blockRefs.current[prevBlockId]) {
           blockRefs.current[prevBlockId].focus();
-          // Move cursor to end of previous block
           const length = blockRefs.current[prevBlockId].value.length;
           blockRefs.current[prevBlockId].setSelectionRange(length, length);
         }
@@ -347,7 +328,6 @@ const ScriptEditor = ({ universeId, projectId }) => {
         return b;
       }));
       setIsSaved(false);
-      // Small delay to let React apply the new class before measuring
       setTimeout(() => resizeBlock(focusedBlockId), 0);
     }
   };
@@ -374,7 +354,6 @@ const ScriptEditor = ({ universeId, projectId }) => {
       const projectData = projectSnap.exists() ? projectSnap.data() : {};
       const beatSheet = projectData.beat_sheet || {};
       const characterNames = (projectData.characters || []).map(char => char.name || 'Unknown');
-
       const context = blocks.slice(-15).map(b => b.text).join('\n').slice(-2000);
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/script/suggest_dialogue', {
@@ -391,7 +370,6 @@ const ScriptEditor = ({ universeId, projectId }) => {
       if (!response.ok) throw new Error('Failed to get suggestion');
       const data = await response.json();
       const newSuggestions = Array.isArray(data) ? data : data.suggestions || [];
-
       if (newSuggestions.length > 0) {
         setSuggestions(newSuggestions);
         setIsSuggestionModalOpen(true);
@@ -430,7 +408,6 @@ const ScriptEditor = ({ universeId, projectId }) => {
       const beatSheet = projectData.beat_sheet || {};
       const characterNames = (projectData.characters || []).map(char => char.name || 'Unknown');
       const existingScriptContext = blocks.map(b => b.text).join('\n').slice(-2000);
-
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/script/generate_scene', {
         method: 'POST',
@@ -449,9 +426,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
         type: block.type || 'Action',
         text: block.text || ""
       }));
-
       if (generatedBlocks.length > 0) {
-        // APPEND blocks instead of replacing
         setBlocks(prev => [...prev, ...generatedBlocks]);
         setIsSaved(false);
       }
@@ -466,15 +441,11 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const handleHookScan = async () => {
     setIsAnalyzing(true);
     setHookScanResult(null);
-    
-    // OPTIMIZATION: Only send the first ~15 pages (approx 600 blocks) for the audit
     const scriptText = blocks.slice(0, 600).map(block => block.text).join('\n');
-    
     try {
       const projectRef = getProjectRef();
       const projectSnap = await getDoc(projectRef);
       const genre = projectSnap.exists() ? projectSnap.data().genre : "Drama";
-
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/script/hook_scan', {
         method: 'POST',
@@ -518,30 +489,18 @@ const ScriptEditor = ({ universeId, projectId }) => {
     setIsAnalyzing(true);
     setLogicScore(null);
     if (!isSaved) await saveScriptToFirestore(blocks);
-
-    // OPTIMIZATION: Only send the current scene context to avoid 502/OOM on large scripts
     let relevantBlocks = [];
     const focusedIndex = blocks.findIndex(b => b.id === focusedBlockId);
-    
     if (focusedIndex !== -1) {
-      // Find start of current scene (nearest heading above)
       let start = focusedIndex;
-      while (start > 0 && blocks[start].type !== 'Scene Heading') {
-        start--;
-      }
-      // Find end of current scene (next heading below)
+      while (start > 0 && blocks[start].type !== 'Scene Heading') start--;
       let end = focusedIndex + 1;
-      while (end < blocks.length && blocks[end].type !== 'Scene Heading') {
-        end++;
-      }
+      while (end < blocks.length && blocks[end].type !== 'Scene Heading') end++;
       relevantBlocks = blocks.slice(start, end);
     } else {
-      // Fallback: Last 50 blocks if no focus
       relevantBlocks = blocks.slice(-50);
     }
-
     const sceneText = relevantBlocks.map(block => block.text).join('\n');
-    
     try {
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/critique', {
@@ -563,38 +522,27 @@ const ScriptEditor = ({ universeId, projectId }) => {
   }, [blocks, focusedBlockId, isSaved, saveScriptToFirestore, universeId, projectId]);
 
   const renderPages = () => {
-    // Recalibrated: 9" printable height / ~0.22" per line (12pt @ 1.4 line-height) = ~40 lines max
     const LINES_PER_PAGE = 40; 
     const pages = [];
     let currentPage = [];
     let currentLines = 0;
-
     blocks.forEach((block, index) => {
       const text = block.text || "";
-      
-      // Recalibrated for 6.0" printable area (8.5" total - 1.5" Left - 1.0" Right)
-      // Action/Slug: ~60 chars wide | Dialogue: ~35 chars wide | Parenthetical: ~20 chars wide
       let charsPerLine = 60;
       if (block.type === 'Dialogue') charsPerLine = 35;
       if (block.type === 'Parenthetical') charsPerLine = 20;
       if (block.type === 'Character') charsPerLine = 35;
-
       const estimatedLines = Math.max(1, Math.ceil(text.length / charsPerLine));
-      
-      // Add extra line for margins (slugs, actions, and dialogue have margin-bottom: 1em)
       const spacing = (block.type === 'Character' || block.type === 'Parenthetical') ? 0 : 1;
-
       if (currentLines + estimatedLines + spacing > LINES_PER_PAGE) {
         pages.push(currentPage);
         currentPage = [];
         currentLines = 0;
       }
-
       currentPage.push({ ...block, index });
       currentLines += estimatedLines + spacing;
     });
     if (currentPage.length > 0) pages.push(currentPage);
-
     return pages.map((pageBlocks, pageIndex) => (
       <div key={pageIndex} className="script-page relative mb-8 shadow-2xl border-b-2 border-dashed border-gray-200">
         <div className="absolute top-4 right-8 text-gray-400 text-xs font-mono select-none">{pageIndex + 1}.</div>
@@ -610,13 +558,11 @@ const ScriptEditor = ({ universeId, projectId }) => {
                 onFocus={() => {
                   setFocusedBlockId(block.id);
                   setShowAutocomplete(false);
-                  resizeBlock(block.id); // Ensure resize on focus
+                  resizeBlock(block.id);
                 }}
                 className={`${className} script-block resize-none overflow-hidden bg-transparent focus:outline-none focus:bg-arc-teal/[0.03] transition-colors`}
                 placeholder={block.type === 'Scene Heading' ? 'INT. LOCATION - TIME' : ''}
               />
-              
-              {/* Autocomplete Menu */}
               {showAutocomplete && focusedBlockId === block.id && (
                 <div className="absolute left-0 top-full z-[100] w-64 bg-gray-900 border border-arc-teal rounded-lg shadow-2xl overflow-hidden animate-fade-in">
                   {autocompleteSuggestions.map((s, idx) => (
@@ -645,7 +591,6 @@ const ScriptEditor = ({ universeId, projectId }) => {
       <SourceMaterialDrawer isOpen={isSourceDrawerOpen} onToggle={() => setIsSourceDrawerOpen(!isSourceDrawerOpen)} content={sourceContent} onInsert={handleInsertSourceMaterial} />
       
       <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">
-        {/* Workspace Top Toolbar */}
         <div className="h-16 bg-[#050505] border-b border-white/5 flex items-center justify-between px-8 z-50 shadow-2xl">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate('/dashboard')}>
@@ -685,14 +630,12 @@ const ScriptEditor = ({ universeId, projectId }) => {
           </div>
         </div>
 
-        {/* Script Content Area */}
         <div className="flex-1 overflow-y-auto p-12 bg-[#0a0a0a] flex flex-col items-center custom-scrollbar relative">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/[0.02] via-transparent to-transparent pointer-events-none"></div>
             {renderPages()}
             <div className="h-64"></div>
         </div>
 
-        {/* Workspace Bottom Toolbar (Instrumentation) */}
         <div className="h-24 bg-[#050505] border-t border-white/5 flex items-center justify-between px-10 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
           <div className="flex items-center gap-2">
             <FormatButton label="Slugline" shortcut="1" isActive={activeFormat === 'Scene Heading'} onClick={() => handleFormatChange('Scene Heading')} />
