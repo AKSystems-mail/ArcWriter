@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronRight, FileText, ArrowLeft, Save, Target, BrainCircuit, RefreshCw } from 'lucide-react';
+import { ChevronRight, FileText, ArrowLeft, Save, Target, BrainCircuit, RefreshCw, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatLine } from '../utils/formatUtils';
 import StoryInsights from './StoryInsights';
 import SourceMaterialDrawer from './SourceMaterialDrawer';
+import HistorySidebar from './HistorySidebar';
 import { db, auth } from '../firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
@@ -28,8 +29,80 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const lastSavedBlocksRef = useRef(blocks);
   const [isSourceDrawerOpen, setIsSourceDrawerOpen] = useState(false);
   const [isInsightsDrawerOpen, setIsInsightsDrawerOpen] = useState(true);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [snapshots, setSnapshots] = useState([]);
   const [sourceContent, setSourceContent] = useState('');
   const [isGeneratingScene, setIsGeneratingScene] = useState(false);
+# ... (rest of states)
+  useEffect(() => {
+    fetchData();
+    fetchSnapshots();
+  }, [getProjectRef]);
+
+  const fetchSnapshots = async () => {
+    try {
+        const token = await auth.currentUser?.getIdToken();
+        const response = await fetch(`/api/script/list_snapshots/${universeId}/${projectId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            const data = await response.json();
+            setSnapshots(data);
+        }
+    } catch (err) {
+        console.error("Failed to fetch history:", err);
+    }
+  };
+
+  const saveSnapshot = async (name = "Auto-save") => {
+    try {
+        const token = await auth.currentUser?.getIdToken();
+        await fetch('/api/script/save_snapshot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+                universe_id: universeId,
+                project_id: projectId,
+                blocks: blocks,
+                name: name
+            })
+        });
+        fetchSnapshots(); // Refresh list
+    } catch (err) {
+        console.error("Snapshot failed:", err);
+    }
+  };
+
+  const handleSaveMilestone = () => {
+    const name = window.prompt("Name this milestone (e.g. 'First Draft', 'The Pivot'):");
+    if (name) saveSnapshot(name);
+  };
+
+  const handleRestoreSnapshot = async (snapId) => {
+    if (!window.confirm("CRITICAL: This will overwrite your current script. Continue?")) return;
+    
+    setIsSaving(true);
+    try {
+        const token = await auth.currentUser?.getIdToken();
+        await fetch('/api/script/restore_snapshot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+                universe_id: universeId,
+                project_id: projectId,
+                snapshot_id: snapId
+            })
+        });
+        // Reload
+        window.location.reload(); 
+    } catch (err) {
+        alert("Restore failed.");
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const saveScriptToFirestore = useCallback(async (currentBlocks) => {
   const [isMagicMenuOpen, setIsMagicMenuOpen] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
@@ -589,6 +662,14 @@ const ScriptEditor = ({ universeId, projectId }) => {
                 <Target className="w-3.5 h-3.5 text-arc-orange group-hover:scale-110 transition-transform" />
                 <span>Blueprint</span>
               </button>
+              <div className="h-4 w-px bg-gray-800"></div>
+              <button 
+                onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] transition-all group ${isHistoryOpen ? 'text-arc-teal' : 'text-gray-500 hover:text-white'}`}
+              >
+                <History className="w-3.5 h-3.5 group-hover:rotate-[-45deg] transition-transform" />
+                <span>Time Machine</span>
+              </button>
             </div>
           </div>
 
@@ -677,6 +758,15 @@ const ScriptEditor = ({ universeId, projectId }) => {
         isSaved={isSaved}
         isOpen={isInsightsDrawerOpen}
         onToggle={() => setIsInsightsDrawerOpen(!isInsightsDrawerOpen)}
+      />
+
+      <HistorySidebar 
+        isOpen={isHistoryOpen} 
+        onToggle={() => setIsHistoryOpen(false)} 
+        snapshots={snapshots} 
+        onRestore={handleRestoreSnapshot}
+        onSaveMilestone={handleSaveMilestone}
+        isSaving={isSaving}
       />
     </div>
   );
