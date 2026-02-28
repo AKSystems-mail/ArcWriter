@@ -3,6 +3,9 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
 import uuid
 import io
+import os
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
 from datetime import datetime
 from app.utils.firebase_auth_utils import get_firestore_db
 from app.services.script_parser import parse_pdf_to_editor_format
@@ -79,14 +82,39 @@ async def capture_lead(request: LeadRequest):
         full_analysis = analysis_data["full_analysis"]
         
         # 2. Save to 'leads' collection for marketing
+        project_title = full_analysis.get("title", request.project_title)
         db.collection("leads").add({
             "email": request.email,
-            "project_title": full_analysis.get("title", request.project_title),
+            "project_title": project_title,
             "created_at": datetime.utcnow(),
             "source": "beat_sheet_builder"
         })
+
+        # 3. Add to Brevo Contact List for Automation
+        brevo_key = os.getenv("BREVO_API_KEY")
+        list_id = os.getenv("BREVO_LIST_ID")
         
-        # 3. Trigger Email via Firebase Extension (mail_queue)
+        if brevo_key and list_id:
+            try:
+                configuration = sib_api_v3_sdk.Configuration()
+                configuration.api_key['api-key'] = brevo_key
+                api_instance = sib_api_v3_sdk.ContactsApi(sib_api_v3_sdk.ApiClient(configuration))
+                
+                # Update enabled=True means it won't fail if they already exist
+                create_contact = sib_api_v3_sdk.CreateContact(
+                    email=request.email,
+                    list_ids=[int(list_id)],
+                    update_enabled=True,
+                    attributes={"PROJECT_TITLE": project_title}
+                )
+                api_instance.create_contact(create_contact)
+                print(f"DEBUG: Added {request.email} to Brevo list {list_id}")
+            except ApiException as e:
+                print(f"Brevo API Error: {e}")
+            except Exception as e:
+                print(f"Unexpected Brevo sync error: {e}")
+        
+        # 4. Trigger Email via Firebase Extension (mail_queue)
         # Format the beat sheet for HTML
         # Use 15-point standard but add spacing
         beat_html = ""

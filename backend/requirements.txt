@@ -16,3 +16,4 @@ a2wsgi
 requests
 qrcode[pil]
 email-validator
+sib-api-v3-sdk
