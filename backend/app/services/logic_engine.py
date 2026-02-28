@@ -207,10 +207,51 @@ class LogicEngine:
         )
         user_prompt = f"PROJECT MASTER BLUEPRINT:\n{bible_context}\n\nFULL SCRIPT TEXT:\n{full_script[:100000]}"
         try:
-            return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+            audit_result = self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+            
+            # Step 10 Implementation: Resolution Scanner
+            # If the script seems long enough to have an ending, run the stability test
+            if len(full_script) > 5000:
+                resolution_report = self.analyze_resolution(full_script)
+                audit_result["resolution_scan"] = resolution_report
+                
+            return audit_result
         except Exception as e:
             logger.error(f"Error in full script audit: {e}")
             return {"structural_integrity_score": 0, "plothole_warnings": ["Audit failed due to context size."]}
+
+    def analyze_resolution(self, script_text: str) -> Dict[str, Any]:
+        """
+        The Resolution Scanner: Performs a Game Theory 'Stability Test' on the script's ending.
+        Checks if characters still have dominant strategies to attack or if the resolution is stable.
+        """
+        system_instruction = (
+            "You are a Story Logic Auditor specializing in Game Theory.\n"
+            "TASK: Evaluate the RESOLUTION of this script for structural stability.\n\n"
+            "LOGIC STEPS:\n"
+            "1. IDENTIFY ACTIVE AGENTS: List primary characters with high 'Agency' who are alive at the end.\n"
+            "2. CHECK MOTIVATIONS: For each survivor, evaluate their final 'Want' vs their 'Outcome'.\n"
+            "3. THE STABILITY TEST: Does any Antagonist still have a 'Dominant Strategy' to attack or undermine the Hero?\n"
+            "   - If YES: Flag as 'Unstable Ending / Sequel Hook'.\n"
+            "   - If NO: Flag as 'Stable Resolution'.\n\n"
+            "Return JSON ONLY:\n"
+            "{\n"
+            "  'resolution_status': 'Stable' | 'Unstable' | 'Ambiguous',\n"
+            "  'loose_ends': [str],\n"
+            "  'critique': str,\n"
+            "  'active_agents': [{ 'name': str, 'agency_score': int, 'status': str }]\n"
+            "}"
+        )
+        
+        # Focus specifically on the last 15,000 characters for the resolution
+        ending_text = script_text[-15000:]
+        user_prompt = f"Evaluate the final state of this narrative:\n\n{ending_text}"
+        
+        try:
+            return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+        except Exception as e:
+            logger.error(f"Resolution Scanner Error: {e}")
+            return {"resolution_status": "Ambiguous", "loose_ends": ["Audit timed out."]}
 
     def reverse_engineer_script(self, script_text: str) -> Dict[str, Any]:
         """Reverse engineers a full project bible from a script."""
