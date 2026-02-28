@@ -390,7 +390,8 @@ async def get_teaser_status(operation_id: str, user_id: str = Depends(get_curren
         "STRIPE_PRICE_WR_ANNUAL",
         "STRIPE_PRICE_STUDIO_PASS",
         "BREVO_API_KEY",
-        "BREVO_LIST_ID"
+        "BREVO_LIST_ID",
+        "BETA_SECRET_CODE"
     ]
 )
 def api(req: https_fn.Request) -> https_fn.Response:

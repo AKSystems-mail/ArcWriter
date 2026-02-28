@@ -180,6 +180,42 @@ const Billing = () => {
                     ))}
                 </div>
 
+                {/* Beta Code Redemption Section */}
+                <div className="mt-20 max-w-md mx-auto p-8 bg-white/5 border border-dashed border-white/10 rounded-sm text-center group hover:border-arc-teal/30 transition-all">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 mb-6">Authorized Beta Access</h4>
+                    <div className="flex gap-2">
+                        <input 
+                            id="beta-code-input"
+                            type="text" 
+                            placeholder="ENTER SECRET CODE" 
+                            className="bg-black border border-white/10 px-4 py-3 rounded-none text-xs font-black tracking-widest uppercase focus:outline-none focus:border-arc-teal w-full"
+                        />
+                        <button 
+                            onClick={async () => {
+                                const code = document.getElementById('beta-code-input').value;
+                                if(!code) return;
+                                try {
+                                    const response = await apiClient('/api/billing/redeem-beta', {
+                                        method: 'POST',
+                                        body: JSON.stringify({ code })
+                                    });
+                                    const data = await response.json();
+                                    if (response.ok) {
+                                        alert(data.message);
+                                        window.location.reload();
+                                    } else {
+                                        alert(data.detail || "Invalid Code");
+                                    }
+                                } catch (e) { alert("Redemption failed."); }
+                            }}
+                            className="bg-white text-black px-6 py-3 font-black text-[9px] uppercase tracking-widest hover:bg-arc-teal hover:text-white transition-all"
+                        >
+                            Redeem
+                        </button>
+                    </div>
+                    <p className="mt-4 text-[8px] text-gray-700 font-bold uppercase tracking-tighter italic">One-time claim for authorized studio testers.</p>
+                </div>
+
                 {/* Footer Security Note */}
                 <div className="mt-20 flex flex-col items-center gap-6 opacity-30">
                     <div className="flex items-center gap-8">
