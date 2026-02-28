@@ -96,7 +96,9 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:5000",
         "https://arc-studio-box.web.app",
-        "https://arc-studio-box.firebaseapp.com"
+        "https://arc-studio-box.firebaseapp.com",
+        "https://arcwriter.us",
+        "https://www.arcwriter.us"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -391,6 +393,7 @@ async def get_teaser_status(operation_id: str, user_id: str = Depends(get_curren
         "STRIPE_PRICE_STUDIO_PASS",
         "BREVO_API_KEY",
         "BREVO_LIST_ID",
+        "BREVO_REGISTERED_LIST_ID",
         "BETA_SECRET_CODE"
     ]
 )

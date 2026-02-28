@@ -5,6 +5,9 @@ from app.utils.firebase_auth_utils import get_firestore_db
 from firebase_admin import firestore
 from typing import Optional
 from datetime import datetime, timedelta
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+import os
 
 class UserService:
     def __init__(self):
@@ -21,6 +24,10 @@ class UserService:
     async def update_user_data(self, user_id: str, data: dict):
         user_doc_ref = self.users_collection.document(user_id)
         user_doc_ref.update(data)
+        
+        # If email is being set/updated, sync to Brevo Identified Contacts
+        if 'email' in data and data['email']:
+            await self._sync_to_brevo(data['email'])
 
     async def deduct_credits(self, user_id: str, amount: int):
         if amount <= 0:
@@ -30,9 +37,9 @@ class UserService:
         user_doc = user_ref.get()
         
         if not user_doc.exists:
-            # Grant a large "Tester Bonus" for debugging
+            # Production Default: 25 starter credits
             user_ref.set({
-                'studio_credits': 99999,
+                'studio_credits': 25,
                 'email': None, 
                 'plan': 'free',
                 'created_at': firestore.SERVER_TIMESTAMP,
@@ -105,3 +112,24 @@ class UserService:
             update_data['next_billing_date'] = next_billing_date
         user_doc_ref.update(update_data)
         print(f"User {user_id} plan updated to {plan} ({status}).")
+
+    async def _sync_to_brevo(self, email: str):
+        brevo_key = (os.getenv("BREVO_API_KEY") or "").strip()
+        list_id = (os.getenv("BREVO_REGISTERED_LIST_ID") or "3").strip()
+        
+        if not brevo_key: return
+
+        try:
+            configuration = sib_api_v3_sdk.Configuration()
+            configuration.api_key['api-key'] = brevo_key
+            api_instance = sib_api_v3_sdk.ContactsApi(sib_api_v3_sdk.ApiClient(configuration))
+            
+            create_contact = sib_api_v3_sdk.CreateContact(
+                email=email,
+                list_ids=[int(list_id)],
+                update_enabled=True
+            )
+            api_instance.create_contact(create_contact)
+            print(f"Brevo: Synced registered user {email} to list {list_id}")
+        except Exception as e:
+            print(f"Brevo Sync Error (UserService): {e}")
