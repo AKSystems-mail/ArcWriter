@@ -91,8 +91,8 @@ async def capture_lead(request: LeadRequest):
         })
 
         # 3. Add to Brevo Contact List for Automation
-        brevo_key = os.getenv("BREVO_API_KEY")
-        list_id = os.getenv("BREVO_LIST_ID")
+        brevo_key = (os.getenv("BREVO_API_KEY") or "").strip()
+        list_id = (os.getenv("BREVO_LIST_ID") or "").strip()
         
         if brevo_key and list_id:
             try:
@@ -126,18 +126,26 @@ async def capture_lead(request: LeadRequest):
                 label = name.replace('_', ' ').title()
                 beat_html += f"<div style='margin-bottom: 20px;'><strong style='color: #00cec9; display: block; margin-bottom: 4px;'>{label}</strong><p style='margin: 0; font-style: italic; color: #444;'>{content}</p></div>"
         elif isinstance(beats, list):
-            for b in beats:
+            for i, b in enumerate(beats):
                 if isinstance(b, dict):
-                    name = b.get("beat") or b.get("name") or b.get("title") or "Beat"
-                    content = b.get("description") or b.get("content") or b.get("text") or ""
-                    if not content and len(b) == 1:
+                    # Look for name in common keys
+                    name = b.get("beat") or b.get("name") or b.get("title") or b.get("beat_name") or b.get("type")
+                    content = b.get("description") or b.get("content") or b.get("text")
+                    
+                    # If it's a simple key-value pair like {"Opening Image": "..."}
+                    if not name and not content and len(b) == 1:
                         name, content = list(b.items())[0]
-                    beat_html += f"<div style='margin-bottom: 20px;'><strong style='color: #00cec9; display: block; margin-bottom: 4px;'>{name}</strong><p style='margin: 0; font-style: italic; color: #444;'>{content}</p></div>"
+                    
+                    # Fallback to index if still missing
+                    final_label = name or f"Beat {i+1}"
+                    final_content = content or ""
+                    
+                    beat_html += f"<div style='margin-bottom: 20px;'><strong style='color: #00cec9; display: block; margin-bottom: 4px;'>{final_label}</strong><p style='margin: 0; font-style: italic; color: #444;'>{final_content}</p></div>"
                 else:
                     beat_html += f"<div style='margin-bottom: 20px; color: #444;'>{str(b)}</div>"
 
         # Public URL for the logo
-        logo_url = "https://arc-studio-box.web.app/ArcWriter_logo.png"
+        logo_url = "https://arc-studio-box.web.app/ArcWriter_logo_30.png"
 
         db.collection("mail_queue").add({
             "to": request.email,
@@ -146,7 +154,7 @@ async def capture_lead(request: LeadRequest):
                 "html": f"""
                     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: auto; color: #111; line-height: 1.6;">
                         <div style="text-align: center; margin-bottom: 40px;">
-                            <img src="{logo_url}" alt="ArcWriter" style="height: 40px; width: auto;" />
+                            <img src="{logo_url}" alt="ArcWriter" style="height: 30px; width: auto;" />
                         </div>
                         <h2 style="text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #f97316; padding-bottom: 10px; margin-bottom: 30px;">Structural Analysis Complete</h2>
                         <p>Here is your professional 15-point structural breakdown based on your notes.</p>
