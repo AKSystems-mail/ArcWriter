@@ -48,10 +48,14 @@ class PDFService:
         buf.seek(0)
         return buf
 
-    def compile_master_deck(self, project_data: Dict[str, Any], script_blocks: List[Dict[str, Any]] = None) -> BytesIO:
+    def compile_master_deck(self, project_data: Dict[str, Any], script_blocks: List[Dict[str, Any]] = None, include_sections: List[str] = None) -> BytesIO:
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch, leftMargin=0.75*inch, rightMargin=0.75*inch)
         story = []
+
+        # Default to all sections if none specified
+        if not include_sections or 'all' in include_sections:
+            include_sections = ['cover', 'story', 'cast', 'script']
 
         title = project_data.get('title', 'UNTITLED PROJECT').upper()
         logline = project_data.get('logline', 'No logline provided.')
@@ -61,104 +65,109 @@ class PDFService:
         characters = project_data.get('characters', [])
 
         # --- PAGE 1: COVER ---
-        story.append(Spacer(1, 1*inch))
-        story.append(Paragraph(title, self.styles['ArcTitle']))
-        story.append(Spacer(1, 0.2*inch))
-        story.append(Paragraph(logline, self.styles['ArcLogline']))
-        story.append(Spacer(1, 0.5*inch))
+        if 'cover' in include_sections:
+            story.append(Spacer(1, 1*inch))
+            story.append(Paragraph(title, self.styles['ArcTitle']))
+            story.append(Spacer(1, 0.2*inch))
+            story.append(Paragraph(logline, self.styles['ArcLogline']))
+            story.append(Spacer(1, 0.5*inch))
 
-        if poster_url:
-            p_img = self._fetch_image(poster_url)
-            if p_img:
-                img = Image(p_img, width=4.5*inch, height=6.75*inch) # 2:3 ratio
-                img.hAlign = 'CENTER'
-                story.append(img)
-        
-        story.append(PageBreak())
+            if poster_url:
+                p_img = self._fetch_image(poster_url)
+                if p_img:
+                    img = Image(p_img, width=4.5*inch, height=6.75*inch) # 2:3 ratio
+                    img.hAlign = 'CENTER'
+                    story.append(img)
+            
+            story.append(PageBreak())
 
         # --- PAGE 2: THE STORY & TEASER ---
-        story.append(Paragraph("THE NARRATIVE CORE", self.styles['ArcSubHeading']))
-        story.append(Paragraph("Synopsis", self.styles['ArcHeading']))
-        
-        # Clean Synopsis (remove markdown artifacts)
-        clean_syn = synopsis.replace('## Synopsis', '').replace('##', '\n').strip()
-        for para in clean_syn.split('\n\n'):
-            story.append(Paragraph(para.strip(), self.styles['ArcBody']))
-            story.append(Spacer(1, 0.15*inch))
-
-        if teaser_url:
-            story.append(Spacer(1, 0.5*inch))
-            story.append(Paragraph("CINEMATIC TEASER", self.styles['ArcSubHeading']))
-            qr_buf = self._generate_qr(teaser_url)
-            qr_img = Image(qr_buf, width=1.5*inch, height=1.5*inch)
-            qr_img.hAlign = 'LEFT'
+        if 'story' in include_sections:
+            story.append(Paragraph("THE NARRATIVE CORE", self.styles['ArcSubHeading']))
+            story.append(Paragraph("Synopsis", self.styles['ArcHeading']))
             
-            # Table for QR + Text
-            qr_data = [[qr_img, Paragraph("<b>Scan to view the Motion Teaser.</b><br/>This cinematic 5-second render captures the atmosphere and visual vibe of the production.", self.styles['ArcBody'])]]
-            qr_table = Table(qr_data, colWidths=[1.6*inch, 4*inch])
-            qr_table.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
-            story.append(qr_table)
+            # Clean Synopsis (remove markdown artifacts)
+            clean_syn = synopsis.replace('## Synopsis', '').replace('##', '\n').strip()
+            for para in clean_syn.split('\n\n'):
+                story.append(Paragraph(para.strip(), self.styles['ArcBody']))
+                story.append(Spacer(1, 0.15*inch))
 
-        story.append(PageBreak())
+            if teaser_url:
+                story.append(Spacer(1, 0.5*inch))
+                story.append(Paragraph("CINEMATIC TEASER", self.styles['ArcSubHeading']))
+                qr_buf = self._generate_qr(teaser_url)
+                qr_img = Image(qr_buf, width=1.5*inch, height=1.5*inch)
+                qr_img.hAlign = 'LEFT'
+                
+                # Table for QR + Text
+                qr_data = [[qr_img, Paragraph("<b>Scan to view the Motion Teaser.</b><br/>This cinematic 5-second render captures the atmosphere and visual vibe of the production.", self.styles['ArcBody'])]]
+                qr_table = Table(qr_data, colWidths=[1.6*inch, 4*inch])
+                qr_table.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
+                story.append(qr_table)
+
+            story.append(PageBreak())
 
         # --- PAGE 3: PERSONNEL ---
-        story.append(Paragraph("PERSONNEL DOSSIERS", self.styles['ArcSubHeading']))
-        story.append(Paragraph("Principal Cast", self.styles['ArcHeading']))
-        story.append(Spacer(1, 0.2*inch))
+        if 'cast' in include_sections:
+            story.append(Paragraph("PERSONNEL DOSSIERS", self.styles['ArcSubHeading']))
+            story.append(Paragraph("Principal Cast", self.styles['ArcHeading']))
+            story.append(Spacer(1, 0.2*inch))
 
-        for char in characters:
-            char_name = char.get('name', 'Unknown').upper()
-            char_role = char.get('role', 'Supporting').upper()
-            char_desc = char.get('description', 'No dossier available.')
-            char_anchor = char.get('anchor_url')
+            for char in characters:
+                char_name = char.get('name', 'Unknown').upper()
+                char_role = char.get('role', 'Supporting').upper()
+                char_desc = char.get('description', 'No dossier available.')
+                char_anchor = char.get('anchor_url')
 
-            char_img_data = self._fetch_image(char_anchor) if char_anchor else None
-            
-            row_data = []
-            if char_img_data:
-                c_img = Image(char_img_data, width=1.2*inch, height=1.2*inch)
-                row_data.append(c_img)
-            else:
-                row_data.append("")
+                char_img_data = self._fetch_image(char_anchor) if char_anchor else None
+                
+                row_data = []
+                if char_img_data:
+                    c_img = Image(char_img_data, width=1.2*inch, height=1.2*inch)
+                    row_data.append(c_img)
+                else:
+                    row_data.append("")
 
-            desc_text = f"<b>{char_name}</b> ({char_role})<br/><br/>{char_desc}"
-            row_data.append(Paragraph(desc_text, self.styles['ArcBody']))
+                desc_text = f"<b>{char_name}</b> ({char_role})<br/><br/>{char_desc}"
+                row_data.append(Paragraph(desc_text, self.styles['ArcBody']))
 
-            c_table = Table([row_data], colWidths=[1.4*inch, 5*inch])
-            c_table.setStyle(TableStyle([
-                ('VALIGN', (0,0), (-1,-1), 'TOP'),
-                ('BOTTOMPADDING', (0,0), (-1,-1), 24)
-            ]))
-            story.append(c_table)
+                c_table = Table([row_data], colWidths=[1.4*inch, 5*inch])
+                c_table.setStyle(TableStyle([
+                    ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                    ('BOTTOMPADDING', (0,0), (-1,-1), 24)
+                ]))
+                story.append(c_table)
 
-        story.append(PageBreak())
+            story.append(PageBreak())
 
         # --- PAGE 4+: THE SCRIPT ---
-        if script_blocks:
+        if 'script' in include_sections:
             story.append(Paragraph("PRODUCTION ASSET", self.styles['ArcSubHeading']))
             story.append(Paragraph("The Screenplay", self.styles['ArcHeading']))
             story.append(Spacer(1, 0.2*inch))
 
-            for block in script_blocks:
-                b_type = block.get('type', 'action').lower()
-                text = block.get('text', '').strip()
-                
-                style_map = {
-                    'slugline': 'ScriptSlug',
-                    'action': 'ScriptAction',
-                    'character': 'ScriptChar',
-                    'dialogue': 'ScriptDialogue',
-                    'parenthetical': 'ScriptParenthetical'
-                }
-                
-                para_style = self.styles.get(style_map.get(b_type, 'ScriptAction'))
-                # Handle Slugline Uppercasing
-                if b_type == 'slugline': text = text.upper()
-                
-                story.append(Paragraph(text, para_style))
+            if script_blocks:
+                for block in script_blocks:
+                    b_type = block.get('type', 'action').lower()
+                    text = block.get('text', '').strip()
+                    
+                    style_map = {
+                        'slugline': 'ScriptSlug',
+                        'action': 'ScriptAction',
+                        'character': 'ScriptChar',
+                        'dialogue': 'ScriptDialogue',
+                        'parenthetical': 'ScriptParenthetical'
+                    }
+                    
+                    para_style = self.styles.get(style_map.get(b_type, 'ScriptAction'))
+                    if b_type == 'slugline': text = text.upper()
+                    story.append(Paragraph(text, para_style))
+            else:
+                story.append(Paragraph("Full script asset currently in production.", self.styles['ArcBody']))
 
-        else:
-            story.append(Paragraph("Full script asset currently in production.", self.styles['ArcBody']))
+        # Cleanup: Ensure we don't have a trailing PageBreak that causes an empty page
+        if story and isinstance(story[-1], PageBreak):
+            story.pop()
 
         doc.build(story)
         buffer.seek(0)

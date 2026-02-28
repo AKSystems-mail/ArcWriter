@@ -17,11 +17,12 @@ router = APIRouter(
 async def download_pitch_deck(
     universe_id: str, 
     project_id: str, 
+    sections: str = "all",
     user_id: str = Depends(get_current_user)
 ):
     """
     Generates and downloads a high-fidelity PDF pitch deck.
-    Includes: Poster, Story, Teaser Link (QR), Cast, and Full Script.
+    :param sections: Comma-separated list of sections to include (cover,story,cast,script)
     """
     try:
         db = get_firestore_db()
@@ -43,9 +44,12 @@ async def download_pitch_deck(
         if script_doc.exists:
             script_blocks = script_doc.to_dict().get("blocks")
 
+        # Parse sections
+        include_list = sections.split(',')
+
         # Use the upgraded PDF Service
         from main import services
-        buffer = services.pdf_service.compile_master_deck(project_data, script_blocks)
+        buffer = services.pdf_service.compile_master_deck(project_data, script_blocks, include_sections=include_list)
 
         filename = f"{project_data.get('title', 'Project').replace(' ', '_')}_PitchPackage.pdf"
         return StreamingResponse(

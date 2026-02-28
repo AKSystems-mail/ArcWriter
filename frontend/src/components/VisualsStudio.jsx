@@ -11,6 +11,18 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
     const [selectionVariants, setSelectionVariants] = useState(null); // { type, name, variants }
     const [isLocking, setIsLocking] = useState(false); // Feedback for selection click
 
+    // Pitch Package Configuration
+    const [exportSettings, setExportSettings] = useState({
+        cover: true,
+        story: true,
+        cast: true,
+        script: true
+    });
+
+    const toggleSetting = (section) => {
+        setExportSettings(prev => ({ ...prev, [section]: !prev[section] }));
+    };
+
     const handleRegenerate = async (type, charName = null) => {
         const id = charName || type;
         setRegenerating(id);
@@ -182,11 +194,15 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
 
     const handleDownloadPitchDeck = async () => {
         setRegenerating('download');
-        setMessage("Studio: Compiling Master Pitch Package...");
+        setMessage("Studio: Compiling Custom Pitch Package...");
         
         try {
             const token = await auth.currentUser?.getIdToken();
-            const response = await fetch(`/api/pitchdeck/download/${universeId}/${projectId}`, {
+            
+            // Build section filter
+            const sections = Object.keys(exportSettings).filter(k => exportSettings[k]).join(',');
+            
+            const response = await fetch(`/api/pitchdeck/download/${universeId}/${projectId}?sections=${sections}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -236,13 +252,32 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                             </div>
                         )}
                         <div className="flex items-center gap-4">
+                            {/* Export Config Toggles */}
+                            <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-sm border border-white/5 mr-2">
+                                <span className="text-[8px] font-black uppercase tracking-widest text-gray-600 mr-2 border-r border-white/10 pr-3">Include:</span>
+                                {[
+                                    { id: 'cover', label: 'Poster' },
+                                    { id: 'story', label: 'Story' },
+                                    { id: 'cast', label: 'Cast' },
+                                    { id: 'script', label: 'Script' }
+                                ].map(item => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => toggleSetting(item.id)}
+                                        className={`text-[8px] font-black uppercase tracking-tighter px-2 py-1 transition-all ${exportSettings[item.id] ? 'text-arc-teal bg-arc-teal/10' : 'text-gray-700 bg-transparent'}`}
+                                    >
+                                        {item.label}
+                                    </button>
+                                ))}
+                            </div>
+
                             <button 
                                 onClick={handleDownloadPitchDeck}
                                 disabled={!!regenerating}
                                 className={`text-[9px] font-black uppercase tracking-[0.2em] px-8 py-4 rounded-sm transition-all shadow-xl flex items-center gap-3 ${isProjectComplete ? 'bg-arc-orange text-white hover:bg-white hover:text-black animate-glow' : 'bg-white/5 text-gray-600 cursor-not-allowed'}`}
                             >
                                 <Layout className="w-4 h-4" />
-                                {regenerating === 'download' ? "Compiling PDF..." : "Export Pitch Package"}
+                                {regenerating === 'download' ? "Compiling PDF..." : "Export Package"}
                             </button>
                             <button 
                                 onClick={handleBulkGenerateAnchors}
