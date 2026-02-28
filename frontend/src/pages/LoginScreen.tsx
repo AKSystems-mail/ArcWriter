@@ -5,7 +5,8 @@ import {
     onAuthStateChanged, 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    sendEmailVerification
 } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
@@ -53,7 +54,12 @@ const LoginScreen: React.FC = () => {
             if (mode === 'email') {
                 await signInWithEmailAndPassword(auth, email, password);
             } else if (mode === 'signup') {
-                await createUserWithEmailAndPassword(auth, email, password);
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await sendEmailVerification(userCredential.user);
+                setInfoMessage("Studio Briefing dispatched. Please verify your email.");
+                setMode('email');
+                setLoading(false);
+                return; 
             } else if (mode === 'reset') {
                 await sendPasswordResetEmail(auth, email);
                 setInfoMessage("Reset link dispatched to your inbox.");
