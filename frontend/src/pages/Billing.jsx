@@ -57,6 +57,7 @@ const Billing = () => {
             features: [
                 'Unlimited Logic & Critique',
                 '150 Studio Credits / mo',
+                'Time Machine (50 Snapshots)',
                 'High-Fidelity PDF Exports',
                 'Universe Continuity Engine'
             ],
@@ -73,6 +74,7 @@ const Billing = () => {
             description: 'Perfect for completing a heavy visual production.',
             features: [
                 '600 Credits (No expiration)',
+                'Permanent Time Machine Unlock',
                 'Permanent PDF Unlock',
                 'Priority Rendering Queue',
                 'Early Access to Veo 3.0'
