@@ -18,9 +18,9 @@ class StripeService:
 
         # Price IDs from Dashboard
         self.prices = {
-            "WRITER_ROOM_MONTHLY": os.getenv("STRIPE_PRICE_WR_MONTHLY"),
-            "WRITER_ROOM_ANNUAL": os.getenv("STRIPE_PRICE_WR_ANNUAL"),
-            "STUDIO_PASS": os.getenv("STRIPE_PRICE_STUDIO_PASS") # One-time $49
+            "WRITER_ROOM_MONTHLY": (os.getenv("STRIPE_PRICE_WR_MONTHLY") or "").strip(),
+            "WRITER_ROOM_ANNUAL": (os.getenv("STRIPE_PRICE_WR_ANNUAL") or "").strip(),
+            "STUDIO_PASS": (os.getenv("STRIPE_PRICE_STUDIO_PASS") or "").strip()
         }
 
     async def create_checkout_session(self, user_id: str, tier: str) -> str:
@@ -46,6 +46,9 @@ class StripeService:
                 }
             )
             return session.url
+        except stripe.error.StripeError as e:
+            print(f"Stripe API Error: {e.user_message or str(e)}")
+            raise HTTPException(status_code=400, detail=e.user_message or str(e))
         except Exception as e:
             print(f"Stripe Session Error: {e}")
             raise HTTPException(status_code=500, detail="Failed to initiate secure checkout.")

@@ -1,4 +1,11 @@
-INFO:     Started server process [1043129]
+INFO:     Started server process [1999754]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)
+ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1986593]
+izing...
+Found service account key at serviceAccountKey.json
+Configuring Firebase Admin with storage bucket: arc-studio-box.firebasestorage.app
+Firebase Admin SDK initialized successfully.

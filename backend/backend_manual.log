@@ -1,0 +1,9 @@
+nohup: ignoring input
+INFO:     Started server process [2092441]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:5001 (Press CTRL+C to quit)
+Found service account key at serviceAccountKey.json
+Configuring Firebase Admin with storage bucket: arc-studio-box.firebasestorage.app
+Firebase Admin SDK initialized successfully.
+INFO:     127.0.0.1:44044 - "GET /api/manual/download HTTP/1.1" 200 OK
