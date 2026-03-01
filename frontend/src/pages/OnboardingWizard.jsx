@@ -305,7 +305,7 @@ const OnboardingWizard = () => {
                                     }
                                     setShowNewUniverseInput(willShowNew);
                                 }}
-                                className="text-[9px] font-black uppercase tracking-widest text-arc-teal hover:text-white transition-colors"
+                                className="text-xs font-black uppercase tracking-widest text-arc-teal hover:text-white transition-colors"
                             >
                                 {showNewUniverseInput ? "Select Existing" : "Initialize New +"}
                             </button>
@@ -384,7 +384,7 @@ const OnboardingWizard = () => {
                                 onChange={(e) => setData(prev => ({ ...prev, is_script: e.target.checked }))}
                                 className="w-3 h-3 rounded-none border-white/10 bg-black text-arc-teal focus:ring-0"
                             />
-                            <label htmlFor="is_script" className="text-gray-600 text-[9px] font-black uppercase tracking-widest cursor-pointer select-none">
+                            <label htmlFor="is_script" className="text-gray-600 text-xs font-black uppercase tracking-widest cursor-pointer select-none">
                                 Screenplay Mode
                             </label>
                         </div>
@@ -419,10 +419,10 @@ const OnboardingWizard = () => {
                 <p className="text-gray-500 text-lg font-light">Refine the distilled Story DNA before initializing the studio.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mb-16 items-start">
-                <div className="lg:col-span-2 flex flex-col gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 mb-16 items-start">
+                <div className="lg:col-span-3 flex flex-col gap-8">
                     <div className="bg-[#080808] border border-white/5 rounded-sm p-10 shadow-2xl">
-                        <label className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-4 block">Asset Title</label>
+                        <label className="text-xs uppercase font-black tracking-widest text-gray-500 mb-4 block">Asset Title</label>
                         <input
                             type="text"
                             value={data.metadata?.title || ""}
@@ -432,21 +432,21 @@ const OnboardingWizard = () => {
                     </div>
 
                     <div className="bg-[#080808] border border-white/5 rounded-sm p-10 shadow-2xl">
-                        <label className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-4 block">Distilled Logline</label>
+                        <label className="text-xs uppercase font-black tracking-widest text-gray-500 mb-4 block">Distilled Logline</label>
                         <textarea
                             value={data.metadata?.logline || ""}
                             onChange={(e) => updateMetadataField('logline', e.target.value)}
-                            className="w-full bg-transparent text-xl text-gray-400 font-light leading-relaxed outline-none resize-none min-h-[120px] italic"
+                            className="w-full bg-transparent text-xl text-gray-300 font-normal leading-relaxed outline-none resize-none min-h-[120px] italic"
                         />
                     </div>
 
                     <div className="bg-[#080808] border border-white/5 rounded-sm p-10 shadow-2xl">
-                        <label className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-6 block">Structural Framework</label>
+                        <label className="text-xs uppercase font-black tracking-widest text-gray-500 mb-6 block">Structural Framework</label>
                         <div className="relative">
                             <select
                                 value={data.metadata?.structure_suggestion || ""}
                                 onChange={(e) => updateMetadataField('structure_suggestion', e.target.value)}
-                                className="w-full bg-black border border-white/10 rounded-sm p-5 text-white font-black text-[10px] uppercase tracking-widest outline-none cursor-pointer appearance-none"
+                                className="w-full bg-black border border-white/10 rounded-sm p-5 text-white font-black text-xs uppercase tracking-widest outline-none cursor-pointer appearance-none"
                             >
                                 {[
                                     "Hero's Journey",
@@ -470,10 +470,10 @@ const OnboardingWizard = () => {
                     </div>
                 </div>
 
-                <div className="bg-[#080808] border border-white/5 rounded-sm p-10 shadow-2xl flex flex-col h-full max-h-[700px]">
+                <div className="lg:col-span-2 bg-[#080808] border border-white/5 rounded-sm p-10 shadow-2xl flex flex-col h-full max-h-[700px]">
                     <div className="flex justify-between items-center mb-8">
-                        <label className="text-[9px] uppercase font-black tracking-widest text-gray-600 block">Identified Cast</label>
-                        <span className="text-[9px] font-black text-arc-teal uppercase tracking-widest">{data.metadata?.character_descriptions?.length || 0} Entities</span>
+                        <label className="text-xs uppercase font-black tracking-widest text-gray-500 block">Identified Cast</label>
+                        <span className="text-[10px] font-black text-arc-teal uppercase tracking-widest">{data.metadata?.character_descriptions?.length || 0} Entities</span>
                     </div>
                     <div className="flex flex-col gap-6 overflow-y-auto pr-4 custom-scrollbar">
                         {data.metadata?.character_descriptions?.map((char, idx) => (
@@ -494,13 +494,13 @@ const OnboardingWizard = () => {
                                         type="text"
                                         value={char.role}
                                         onChange={(e) => updateCharacter(idx, 'role', e.target.value)}
-                                        className="bg-transparent text-[9px] text-arc-teal uppercase font-black tracking-[0.2em] outline-none block w-full mb-2"
+                                        className="bg-transparent text-[10px] text-arc-teal uppercase font-black tracking-[0.2em] outline-none block w-full mb-2"
                                     />
                                     <textarea
                                         value={char.description}
                                         rows={4}
                                         onChange={(e) => updateCharacter(idx, 'description', e.target.value)}
-                                        className="bg-transparent text-xs text-gray-500 font-light leading-relaxed outline-none resize-none min-h-[6rem] border-t border-white/5 pt-4"
+                                        className="bg-transparent text-sm text-gray-300 font-normal leading-relaxed outline-none resize-none min-h-[6rem] border-t border-white/5 pt-4"
                                     />
                                 </div>
                             </div>

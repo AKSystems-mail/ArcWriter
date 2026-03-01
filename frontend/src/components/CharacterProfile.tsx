@@ -160,7 +160,7 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
                             <label className="text-[10px] uppercase font-black tracking-widest text-gray-600 mb-4 block">Identity Configuration</label>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="space-y-2">
-                                    <span className="text-[9px] font-black uppercase text-gray-700 tracking-widest ml-1">Asset Name</span>
+                                    <span className="text-xs font-black uppercase text-gray-700 tracking-widest ml-1">Asset Name</span>
                                     <input
                                         type="text"
                                         className="w-full bg-black border border-white/10 rounded-sm p-5 text-white focus:border-arc-teal outline-none transition-all uppercase font-bold tracking-tight"
@@ -171,7 +171,7 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
                                 </div>
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <span className="text-[9px] font-black uppercase text-gray-700 tracking-widest ml-1">Story Role</span>
+                                        <span className="text-xs font-black uppercase text-gray-700 tracking-widest ml-1">Story Role</span>
                                         <select
                                             className="w-full bg-black border border-white/10 rounded-sm p-5 text-white text-xs font-black uppercase tracking-widest focus:border-arc-teal outline-none appearance-none cursor-pointer"
                                             value={role}
@@ -186,7 +186,7 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <span className="text-[9px] font-black uppercase text-gray-700 tracking-widest ml-1">Archetype</span>
+                                        <span className="text-xs font-black uppercase text-gray-700 tracking-widest ml-1">Archetype</span>
                                         <input
                                             type="text"
                                             className="w-full bg-black border border-white/10 rounded-sm p-5 text-white focus:border-arc-teal outline-none transition-all uppercase font-bold tracking-tight"
@@ -202,10 +202,10 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
 
                     <div className="space-y-10">
                         <div className="space-y-2">
-                            <label className="text-[10px] uppercase font-black tracking-widest text-gray-600 mb-4 block">Aesthetic Specification</label>
+                            <label className="text-xs uppercase font-black tracking-widest text-gray-600 mb-4 block">Aesthetic Specification</label>
                             <textarea
                                 rows={6}
-                                className="w-full bg-black border border-white/10 rounded-sm p-8 text-white font-courier text-lg focus:border-arc-teal outline-none transition-all resize-none leading-relaxed placeholder:text-gray-900"
+                                className="w-full bg-black border border-white/10 rounded-sm p-8 text-white font-courier text-lg focus:border-arc-teal outline-none transition-all resize-none leading-relaxed placeholder:text-gray-900 font-normal"
                                 value={physicalDescription}
                                 onChange={(e) => setPhysicalDescription(e.target.value)}
                                 placeholder="DRAFTING CINEMATIC LOOK SPECIFICATIONS..."
@@ -231,13 +231,13 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
                             </button>
                             
                             <div className="flex justify-between items-center px-2">
-                                <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest italic">
+                                <span className="text-xs font-black text-gray-700 uppercase tracking-widest italic">
                                     {isSubscribed ? "Studio Tier: Unlimited Renders" : `Operation Cost: ${CHARACTER_CONCEPTS_COST} Credits`}
                                 </span>
                                 {userCredits !== null && !isSubscribed && userCredits < CHARACTER_CONCEPTS_COST && (
                                     <button
                                         onClick={() => setIsPricingModalOpen(true)}
-                                        className="text-[9px] font-black text-arc-teal uppercase tracking-widest hover:text-white transition-colors"
+                                        className="text-xs font-black text-arc-teal uppercase tracking-widest hover:text-white transition-colors"
                                     >
                                         Buy Credits +
                                     </button>
@@ -254,7 +254,7 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
                                 <Sparkles className="w-6 h-6 text-arc-teal" /> 
                                 Studio <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Renders</span>
                             </h3>
-                            <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Select Visual Anchor</span>
+                            <span className="text-xs font-black text-gray-600 uppercase tracking-widest">Select Visual Anchor</span>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                             {generatedConceptUrls.map((url, index) => (

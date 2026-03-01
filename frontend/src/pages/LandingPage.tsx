@@ -135,7 +135,7 @@ const LandingPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/5 border border-white/5">
+                    <div id="visualization" className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/5 border border-white/5">
                         <FeatureCard 
                             icon={<Fingerprint className="w-6 h-6" />}
                             title="Story DNA"
