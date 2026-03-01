@@ -227,8 +227,8 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
         }
     };
 
-    // Gamification: Glow logic for the master export
-    const isProjectComplete = projectData?.poster_url && projectData?.teaser_url && projectData?.characters?.length > 0;
+    // Updated threshold: Only requires Poster and Story content
+    const isProjectComplete = projectData?.poster_url && (projectData?.source_material || projectData?.bible_content);
 
     return (
         <section className="bg-[#080808] border border-white/5 rounded-sm p-10 md:p-16 relative overflow-hidden shadow-2xl">

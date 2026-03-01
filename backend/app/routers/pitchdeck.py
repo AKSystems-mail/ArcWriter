@@ -37,8 +37,8 @@ async def download_pitch_deck(
         if project_data.get('owner_id') != user_id:
             raise HTTPException(status_code=403, detail="Permission denied")
 
-        # Fetch Script Blocks
-        script_ref = project_ref.collection("scripts").document("latest")
+        # Fetch Script Blocks (Aligned with Editor path)
+        script_ref = project_ref.collection("script").document("content")
         script_doc = script_ref.get()
         script_blocks = None
         if script_doc.exists:
