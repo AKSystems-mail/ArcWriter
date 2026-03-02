@@ -355,3 +355,21 @@ class LogicEngine:
         if matrix[s2][s1][0] >= matrix[s1][s1][0] and matrix[s2][s1][1] >= matrix[s2][s2][1]: equilibria.append((s2, s1))
         if matrix[s2][s2][0] >= matrix[s1][s2][0] and matrix[s2][s2][1] >= matrix[s2][s1][1]: equilibria.append((s2, s2))
         return equilibria
+
+    def generate_one_sentence_summary(self, full_text: str) -> str:
+        """Generates a concise, one-sentence summary for a poster tagline."""
+        if not full_text:
+            return "A story of conflict and choice."
+            
+        system_instruction = "You are a movie marketing expert. Distill the provided text into a single, impactful tagline sentence."
+        user_prompt = f"TEXT:\n{full_text}\n\nTASK: Create a one-sentence summary."
+        
+        try:
+            summary = self.llm.generate_text(system_instruction=system_instruction, user_prompt=user_prompt)
+            # Basic cleaning
+            return summary.strip().replace('"', '')
+        except Exception as e:
+            logger.error(f"Error generating one-sentence summary: {e}")
+            # Fallback to a truncated version of the original text
+            return (full_text[:100] + '...') if len(full_text) > 100 else full_text
+        

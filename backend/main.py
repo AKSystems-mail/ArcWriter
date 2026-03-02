@@ -246,9 +246,12 @@ async def generate_asset(request: AssetRequest, user_id: str = Depends(get_curre
     await services.user_service.deduct_credits(user_id, cost)
     
     if request.type == 'poster':
+        # New: Generate a one-sentence summary for the tagline from the full logline/synopsis
+        one_sentence_summary = services.logic_engine.generate_one_sentence_summary(request.tagline or "")
+
         base64_data = services.asset_studio.generate_poster(
             title=request.title or "Untitled",
-            tagline=request.tagline or "",
+            tagline=one_sentence_summary,
             genre=request.genre or "Drama",
             style=request.style
         )

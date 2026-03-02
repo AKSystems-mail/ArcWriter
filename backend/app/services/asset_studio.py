@@ -65,7 +65,7 @@ class AssetStudio:
 
         try:
             response = self.client.models.generate_content(
-                model='gemini-2.5-flash-image',
+                model='gemini-3.1-flash-image-preview',
                 contents=contents,
                 config=types.GenerateContentConfig(
                     response_modalities=['IMAGE'],
@@ -96,7 +96,7 @@ class AssetStudio:
         for i in range(4):
             try:
                 response = self.client.models.generate_content(
-                    model='gemini-2.5-flash-image',
+                    model='gemini-3.1-flash-image-preview',
                     contents=[prompt],
                     config=types.GenerateContentConfig(
                         response_modalities=['IMAGE'],

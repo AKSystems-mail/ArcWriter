@@ -80,7 +80,7 @@ async def get_current_user(authorization: str = Header(...)):
         try:
             user_ref.set({
                 'plan': 'free',
-                'studio_credits': 999999,
+                'studio_credits': 25,
                 'created_at': firestore.SERVER_TIMESTAMP,
                 'email': decoded_token.get('email', 'unknown@example.com') # Store email from token
             })

@@ -1,9 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Cpu, PlayCircle, Layers, Fingerprint, Compass, ArrowRight } from 'lucide-react';
+import { auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
+    const [user, setUser] = useState<any>(null);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (u) => {
+            setUser(u);
+        });
+        return () => unsubscribe();
+    }, []);
 
     const handleDownloadManual = async () => {
         try {
@@ -41,10 +51,10 @@ const LandingPage: React.FC = () => {
                         <a href="#pitch" className="hover:text-white transition-colors">Pitch Ready</a>
                     </div>
                     <button
-                        onClick={() => navigate('/login')}
+                        onClick={() => navigate('/app')}
                         className="px-8 py-2 bg-white text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-arc-teal hover:text-white transition-all duration-300 shadow-xl shadow-white/5"
                     >
-                        Enter Studio
+                        {user ? 'Enter Studio' : 'Get Started'}
                     </button>
                 </div>
             </nav>
@@ -76,11 +86,17 @@ const LandingPage: React.FC = () => {
                         
                         <div className="flex flex-col gap-4">
                             <button
-                                onClick={() => navigate('/login')}
+                                onClick={() => navigate('/app')}
                                 className="group relative px-16 py-8 bg-white text-black font-black text-xs uppercase tracking-[0.4em] rounded-sm transition-all hover:bg-arc-teal hover:text-white"
                             >
-                                BEGIN ANALYSIS
+                                {user ? 'RESUME ANALYSIS' : 'BEGIN ANALYSIS'}
                                 <ArrowRight className="absolute right-6 opacity-0 group-hover:opacity-100 transition-all w-5 h-5 -translate-x-4 group-hover:translate-x-0" />
+                            </button>
+                            <button
+                                onClick={() => navigate('/billing')}
+                                className="px-16 py-8 bg-black border border-white/5 text-gray-500 font-black text-xs uppercase tracking-[0.4em] rounded-sm transition-all hover:bg-white/10 hover:text-white"
+                            >
+                                {user ? 'VIEW PLANS' : 'UNLOCK FULL POWER'}
                             </button>
                             <button 
                                 onClick={handleDownloadManual}
@@ -98,6 +114,7 @@ const LandingPage: React.FC = () => {
                     <div className="h-32 w-px bg-gradient-to-b from-arc-teal to-transparent"></div>
                 </div>
             </section>
+
 
             {/* Precision Section */}
             <section id="logic" className="py-40 px-8 md:px-24 bg-[#050505] relative border-t border-white/5">
@@ -166,10 +183,10 @@ const LandingPage: React.FC = () => {
                         Export structurally sound scripts, cinematic pitch decks, and visual character sheets designed to move executives to a "Yes."
                     </p>
                     <button 
-                        onClick={() => navigate('/login')}
+                        onClick={() => navigate('/app')}
                         className="px-24 py-10 bg-white text-black font-black uppercase tracking-[0.5em] text-xs hover:bg-arc-teal hover:text-white transition-all duration-500 shadow-2xl"
                     >
-                        Initialize Your Perfect Pitch
+                        {user ? 'RETURN TO STUDIO' : 'Initialize Your Perfect Pitch'}
                     </button>
                 </div>
             </section>

@@ -575,7 +575,7 @@ const OnboardingWizard = () => {
             <div className="w-full max-w-5xl mx-auto px-4 z-10 text-center">
                 <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Final Phase: Analysis</span>
                 <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter uppercase leading-none">Diagnostic Lens</h2>
-                <p className="text-xl text-gray-500 font-light mb-16">How should the logic engine prioritize feedback during the script review?</p>
+                <p className="text-xl text-gray-400 font-normal mb-16">How should the logic engine prioritize feedback during the script review?</p>
 
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20">

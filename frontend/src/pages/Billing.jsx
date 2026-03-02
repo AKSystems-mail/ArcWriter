@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Check, Shield, CreditCard, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Zap, Check, Shield, CreditCard, Sparkles, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { auth, db } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
 const Billing = () => {
+    const navigate = useNavigate();
     const [userProfile, setUserProfile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [isAnnual, setIsAnnual] = useState(false);
@@ -86,8 +88,27 @@ const Billing = () => {
         }
     ];
 
+    const handleBackNavigation = () => {
+        if (window.history.length > 2) {
+            navigate(-1);
+        } else {
+            navigate('/dashboard'); // Fallback to dashboard
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-obsidian-black text-white py-20 px-8">
+        <div className="min-h-screen bg-obsidian-black text-white py-20 px-8 relative">
+            {/* Top Navigation Back Button */}
+            <div className="absolute top-10 left-10 z-50">
+                <button 
+                    onClick={handleBackNavigation}
+                    className="group flex items-center gap-3 px-6 py-3 bg-white/5 border border-white/5 hover:border-white/20 rounded-sm transition-all text-gray-400 hover:text-white"
+                >
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Back to Studio</span>
+                </button>
+            </div>
+
             <div className="max-w-6xl mx-auto">
                 {/* Status Bar */}
                 <div className="flex flex-col md:flex-row justify-between items-center bg-white/5 border border-white/10 rounded-sm p-8 mb-20">

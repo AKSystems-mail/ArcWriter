@@ -2,17 +2,27 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     
-    // User-specific assets: posters and character anchors
-    // Expected path format: users/{userId}/{projectId}/...
-    match /users/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Public assets like posters and characters should be readable by anyone
+    match /posters/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null; // Allow authenticated users to upload
     }
     
-    // Legacy support: if you haven't migrated to users/ path yet, 
-    // we should at least restrict read/write to the backend service account for global paths.
-    match /{allPaths=**} {
-      allow read: if request.auth != null; // Temporarily keep readable for UI
-      allow write: if false; // Deny direct upload, go through backend
+    match /character_anchors/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null; // Allow authenticated users to upload
+    }
+    
+    // Teasers, which might be sensitive, remain public read but not publicly writable
+    match /teasers/{allPaths=**} {
+        allow read: if true;
+        allow write: if false; // Backend only
+    }
+
+    // Fallback for any other paths - Read Only for authenticated users
+    match /{allOtherPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
     }
   }
 }

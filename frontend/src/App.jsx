@@ -68,37 +68,38 @@ const ProtectedRoute = ({ children }) => {
 // This decides where a logged-in user should land
 const TrafficController = () => {
     const navigate = useNavigate();
+    // Keep the loading state to provide feedback while the check is happening.
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const decideRoute = async () => {
-            const user = auth.currentUser;
+        // Use onAuthStateChanged for a reliable user object.
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // Check if they have projects (The "Magic Moment" Logic)
+                // User is confirmed. Now, check for projects.
                 const status = await checkUserOnboardingStatus(user);
-
-                if (!status.hasProjects) {
-                    // New User -> Force them to the Wizard
-                    navigate('/wizard');
-                } else {
-                    // Returning User -> Go to Dashboard
+                if (status.hasProjects) {
                     navigate('/dashboard');
+                } else {
+                    navigate('/wizard');
                 }
+            } else {
+                // This case should theoretically be handled by ProtectedRoute,
+                // but as a safeguard, navigate to login if no user is found.
+                navigate('/login');
             }
-            setLoading(false);
-        };
-        decideRoute();
+            // No need to setLoading(false) as navigation will unmount the component.
+        });
+
+        // Cleanup the listener when the component unmounts.
+        return () => unsubscribe();
     }, [navigate]);
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-obsidian-black flex items-center justify-center">
-                <div className="text-arc-teal font-black tracking-widest animate-pulse">LOADING STUDIO...</div>
-            </div>
-        );
-    }
-
-    return null;
+    // Display a loading indicator while the auth check and project query are in progress.
+    return (
+        <div className="min-h-screen bg-obsidian-black flex items-center justify-center">
+            <div className="text-arc-teal font-black tracking-widest animate-pulse">LOADING STUDIO...</div>
+        </div>
+    );
 };
 
 function App() {

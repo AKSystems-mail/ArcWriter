@@ -619,6 +619,13 @@ const ScriptEditor = ({ universeId, projectId }) => {
           </div>
 
           <div className="flex items-center gap-6">
+            <button 
+                onClick={() => navigate('/billing')}
+                className="flex items-center gap-2 px-4 py-2 hover:bg-arc-teal/10 rounded-full border border-arc-teal/20 transition-all text-arc-teal hover:text-white"
+            >
+                <CreditCard className="w-3 h-3" />
+                <span className="text-[9px] font-black uppercase tracking-widest">Upgrade Plan</span>
+            </button>
             <div className="flex flex-col items-end">
                 <span className={`text-[8px] font-black uppercase tracking-widest ${isSaved ? 'text-gray-700' : 'text-arc-orange animate-pulse'}`}>
                     {isSaving ? 'Synchronizing...' : isSaved ? 'Asset Integrity: Verified' : 'Unsaved Changes'}

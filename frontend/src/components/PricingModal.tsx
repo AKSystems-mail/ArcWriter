@@ -63,6 +63,18 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                 >
                     &times;
                 </button>
+                
+                {/* View Plans Button */}
+                <button
+                    onClick={() => {
+                        onClose(); // Close the modal first
+                        window.location.href = '/billing'; // Navigate to billing page
+                    }}
+                    className="absolute top-8 left-8 flex items-center gap-2 px-4 py-2 hover:bg-white/5 rounded-full border border-white/5 transition-all text-gray-400 hover:text-arc-teal"
+                >
+                    <CreditCard className="w-3 h-3" />
+                    <span className="text-[9px] font-black uppercase tracking-widest">View All Plans</span>
+                </button>
 
                 <div className="text-center mb-16">
                     <h2 className="text-5xl font-black text-white mb-4 tracking-tighter">
@@ -87,7 +99,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                                     <span className="text-arc-teal">✦</span> Unlimited Critique Engine
                                 </li>
                                 <li className="flex items-center gap-3">
-                                    <span className="text-arc-teal">✦</span> 100 Studio Credits /mo
+                                    <span className="text-arc-teal">✦</span> 150 Studio Credits /mo
                                 </li>
                                 <li className="flex items-center gap-3">
                                     <span className="text-arc-teal">✦</span> Priority Rendering Pipeline
@@ -107,21 +119,21 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                     <div className="bg-obsidian-black border border-arc-orange/30 hover:border-arc-orange rounded-[2rem] p-10 flex flex-col justify-between transition-all duration-500 group shadow-2xl hover:shadow-arc-orange/10">
                         <div>
                             <div className="flex justify-between items-start mb-8">
-                                <h3 className="text-3xl font-bold text-white group-hover:text-arc-orange transition-colors tracking-tight">Studio Top-Up</h3>
-                                <span className="bg-arc-orange/10 text-arc-orange text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-arc-orange/20">Asset Pack</span>
+                                <h3 className="text-3xl font-bold text-white group-hover:text-arc-orange transition-colors tracking-tight">Studio Pass</h3>
+                                <span className="bg-arc-orange/10 text-arc-orange text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-arc-orange/20">LIFETIME</span>
                             </div>
                             <p className="text-6xl font-black text-white mb-8 tracking-tighter">
-                                $35<span className="text-xl font-medium text-gray-500"> /once</span>
+                                $49<span className="text-xl font-medium text-gray-500"> /once</span>
                             </p>
                             <ul className="text-gray-400 space-y-4 mb-12">
                                 <li className="flex items-center gap-3">
-                                    <span className="text-arc-orange">✦</span> 100 Studio Credits
+                                    <span className="text-arc-orange">✦</span> 600 Studio Credits
                                 </li>
                                 <li className="flex items-center gap-3">
-                                    <span className="text-arc-orange">✦</span> 5 Poster Studio Renders
+                                    <span className="text-arc-orange">✦</span> High-Fidelity PDF Exports
                                 </li>
                                 <li className="flex items-center gap-3">
-                                    <span className="text-arc-orange">✦</span> 3 Motion Teasers
+                                    <span className="text-arc-orange">✦</span> Early Access to Veo 3.0
                                 </li>
                             </ul>
                         </div>

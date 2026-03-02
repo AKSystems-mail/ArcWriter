@@ -85,6 +85,13 @@ const Architect = () => {
                 
                 <div className="flex items-center gap-8">
                     <button 
+                        onClick={() => navigate('/billing')}
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-arc-teal/10 rounded-full border border-arc-teal/20 transition-all text-arc-teal hover:text-white"
+                    >
+                        <CreditCard className="w-3 h-3" />
+                        <span className="text-[9px] font-black uppercase tracking-widest">Upgrade Plan</span>
+                    </button>
+                    <button 
                         onClick={() => navigate(`/project/${projectId}/editor`, { state: { project_id: projectId, universe_id: universeId } })}
                         className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 hover:text-white transition-all group"
                     >
@@ -105,7 +112,7 @@ const Architect = () => {
                         <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none mb-4">
                             The <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Blueprint</span>
                         </h1>
-                        <p className="text-gray-500 text-lg font-light italic border-l border-white/10 pl-6 py-1">
+                        <p className="text-gray-400 text-lg font-normal italic border-l border-white/10 pl-6 py-1">
                             Structural engineering for professional narrative assets.
                         </p>
                     </div>

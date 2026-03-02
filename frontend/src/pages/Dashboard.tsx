@@ -21,22 +21,20 @@ const Dashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<'active' | 'archived'>('active');
 
-    const fetchProjects = async () => {
+    useEffect(() => {
         const user = auth.currentUser;
         if (!user) {
             setLoading(false);
             return;
         }
 
-        try {
-            const projectsQuery = query(
-                collectionGroup(db, 'projects'),
-                where('owner_id', '==', user.uid)
-            );
+        const projectsQuery = query(
+            collectionGroup(db, 'projects'),
+            where('owner_id', '==', user.uid)
+        );
 
-            const querySnapshot = await getDocs(projectsQuery);
+        const unsubscribe = onSnapshot(projectsQuery, (querySnapshot) => {
             const projectsList: Project[] = [];
-            
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
                 const universeId = doc.ref.parent.parent?.id || "default";
@@ -55,15 +53,13 @@ const Dashboard: React.FC = () => {
 
             projectsList.sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0));
             setProjects(projectsList);
-        } catch (error) {
-            console.error("Error fetching projects:", error);
-        } finally {
             setLoading(false);
-        }
-    };
+        }, (error) => {
+            console.error("Error fetching projects with snapshot listener:", error);
+            setLoading(false);
+        });
 
-    useEffect(() => {
-        fetchProjects();
+        return () => unsubscribe(); // Cleanup the listener on unmount
     }, []);
 
     const handleEditTitle = async (e: React.MouseEvent, project: Project) => {
@@ -153,10 +149,10 @@ const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-6">
                     <button 
                         onClick={() => navigate('/billing')}
-                        className="flex items-center gap-2 px-4 py-2 hover:bg-white/5 rounded-full border border-white/5 transition-all text-gray-400 hover:text-arc-teal"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-arc-teal/10 rounded-full border border-arc-teal/20 transition-all text-arc-teal hover:text-white"
                     >
                         <CreditCard className="w-3 h-3" />
-                        <span className="text-[9px] font-black uppercase tracking-widest">Billing</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest">Upgrade Plan</span>
                     </button>
                     <div className="flex items-center gap-2 px-4 py-2 bg-gray-900/50 rounded-full border border-white/5">
                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>

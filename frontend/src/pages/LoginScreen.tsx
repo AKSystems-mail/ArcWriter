@@ -130,9 +130,9 @@ const LoginScreen: React.FC = () => {
                         </button>
                     </div>
                 ) : (
-                    <form onSubmit={handleEmailAuth} className="space-y-4 text-left animate-fade-in">
+                    <form onSubmit={handleEmailAuth} className="space-y-6 text-left animate-fade-in">
                         <div className="space-y-2">
-                            <label className="text-[8px] font-black uppercase tracking-[0.3em] text-gray-600 ml-1">Work Email</label>
+                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 ml-1">Email</label>
                             <div className="relative">
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-700" />
                                 <input 
@@ -140,7 +140,7 @@ const LoginScreen: React.FC = () => {
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="name@arcwriter.us"
+                                    placeholder="Enter your email"
                                     className="w-full bg-black border border-white/10 rounded-sm py-4 pl-12 pr-4 text-sm font-light focus:outline-none focus:border-arc-teal/50 transition-all placeholder:text-gray-800"
                                 />
                             </div>
@@ -148,7 +148,7 @@ const LoginScreen: React.FC = () => {
 
                         {mode !== 'reset' && (
                             <div className="space-y-2">
-                                <label className="text-[8px] font-black uppercase tracking-[0.3em] text-gray-600 ml-1">Security Key</label>
+                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 ml-1">Password</label>
                                 <div className="relative">
                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-700" />
                                     <input 

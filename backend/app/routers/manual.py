@@ -7,176 +7,172 @@ from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib import colors
 import io
+import re
+import os
 
 router = APIRouter(
     prefix="/api/manual",
     tags=["manual"]
 )
 
+def add_page_number(canvas, doc):
+    canvas.saveState()
+    canvas.setFont('Courier', 10)
+    page_number_text = "%d." % (doc.page)
+    canvas.drawRightString(letter[0] - 1.0 * inch, letter[1] - 0.5 * inch, page_number_text)
+    canvas.restoreState()
+
 @router.get("/download")
 async def download_manual():
     """
-    Generates and downloads 'The Screenwriter's Guide to ArcWriter' in screenplay format.
+    Generates and downloads 'The Screenwriter's Guide to ArcWriter' in professional screenplay format.
+    Handles the new clean indentation-based format.
     """
     try:
+        # Resolve path relative to the backend directory
+        file_path = "Screenwriter_Guide.md"
+        if not os.path.exists(file_path):
+            file_path = os.path.join(os.path.dirname(__file__), "..", "..", "Screenwriter_Guide.md")
+
+        with open(file_path, "r") as f:
+            markdown_content = f.read()
+
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=1*inch, bottomMargin=1*inch, leftMargin=1.5*inch, rightMargin=1*inch)
+        doc = SimpleDocTemplate(
+            buffer, 
+            pagesize=letter, 
+            topMargin=1.0*inch, 
+            bottomMargin=1.0*inch, 
+            leftMargin=1.5*inch, 
+            rightMargin=1.0*inch
+        )
         
         styles = getSampleStyleSheet()
-        # Screenplay Styles
-        styles.add(ParagraphStyle(name='ScriptSlug', fontSize=12, leading=14, fontName='Courier-Bold', spaceBefore=12, spaceAfter=12))
-        styles.add(ParagraphStyle(name='ScriptAction', fontSize=12, leading=14, fontName='Courier', spaceAfter=12))
-        styles.add(ParagraphStyle(name='ScriptChar', fontSize=12, leading=14, fontName='Courier', leftIndent=2.0*inch, spaceBefore=12))
-        styles.add(ParagraphStyle(name='ScriptDialogue', fontSize=12, leading=14, fontName='Courier', leftIndent=1.0*inch, rightIndent=1.0*inch, spaceAfter=6))
-        styles.add(ParagraphStyle(name='ScriptParenthetical', fontSize=12, leading=14, fontName='Courier', leftIndent=1.5*inch, rightIndent=1.5*inch))
-        styles.add(ParagraphStyle(name='ScriptTitle', fontSize=24, leading=28, alignment=TA_CENTER, fontName='Courier-Bold', spaceBefore=200))
-        styles.add(ParagraphStyle(name='ScriptSubTitle', fontSize=14, leading=18, alignment=TA_CENTER, fontName='Courier', spaceAfter=24))
-
-        story = []
-
-        # --- COVER PAGE ---
-        story.append(Paragraph("THE SCREENWRITER'S GUIDE TO ARCWRITER", styles['ScriptTitle']))
-        story.append(Spacer(1, 0.5*inch))
-        story.append(Paragraph("A Narrative Instrument for Professional Architects", styles['ScriptSubTitle']))
-        story.append(PageBreak())
-
-        # --- ACT 0: THE PUBLIC LABORATORY ---
-        story.append(Paragraph("ACT 0: THE PUBLIC LABORATORY", styles['ScriptSlug']))
-        story.append(Paragraph("EXT. BROWSER WINDOW - DAY", styles['ScriptSlug']))
-        story.append(Paragraph("Before diving into a full Universe, the Writer discovers the Public Laboratory. A place to 'Distill Your Narrative Core.'", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER", styles['ScriptChar']))
-        story.append(Paragraph("Paste your rough notes or upload a PDF script. Our Logic Engine will extract a 15-point structural beat sheet for you, right here.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("The Writer pastes a messy paragraph about a guy named Dan peeing in a pool and realizing his high school crush is there.", styles['ScriptAction']))
-
-        story.append(Paragraph("THE WRITER", styles['ScriptChar']))
-        story.append(Paragraph("Can you make sense of this?", styles['ScriptDialogue']))
-
-        story.append(Paragraph("The Writer clicks 'Build Beat Sheet'. The Logic Engine activates, spinning up with a pulse.", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER", styles['ScriptChar']))
-        story.append(Paragraph("Structure Identified. I've broken down your rough notes into Opening Image, Theme Stated, Catalyst, and more.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("A clean, numbered beat sheet appears behind a blurred gate.", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER (CONT'D)", styles['ScriptChar']))
-        story.append(Paragraph("Send the full beat sheet. Enter your email to receive the PDF.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("The Writer submits their email. Package sent. They are now ready to Enter The Writer's Room.", styles['ScriptAction']))
-        story.append(PageBreak())
-
-        # --- ACT 1: THE GENESIS ---
-        story.append(Paragraph("ACT I: THE ONBOARDING WIZARD", styles['ScriptSlug']))
-        story.append(Paragraph("INT. ARCWRITER STUDIO - DAY", styles['ScriptSlug']))
-        story.append(Paragraph("A glowing portal stands ready. The future of storytelling is blank, awaiting its first line of code.", styles['ScriptAction']))
         
-        story.append(Paragraph("ARCWRITER", styles['ScriptChar']))
-        story.append(Paragraph("Welcome, Writer. You aren't here to just type. You're here to engineer a masterpiece. Let's start at the beginning.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("EXT. THE ONBOARDING WIZARD - DAY", styles['ScriptSlug']))
-        story.append(Paragraph("The WRITER has a choice. Upload a PDF of 120 pages, or start from scratch. The system begins to hum, parsing page by page, extracting the DNA of the story.", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER", styles['ScriptChar']))
-        story.append(Paragraph("(calmly)", styles['ScriptParenthetical']))
-        story.append(Paragraph("Step one: Name your Universe. Are we building a standalone masterpiece or a sprawling franchise? You can link this script to existing Universes for cross-script continuity.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("The Writer makes a selection among the Dual-Mode Onboarding paths.", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER (CONT'D)", styles['ScriptChar']))
-        story.append(Paragraph("Choose THE DISCOVERY mode to brainstorm freely and start with tone, or THE BLUEPRINT mode to rigorously outline your plot points.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("The system finishes its analysis. The screen flashes 'analyzing narrative core'. The Story DNA summary appears.", styles['ScriptAction']))
-        story.append(PageBreak())
-
-        # --- ACT 2: THE FOUNDATION ---
-        story.append(Paragraph("ACT II: THE ARCHITECTURE", styles['ScriptSlug']))
-        story.append(Paragraph("INT. THE DASHBOARD - DAY", styles['ScriptSlug']))
-        story.append(Paragraph("The Writer shifts into the ARCHITECT page. Here, the structure is God.", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER", styles['ScriptChar']))
-        story.append(Paragraph("Let's look at your BEAT SHEET. We can map your story to the Hero's Journey, or the Story Circle. Notice the Pitch Readiness circular meter responding to your input.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("The Writer opens the SOURCE MATERIAL DRAWER. No cluttered metadata. Just pure story beats and a spaced cast list.", styles['ScriptAction']))
+        # --- Screenplay Style Definitions ---
+        styles.add(ParagraphStyle(
+            name='ScriptSlug', 
+            fontSize=12, 
+            leading=14, 
+            fontName='Courier-Bold', 
+            spaceBefore=12, 
+            spaceAfter=12,
+            textTransform='uppercase'
+        ))
         
-        story.append(Paragraph("Behind the scenes, the PROJECT BIBLE acts as a RAG-powered continuity engine across the entire Universe. The Writer can't resurrect a deceased character without the system noticing.", styles['ScriptAction']))
-        story.append(PageBreak())
-
-        # --- ACT 3: THE CONFRONTATION ---
-        story.append(Paragraph("ACT III: THE SCRIPT EDITOR", styles['ScriptSlug']))
-        story.append(Paragraph("INT. THE SCRIPT EDITOR - DAY", styles['ScriptSlug']))
-        story.append(Paragraph("The Writer types. The page is perfectly formatted to industry standards with a 1.5 inch left margin. Invisible block transitions give it a unified feel.", styles['ScriptAction']))
-
-        story.append(Paragraph("THE WRITER", styles['ScriptChar']))
-        story.append(Paragraph("I can't remember the name of that location from Act I...", styles['ScriptDialogue']))
-
-        story.append(Paragraph("ARCWRITER", styles['ScriptChar']))
-        story.append(Paragraph("Use the Smart Autocomplete. I remember every character and every location you've ever typed. Just start typing.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("The Writer gets stuck on a scene.", styles['ScriptAction']))
-
-        story.append(Paragraph("THE WRITER", styles['ScriptChar']))
-        story.append(Paragraph("What should they say?", styles['ScriptDialogue']))
-
-        story.append(Paragraph("ARCWRITER", styles['ScriptChar']))
-        story.append(Paragraph("Click the Magic Wand Tool. Do you want an 'Auto-Write Scene' or just 'Suggest Dialogue'? I'll read the last 2000 characters for tone and continuity matching.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("The Writer reviews the generated scene. The CRITIQUE SIDEBAR comes alive. The SCENE SEISMOGRAPH visualizes the push-and-pull tension of the dialogue line by line.", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER (CONT'D)", styles['ScriptChar']))
-        story.append(Paragraph("Run the 'First 10 Pages Gatekeeper Audit'. I'll evaluate the Theme, Motivation, Tone, and Catalyst. I'll tell you if a Producer would READ or PASS.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("A 'READ' verdict flashes. The Writer exhales. They delete an old, clunky scene. It doesn't disappear; it falls to THE CUTTING ROOM FLOOR.", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER (CONT'D)", styles['ScriptChar']))
-        story.append(Paragraph("Your darlings are safe in the 'Redemption' archive. If you want to permanently delete them, you'll need to confirm the Point of No Return.", styles['ScriptDialogue']))
-        story.append(PageBreak())
-
-        # --- ACT 4: THE PRODUCTION ---
-        story.append(Paragraph("ACT IV: THE VISUALS STUDIO", styles['ScriptSlug']))
-        story.append(Paragraph("INT. THE VISUALS STUDIO - NIGHT", styles['ScriptSlug']))
-        story.append(Paragraph("The script is locked. It's time to build the pitch. The Writer enters the character gallery.", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER", styles['ScriptChar']))
-        story.append(Paragraph("Let's define your cast. Generate 4 variants for each. When you find the perfect one, LOCK the character anchor.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("The Writer clicks. A visual 'LOCKING ANCHOR...' message flashes. The character is cemented into the Universe.", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER (CONT'D)", styles['ScriptChar']))
-        story.append(Paragraph("Now for the key art. The AI will use your Locked Character Anchors as visual references to render an Official Poster in 2:3 vertical format.", styles['ScriptDialogue']))
+        styles.add(ParagraphStyle(
+            name='ScriptAction', 
+            fontSize=12, 
+            leading=14, 
+            fontName='Courier', 
+            spaceAfter=12
+        ))
         
-        story.append(Paragraph("THE WRITER", styles['ScriptChar']))
-        story.append(Paragraph("What about a trailer?", styles['ScriptDialogue']))
+        styles.add(ParagraphStyle(
+            name='ScriptChar', 
+            fontSize=12, 
+            leading=14, 
+            fontName='Courier', 
+            leftIndent=2.0*inch, 
+            spaceBefore=12,
+            spaceAfter=0,
+            textTransform='uppercase'
+        ))
         
-        story.append(Paragraph("ARCWRITER", styles['ScriptChar']))
-        story.append(Paragraph("Our asynchronous motion pipeline powered by Veo 2.0 will generate 5-second 16:9 cinematic teasers. No timeouts. Just action.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("The screen fills with high-fidelity imagery and moving video.", styles['ScriptAction']))
-        story.append(PageBreak())
-
-        # --- ACT 5: THE RESOLUTION ---
-        story.append(Paragraph("ACT V: THE DELIVERABLE", styles['ScriptSlug']))
-        story.append(Paragraph("INT. THE PITCH MEETING - DAY", styles['ScriptSlug']))
-        story.append(Paragraph("The Writer stands before a Producer. They don't have a stack of paper. They have an iPad.", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER", styles['ScriptChar']))
-        story.append(Paragraph("(V.O.)", styles['ScriptParenthetical']))
-        story.append(Paragraph("Your master Export Pitch Package button triggered when you hit 100 percent completion. It glowed Arc-Orange.", styles['ScriptDialogue']))
-
-        story.append(Paragraph("The Writer opens the compiled PDF Pitch Package. It contains the Poster, Story Summary, Cast Dossiers, and the Full Script.", styles['ScriptAction']))
-
-        story.append(Paragraph("ARCWRITER (CONT'D)", styles['ScriptChar']))
-        story.append(Paragraph("And those QR codes on the pages? They link directly to your cinematic teasers.", styles['ScriptDialogue']))
+        styles.add(ParagraphStyle(
+            name='ScriptDialogue', 
+            fontSize=12, 
+            leading=14, 
+            fontName='Courier', 
+            leftIndent=1.0*inch, 
+            rightIndent=1.5*inch, 
+            spaceAfter=6
+        ))
         
-        story.append(Paragraph("The Writer instead shifts to their phone, bringing up the MOBILE PITCH DECK. A responsive, read-only gallery meant for on-the-spot presentations. Swipe. Swipe. Sold.", styles['ScriptAction']))
+        styles.add(ParagraphStyle(
+            name='ScriptParenthetical', 
+            fontSize=12, 
+            leading=14, 
+            fontName='Courier', 
+            leftIndent=1.5*inch, 
+            rightIndent=2.0*inch,
+            spaceAfter=0
+        ))
 
-        story.append(Paragraph("ARCWRITER (CONT'D)", styles['ScriptChar']))
-        story.append(Paragraph("Mission accomplished. Go get them.", styles['ScriptDialogue']))
+        styles.add(ParagraphStyle(
+            name='ScriptTitle', 
+            fontSize=24, 
+            leading=28, 
+            alignment=TA_CENTER, 
+            fontName='Courier-Bold', 
+            spaceBefore=150
+        ))
+        
+        styles.add(ParagraphStyle(
+            name='ScriptCenterInfo', 
+            fontSize=12, 
+            leading=14, 
+            alignment=TA_CENTER, 
+            fontName='Courier', 
+            spaceAfter=12
+        ))
 
-        story.append(Paragraph("FADE TO BLACK.", styles['ScriptSlug']))
-        story.append(Paragraph("THE END", styles['ScriptTitle']))
+        story_elements = []
+        lines = markdown_content.split('\n')
+        
+        # Simple cover page detection
+        if len(lines) > 0 and not lines[0].strip().startswith('INT.') and not lines[0].strip().startswith('EXT.'):
+            # Process title page lines
+            title_lines_done = 0
+            for i, line in enumerate(lines):
+                if 'FADE IN:' in line:
+                    title_lines_done = i
+                    break
+                if line.strip():
+                    if i == 0:
+                        story_elements.append(Paragraph(line.strip(), styles['ScriptTitle']))
+                    else:
+                        story_elements.append(Paragraph(line.strip(), styles['ScriptCenterInfo']))
+            
+            if story_elements:
+                story_elements.append(PageBreak())
+                lines = lines[title_lines_done:]
 
-        doc.build(story)
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            # Calculate indentation (count leading spaces)
+            indent = len(line) - len(line.lstrip())
+
+            # 1. Transitions / Character Names (High Indent)
+            if indent >= 15:
+                # Could be Transition (right-aligned in MD usually means high indent or specific name)
+                if stripped in ['FADE IN:', 'FADE OUT.', 'CUT TO:', 'BACK TO:', 'FADE TO BLACK.', 'THE END']:
+                    story_elements.append(Paragraph(stripped, styles['ScriptSlug']))
+                else:
+                    # Likely a Character Name
+                    story_elements.append(Paragraph(stripped, styles['ScriptChar']))
+            
+            # 2. Parentheticals (Moderate Indent + Parens)
+            elif indent >= 8 and stripped.startswith('(') and stripped.endswith(')'):
+                story_elements.append(Paragraph(stripped, styles['ScriptParenthetical']))
+            
+            # 3. Dialogue (Moderate Indent)
+            elif indent >= 8:
+                story_elements.append(Paragraph(stripped, styles['ScriptDialogue']))
+            
+            # 4. Sluglines (Zero Indent + Keyword)
+            elif stripped.upper().startswith('INT.') or stripped.upper().startswith('EXT.'):
+                story_elements.append(Paragraph(stripped.upper(), styles['ScriptSlug']))
+            
+            # 5. Action (Zero/Low Indent)
+            else:
+                story_elements.append(Paragraph(stripped, styles['ScriptAction']))
+
+        # Build the PDF
+        doc.build(story_elements, onLaterPages=add_page_number)
         buffer.seek(0)
 
         return StreamingResponse(
@@ -186,4 +182,6 @@ async def download_manual():
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
