@@ -394,6 +394,7 @@ async def get_teaser_status(operation_id: str, user_id: str = Depends(get_curren
         "STRIPE_PRICE_WR_MONTHLY",
         "STRIPE_PRICE_WR_ANNUAL",
         "STRIPE_PRICE_STUDIO_PASS",
+        "STRIPE_PRICE_TOP_UP",
         "BREVO_API_KEY",
         "BREVO_LIST_ID",
         "BREVO_REGISTERED_LIST_ID",

@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { auth } from '../firebase'; // Import your Firebase auth instance
+import React, { useState, useEffect } from 'react';
+import { auth, db } from '../firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { CreditCard, Zap, Sparkles, Film, Target, ArrowRight, Loader2 } from 'lucide-react';
+import { apiClient } from '../api/client';
 
 interface PricingModalProps {
     isOpen: boolean;
@@ -7,145 +10,149 @@ interface PricingModalProps {
 }
 
 const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
-    const [loadingSubscription, setLoadingSubscription] = useState(false);
-    const [loadingPack, setLoadingPack] = useState(false);
+    const [userProfile, setUserProfile] = useState<any>(null);
+    const [loadingTier, setLoadingTier] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!auth.currentUser || !isOpen) return;
+        
+        const unsub = onSnapshot(doc(db, 'users', auth.currentUser.uid), (doc) => {
+            setUserProfile(doc.data());
+        });
+        
+        return () => unsub();
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
-    const handleSelectPlan = async (planType: 'subscription' | 'pack') => {
-        const currentUser = auth.currentUser;
-        if (!currentUser) {
-            console.error("No user logged in.");
-            // Optionally redirect to login or show a message
-            return;
-        }
-
-        const idToken = await currentUser.getIdToken();
-        const setLoading = planType === 'subscription' ? setLoadingSubscription : setLoadingPack;
-        setLoading(true);
-
+    const handleSelectPlan = async (tier: string) => {
+        setLoadingTier(tier);
         try {
-            const response = await fetch(`/api/stripe/create-checkout-session/${planType}`, {
+            const response = await apiClient('/api/billing/create-session', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`, // Send Firebase ID token
-                },
+                body: JSON.stringify({ tier })
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            if (data.checkout_url) {
-                window.location.href = data.checkout_url; // Redirect to Stripe Checkout
-            } else {
-                console.error("No checkout URL received.");
-            }
-        } catch (error: any) {
-            console.error(`Error selecting ${planType} plan:`, error.message);
-            // Display error to user
+            const { url } = await response.json();
+            window.location.href = url;
+        } catch (error) {
+            console.error("Billing Error:", error);
+            alert("Failed to initiate checkout.");
         } finally {
-            setLoading(false);
+            setLoadingTier(null);
         }
     };
 
+    const isExplorer = !userProfile?.plan || userProfile.plan === 'explorer' || userProfile.plan === 'free';
+    const isWriterRoom = userProfile?.plan?.includes('WRITER_ROOM');
+
     return (
-        <div className="fixed inset-0 bg-obsidian-black/80 backdrop-blur-xl flex items-center justify-center z-[100] p-4 animate-fade-in">
-            <div className="bg-gray-900 border border-gray-800 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.8)] max-w-5xl w-full p-12 relative overflow-hidden animate-fade-in-delayed">
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-arc-teal via-arc-orange to-arc-teal"></div>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-[100] p-4 animate-fade-in">
+            <div className="bg-[#050505] border border-white/5 rounded-sm shadow-[0_0_100px_rgba(0,0,0,0.5)] max-w-4xl w-full p-12 relative overflow-hidden animate-fade-in-delayed">
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-arc-teal to-transparent opacity-50"></div>
 
                 <button
                     onClick={onClose}
-                    className="absolute top-8 right-8 text-gray-500 hover:text-white transition-colors text-4xl leading-none"
+                    className="absolute top-8 right-8 text-gray-600 hover:text-white transition-colors text-2xl"
                 >
                     &times;
                 </button>
                 
-                {/* View Plans Button */}
                 <button
                     onClick={() => {
-                        onClose(); // Close the modal first
-                        window.location.href = '/billing'; // Navigate to billing page
+                        onClose();
+                        window.location.href = '/billing';
                     }}
-                    className="absolute top-8 left-8 flex items-center gap-2 px-4 py-2 hover:bg-white/5 rounded-full border border-white/5 transition-all text-gray-400 hover:text-arc-teal"
+                    className="absolute top-8 left-8 flex items-center gap-2 px-4 py-2 hover:bg-white/5 rounded-full border border-white/5 transition-all text-gray-500 hover:text-arc-teal"
                 >
                     <CreditCard className="w-3 h-3" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">View All Plans</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest">Full Command Center</span>
                 </button>
 
                 <div className="text-center mb-16">
-                    <h2 className="text-5xl font-black text-white mb-4 tracking-tighter">
-                        Elevate Your <span className="text-arc-teal">Craft</span>
+                    <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Production Authorization</span>
+                    <h2 className="text-5xl font-black text-white mb-4 tracking-tighter uppercase">
+                        Expand Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600 italic">Reach.</span>
                     </h2>
-                    <p className="text-gray-400 text-lg font-medium uppercase tracking-[0.2em]">Unlock the Full Studio Experience</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    {/* Writer's Room Plan */}
-                    <div className="bg-obsidian-black border border-arc-teal/30 hover:border-arc-teal rounded-[2rem] p-10 flex flex-col justify-between transition-all duration-500 group shadow-2xl hover:shadow-arc-teal/10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* OPTION 1: ALWAYS SHOW TOP-UP */}
+                    <div className="bg-black border border-white/5 hover:border-white/10 p-10 flex flex-col justify-between transition-all duration-500 group relative">
                         <div>
                             <div className="flex justify-between items-start mb-8">
-                                <h3 className="text-3xl font-bold text-white group-hover:text-arc-teal transition-colors tracking-tight">The Writer's Room</h3>
-                                <span className="bg-arc-teal/10 text-arc-teal text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-arc-teal/20">SaaS</span>
+                                <h3 className="text-2xl font-black text-white uppercase tracking-tight group-hover:text-arc-teal transition-colors">Script Top-Up</h3>
+                                <Zap className="w-5 h-5 text-gray-700 group-hover:text-arc-teal transition-colors" />
                             </div>
-                            <p className="text-6xl font-black text-white mb-8 tracking-tighter">
-                                $15<span className="text-xl font-medium text-gray-500"> /mo</span>
-                            </p>
-                            <ul className="text-gray-400 space-y-4 mb-12">
-                                <li className="flex items-center gap-3">
-                                    <span className="text-arc-teal">✦</span> Unlimited Critique Engine
-                                </li>
-                                <li className="flex items-center gap-3">
-                                    <span className="text-arc-teal">✦</span> 150 Studio Credits /mo
-                                </li>
-                                <li className="flex items-center gap-3">
-                                    <span className="text-arc-teal">✦</span> Priority Rendering Pipeline
-                                </li>
+                            <p className="text-5xl font-black text-white mb-6 tracking-tighter">$10</p>
+                            <ul className="text-[10px] text-gray-500 space-y-4 mb-12 font-black uppercase tracking-widest">
+                                <li className="flex items-center gap-3"><span className="text-arc-teal">✦</span> 65 Studio Credits</li>
+                                <li className="flex items-center gap-3"><span className="text-arc-teal">✦</span> Immediate Delivery</li>
+                                <li className="flex items-center gap-3"><span className="text-arc-teal">✦</span> No Expiration</li>
                             </ul>
                         </div>
                         <button
-                            onClick={() => handleSelectPlan('subscription')}
-                            disabled={loadingSubscription}
-                            className="w-full bg-arc-teal hover:bg-opacity-90 text-white font-black py-5 px-8 rounded-2xl text-lg transition-all transform active:scale-95 shadow-xl shadow-arc-teal/20"
+                            onClick={() => handleSelectPlan('TOP_UP')}
+                            disabled={!!loadingTier}
+                            className="w-full bg-white/5 border border-white/10 hover:bg-white hover:text-black text-white font-black py-5 transition-all flex items-center justify-center gap-3 text-[10px] uppercase tracking-[0.3em]"
                         >
-                            {loadingSubscription ? 'INITIALIZING...' : 'SELECT WRITER\'S ROOM'}
+                            {loadingTier === 'TOP_UP' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Authorize Top-Up'}
                         </button>
                     </div>
 
-                    {/* Studio Top-Up Pack */}
-                    <div className="bg-obsidian-black border border-arc-orange/30 hover:border-arc-orange rounded-[2rem] p-10 flex flex-col justify-between transition-all duration-500 group shadow-2xl hover:shadow-arc-orange/10">
-                        <div>
-                            <div className="flex justify-between items-start mb-8">
-                                <h3 className="text-3xl font-bold text-white group-hover:text-arc-orange transition-colors tracking-tight">Studio Pass</h3>
-                                <span className="bg-arc-orange/10 text-arc-orange text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-arc-orange/20">LIFETIME</span>
+                    {/* OPTION 2: DYNAMIC BASED ON PLAN */}
+                    {isExplorer ? (
+                        /* OFFER WRITER'S ROOM */
+                        <div className="bg-black border border-arc-teal/30 hover:border-arc-teal p-10 flex flex-col justify-between transition-all duration-500 group relative shadow-2xl shadow-arc-teal/5">
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-arc-teal text-black text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full">Recommended</div>
+                            <div>
+                                <div className="flex justify-between items-start mb-8">
+                                    <h3 className="text-2xl font-black text-white uppercase tracking-tight">Writer's Room</h3>
+                                    <Sparkles className="w-5 h-5 text-arc-teal" />
+                                </div>
+                                <p className="text-5xl font-black text-white mb-6 tracking-tighter">$19<span className="text-lg font-light text-gray-600">/mo</span></p>
+                                <ul className="text-[10px] text-gray-500 space-y-4 mb-12 font-black uppercase tracking-widest">
+                                    <li className="flex items-center gap-3"><span className="text-arc-teal">✦</span> 150 Credits / month</li>
+                                    <li className="flex items-center gap-3"><span className="text-arc-teal">✦</span> Unlimited Critique</li>
+                                    <li className="flex items-center gap-3"><span className="text-arc-teal">✦</span> Continuity Engine</li>
+                                </ul>
                             </div>
-                            <p className="text-6xl font-black text-white mb-8 tracking-tighter">
-                                $49<span className="text-xl font-medium text-gray-500"> /once</span>
-                            </p>
-                            <ul className="text-gray-400 space-y-4 mb-12">
-                                <li className="flex items-center gap-3">
-                                    <span className="text-arc-orange">✦</span> 600 Studio Credits
-                                </li>
-                                <li className="flex items-center gap-3">
-                                    <span className="text-arc-orange">✦</span> High-Fidelity PDF Exports
-                                </li>
-                                <li className="flex items-center gap-3">
-                                    <span className="text-arc-orange">✦</span> Early Access to Veo 3.0
-                                </li>
-                            </ul>
+                            <button
+                                onClick={() => handleSelectPlan('WRITER_ROOM_MONTHLY')}
+                                disabled={!!loadingTier}
+                                className="w-full bg-arc-teal text-black font-black py-5 hover:bg-white transition-all flex items-center justify-center gap-3 text-[10px] uppercase tracking-[0.3em] shadow-xl"
+                            >
+                                {loadingTier === 'WRITER_ROOM_MONTHLY' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Join the Room'}
+                            </button>
                         </div>
-                        <button
-                            onClick={() => handleSelectPlan('pack')}
-                            disabled={loadingPack}
-                            className="w-full bg-arc-orange hover:bg-opacity-90 text-white font-black py-5 px-8 rounded-2xl text-lg transition-all transform active:scale-95 shadow-xl shadow-arc-orange/20"
-                        >
-                            {loadingPack ? 'PROCESSING...' : 'GET STUDIO PACK'}
-                        </button>
-                    </div>
+                    ) : (
+                        /* OFFER STUDIO PASS */
+                        <div className="bg-black border border-arc-orange/30 hover:border-arc-orange p-10 flex flex-col justify-between transition-all duration-500 group relative shadow-2xl shadow-arc-orange/5">
+                            <div>
+                                <div className="flex justify-between items-start mb-8">
+                                    <h3 className="text-2xl font-black text-white uppercase tracking-tight group-hover:text-arc-orange transition-colors">Studio Pass</h3>
+                                    <Film className="w-5 h-5 text-arc-orange" />
+                                </div>
+                                <p className="text-5xl font-black text-white mb-6 tracking-tighter">$49<span className="text-lg font-light text-gray-600">/once</span></p>
+                                <ul className="text-[10px] text-gray-500 space-y-4 mb-12 font-black uppercase tracking-widest">
+                                    <li className="flex items-center gap-3"><span className="text-arc-orange">✦</span> 600 Master Credits</li>
+                                    <li className="flex items-center gap-3"><span className="text-arc-orange">✦</span> Priority Rendering</li>
+                                    <li className="flex items-center gap-3"><span className="text-arc-orange">✦</span> Early Veo 3.0 Access</li>
+                                </ul>
+                            </div>
+                            <button
+                                onClick={() => handleSelectPlan('STUDIO_PASS')}
+                                disabled={!!loadingTier}
+                                className="w-full bg-arc-orange text-black font-black py-5 hover:bg-white transition-all flex items-center justify-center gap-3 text-[10px] uppercase tracking-[0.3em] shadow-xl"
+                            >
+                                {loadingTier === 'STUDIO_PASS' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Get Studio Pass'}
+                            </button>
+                        </div>
+                    )}
                 </div>
+                
+                <p className="mt-12 text-center text-[8px] font-black text-gray-700 uppercase tracking-[0.4em]">
+                    Secure Compute Authorization Required for All Transactions
+                </p>
             </div>
         </div>
     );

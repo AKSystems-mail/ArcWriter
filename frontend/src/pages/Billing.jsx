@@ -41,6 +41,18 @@ const Billing = () => {
 
     const plans = [
         {
+            id: 'top_up',
+            name: 'Script Top-Up',
+            price: '$10',
+            period: ' once',
+            description: 'Immediate injection of compute power for single deliverables.',
+            features: ['65 Studio Credits', 'No Expiration', 'Immediate Delivery'],
+            cta: 'Authorize Top-Up',
+            tier: 'TOP_UP',
+            disabled: false,
+            featured: false
+        },
+        {
             id: 'free',
             name: 'Explorer',
             price: '$0',

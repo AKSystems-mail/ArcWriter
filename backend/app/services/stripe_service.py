@@ -20,7 +20,8 @@ class StripeService:
         self.prices = {
             "WRITER_ROOM_MONTHLY": (os.getenv("STRIPE_PRICE_WR_MONTHLY") or "").strip(),
             "WRITER_ROOM_ANNUAL": (os.getenv("STRIPE_PRICE_WR_ANNUAL") or "").strip(),
-            "STUDIO_PASS": (os.getenv("STRIPE_PRICE_STUDIO_PASS") or "").strip()
+            "STUDIO_PASS": (os.getenv("STRIPE_PRICE_STUDIO_PASS") or "").strip(),
+            "TOP_UP": (os.getenv("STRIPE_PRICE_TOP_UP") or "").strip()
         }
 
     async def create_checkout_session(self, user_id: str, tier: str) -> str:
@@ -69,6 +70,9 @@ class StripeService:
                 if tier == "STUDIO_PASS":
                     # One-time pack: Add 600 credits
                     await self.user_service.add_credits(user_id, 600)
+                elif tier == "TOP_UP":
+                    # One-time pack: Add 65 credits
+                    await self.user_service.add_credits(user_id, 65)
                 else:
                     # Subscription: Reset to 150 allowance and update status
                     await self.user_service.update_subscription_status(user_id, "active", tier)
