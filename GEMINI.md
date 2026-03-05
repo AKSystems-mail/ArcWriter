@@ -18,6 +18,10 @@
 - **Visuals**: Posters (2:3 vertical); Teasers (16:9 landscape); Character Anchors (1:1 square).
 - **PDF Core**: `reportlab` + `qrcode` for teaser linking.
 
+## Documentation Maintenance
+- **Screenwriter's Guide**: The file `backend/Screenwriter_Guide.md` serves as the single source of truth for the studio's help system. Whenever a new feature is added or a workflow is modified, this file **MUST** be updated.
+- **Consistency**: Maintain the established screenplay format (INT./EXT. sluglines, character names, dialogue blocks) within the guide to ensure the automated PDF generator and contextual help system function correctly.
+
 ## How to Run
 1. **Backend**: `cd backend && uvicorn main:app --host 0.0.0.0 --port 5000`
 2. **Frontend**: `cd frontend && npm run dev`
