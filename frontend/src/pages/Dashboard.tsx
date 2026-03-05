@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
-import { collectionGroup, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collectionGroup, query, where, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { Plus, Film, BookOpen, Clock, ChevronRight, Edit2, Trash2, RotateCcw, XCircle, Target, LogOut, CreditCard } from 'lucide-react';
 
 interface Project {

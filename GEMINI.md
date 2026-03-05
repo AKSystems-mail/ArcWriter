@@ -1,5 +1,15 @@
 # GEMINI.md
 
+## Project Status (March 5, 2026) - STABILITY & WORKFLOW HARDENING
+- **CRITICAL FIX: Authenticated Session Crash**: Resolved a "blank site" issue where returning users (who were already authenticated and had existing projects) would trigger a React crash on the Dashboard.
+    - **Root Cause**: Missing `onSnapshot` import in `frontend/src/pages/Dashboard.tsx`.
+    - **Fix**: Corrected Firestore imports and verified build stability.
+- **Production Buffer Pipeline**: Implemented a new deployment strategy. 
+    1. Push to GitHub for version control.
+    2. Local Preview on port 5173 for manual sanity checks.
+    3. Firebase Deploy only after manual approval.
+- **Environment Stabilization**: Cleaned and reinstalled frontend `node_modules` to resolve platform-specific Rollup binary errors on macOS.
+
 ## Project Status (Feb 22, 2026) - PRODUCTION READY PITCH SUITE
 - **Step 8: Character Locking COMPLETE**: Implemented a 4-variant cinematic selection gallery with immediate "LOCKING ANCHOR..." visual feedback.
 - **Step 9: Production Assets COMPLETE**: 

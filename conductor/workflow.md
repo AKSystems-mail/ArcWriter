@@ -298,7 +298,7 @@ A task is complete when:
 4. Notify affected users (if any)
 5. Document and update security procedures
 
-## Deployment Workflow
+## Deployment Workflow (Production Buffer Protocol)
 
 ### Pre-Deployment Checklist
 - [ ] All tests passing
@@ -309,14 +309,20 @@ A task is complete when:
 - [ ] Database migrations ready
 - [ ] Backup created
 
-### Deployment Steps
-1. Merge feature branch to main
-2. Tag release with version
-3. Push to deployment service
-4. Run database migrations
-5. Verify deployment
-6. Test critical paths
-7. Monitor for errors
+### Deployment Steps (The Buffer Pipeline)
+1. **GitHub Synchronization**: After significant changes are verified by unit tests, push the current branch to GitHub.
+   ```bash
+   git push origin <branch-name>
+   ```
+2. **Local Preview**: Launch the application locally to perform a final manual sanity check.
+   - **Backend**: `cd backend && uvicorn main:app --port 5000`
+   - **Frontend**: `cd frontend && npm run dev`
+3. **Manual Approval**: Verify that the changes behave as expected on `http://localhost:5173`.
+4. **Firebase Deployment**: ONLY after manual approval of the local preview, proceed to deploy to the live site.
+   ```bash
+   npx firebase-tools deploy
+   ```
+5. **Verify Live**: Test critical paths on the production URL.
 
 ### Post-Deployment
 1. Monitor analytics
