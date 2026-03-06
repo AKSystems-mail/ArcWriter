@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { collectionGroup, query, where, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { Plus, Film, BookOpen, Clock, ChevronRight, Edit2, Trash2, RotateCcw, XCircle, Target, LogOut, CreditCard } from 'lucide-react';
+import ContextualHelp from '../components/ContextualHelp';
 
 interface Project {
     id: string;
@@ -167,7 +168,10 @@ const Dashboard: React.FC = () => {
             <div className="max-w-7xl mx-auto p-8 md:p-12">
                 <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-6">
                     <div>
-                        <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Studio Archives</span>
+                        <div className="flex items-center gap-3 mb-4">
+                            <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] italic">Studio Archives</span>
+                            <ContextualHelp sectionId="DASHBOARD" />
+                        </div>
                         <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none">
                             {view === 'active' ? <>Active <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Assets</span></> : <>Cutting <br /><span className="text-red-500">Room Floor</span></>}
                         </h1>

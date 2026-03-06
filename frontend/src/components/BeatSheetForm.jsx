@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { Target, Save, RefreshCw, ChevronRight } from 'lucide-react';
+import ContextualHelp from './ContextualHelp';
 
 const SAVE_THE_CAT_BEATS = [
   { name: 'Opening Image', description: 'A visual that represents the struggle & tone of the story. A snapshot of the main character\'s problem before the adventure begins.' },
@@ -172,7 +173,10 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
         <div className="relative z-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 mb-16 border-b border-white/5 pb-12">
                 <div className="flex-1">
-                    <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Section 02: Narrative Logic</span>
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] italic">Section 02: Narrative Logic</span>
+                        <ContextualHelp sectionId="BEAT_SHEET" />
+                    </div>
                     <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-6">
                         Structural <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Blueprint</span>
                     </h2>

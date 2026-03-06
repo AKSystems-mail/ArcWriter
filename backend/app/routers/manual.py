@@ -114,10 +114,17 @@ async def get_manual_section(section_id: str):
         
         search_key = section_id.upper()
         mapping = {
-            "ONBOARDING": "WIZARD",
-            "ONBOARDING_WIZARD": "WIZARD",
-            "BEAT_SHEET": "BLUEPRINT",
-            "BLUEPRINT": "BLUEPRINT"
+            "LANDING": "LANDING PAGE",
+            "WIZARD": "WIZARD",
+            "STORY_DNA": "STORY DNA LAB",
+            "BLUEPRINT_VERIFICATION": "BLUEPRINT VERIFICATION",
+            "VISUAL_SOUL": "VISUAL SOUL",
+            "DASHBOARD": "DASHBOARD",
+            "BLUEPRINT": "BLUEPRINT PAGE",
+            "BLUEPRINT_PAGE": "BLUEPRINT PAGE",
+            "SCRIPT_EDITOR": "SCRIPT EDITOR",
+            "EDITOR": "SCRIPT EDITOR",
+            "BEAT_SHEET": "BLUEPRINT PAGE"
         }
         search_key = mapping.get(search_key, search_key)
         

@@ -5,6 +5,7 @@ import { auth, db, storage } from '../firebase';
 import { apiClient } from '../api/client';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
+import ContextualHelp from '../components/ContextualHelp';
 
 const OnboardingWizard = () => {
     const navigate = useNavigate();
@@ -235,7 +236,10 @@ const OnboardingWizard = () => {
         <div className="w-full max-w-5xl mx-auto px-4 z-10">
             <div className="text-center mb-20 max-w-3xl mx-auto animate-fade-in">
                 <img src="/ArcWriter_logo.png" alt="ArcWriter" className="h-10 mx-auto mb-12" />
-                <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] mb-4 block">Initialization Phase</span>
+                <div className="flex items-center justify-center gap-3 mb-4">
+                    <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] italic">Initialization Phase</span>
+                    <ContextualHelp sectionId="WIZARD" />
+                </div>
                 <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter uppercase leading-none">Choose Your <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Workflow</span></h2>
                 <p className="text-gray-500 text-xl font-light leading-relaxed">
                     Select the architectural path that fits your current creative phase.
@@ -285,7 +289,10 @@ const OnboardingWizard = () => {
     const renderStep2 = () => (
         <div className="w-full max-w-3xl mx-auto px-4 z-10">
             <div className="text-center mb-10">
-                <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Asset Configuration</span>
+                <div className="flex items-center justify-center gap-3 mb-4">
+                    <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] italic">Asset Configuration</span>
+                    <ContextualHelp sectionId="STORY_DNA" />
+                </div>
                 <h2 className="text-5xl md:text-6xl font-black text-white mb-4 tracking-tighter uppercase leading-none text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Story DNA</h2>
             </div>
 
@@ -414,7 +421,10 @@ const OnboardingWizard = () => {
     const renderStep3 = () => (
         <div className="w-full max-w-6xl mx-auto px-4 z-10">
             <div className="text-center mb-16">
-                <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Phase 02: Verification</span>
+                <div className="flex items-center justify-center gap-3 mb-4">
+                    <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] italic">Phase 02: Verification</span>
+                    <ContextualHelp sectionId="BLUEPRINT_VERIFICATION" />
+                </div>
                 <h2 className="text-5xl md:text-7xl font-black text-white mb-4 tracking-tighter uppercase leading-none">The Blueprint</h2>
                 <p className="text-gray-500 text-lg font-light">Refine the distilled Story DNA before initializing the studio.</p>
             </div>
@@ -534,7 +544,10 @@ const OnboardingWizard = () => {
 
         return (
             <div className="w-full max-w-6xl mx-auto px-4 z-10 text-center">
-                <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Phase 03: Atmosphere</span>
+                <div className="flex items-center justify-center gap-3 mb-4">
+                    <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] italic">Phase 03: Atmosphere</span>
+                    <ContextualHelp sectionId="VISUAL_SOUL" />
+                </div>
                 <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter uppercase leading-none">Visual Soul</h2>
                 <p className="text-xl text-gray-500 font-light mb-16 max-w-3xl mx-auto leading-relaxed">
                     Define the aesthetic profile. This selection calibrates the AI rendering engine for concept art, posters, and atmospheric script feedback.
@@ -573,7 +586,10 @@ const OnboardingWizard = () => {
 
         return (
             <div className="w-full max-w-5xl mx-auto px-4 z-10 text-center">
-                <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Final Phase: Analysis</span>
+                <div className="flex items-center justify-center gap-3 mb-4">
+                    <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] italic">Final Phase: Analysis</span>
+                    <ContextualHelp sectionId="DIAGNOSTIC_LENS" />
+                </div>
                 <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter uppercase leading-none">Diagnostic Lens</h2>
                 <p className="text-xl text-gray-400 font-normal mb-16">How should the logic engine prioritize feedback during the script review?</p>
 

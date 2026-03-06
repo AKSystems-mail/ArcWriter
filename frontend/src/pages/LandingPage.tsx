@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Cpu, PlayCircle, Layers, Fingerprint, Compass, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Cpu, PlayCircle, Layers, Fingerprint, Compass, ArrowRight, Zap } from 'lucide-react';
 import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import ContextualHelp from '../components/ContextualHelp';
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
@@ -66,9 +67,10 @@ const LandingPage: React.FC = () => {
                 <div className="absolute -bottom-40 -right-20 w-[600px] h-[600px] bg-arc-orange/5 rounded-full blur-[120px] pointer-events-none"></div>
 
                 <div className="relative z-20 max-w-6xl w-full">
-                    <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 mb-12 animate-fade-in">
+                    <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 mb-12 animate-fade-in relative group/help">
                         <div className="w-1.5 h-1.5 rounded-full bg-arc-teal"></div>
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Professional Studio Access</span>
+                        <ContextualHelp sectionId="LANDING" className="ml-2 opacity-0 group-hover/help:opacity-100 transition-opacity" />
                     </div>
 
                     <h1 className="text-6xl md:text-[9rem] font-black mb-12 tracking-tighter leading-[0.8] animate-fade-in uppercase">

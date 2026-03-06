@@ -4,7 +4,7 @@ import { apiClient } from '../api/client';
 import { storage, db, auth } from '../firebase';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
-import PricingModal from './PricingModal';
+import ContextualHelp from './ContextualHelp';
 
 const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
     const [regenerating, setRegenerating] = useState(null); // 'poster' or character name
@@ -269,7 +269,10 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
             <div className="relative z-10">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 mb-16 border-b border-white/5 pb-12">
                     <div>
-                        <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Department 04</span>
+                        <div className="flex items-center gap-3 mb-4">
+                            <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] italic">Department 04</span>
+                            <ContextualHelp sectionId="VISUAL_SOUL" />
+                        </div>
                         <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter">
                             Visuals <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Assets</span>
                         </h2>

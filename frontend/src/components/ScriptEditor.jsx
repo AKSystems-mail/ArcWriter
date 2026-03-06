@@ -6,6 +6,7 @@ import StoryInsights from './StoryInsights';
 import SourceMaterialDrawer from './SourceMaterialDrawer';
 import HistorySidebar from './HistorySidebar';
 import PricingModal from './PricingModal';
+import ContextualHelp from './ContextualHelp';
 import { db, auth } from '../firebase';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 
@@ -668,6 +669,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
                 <img src="/ArcWriter_logo.png" alt="ArcWriter" className="h-6 opacity-80 group-hover:opacity-100 transition-opacity" />
                 <div className="h-4 w-px bg-gray-800"></div>
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 group-hover:text-arc-teal transition-colors">Studio</span>
+                <ContextualHelp sectionId="SCRIPT_EDITOR" className="ml-2" />
             </div>
             <div className="h-4 w-px bg-gray-800"></div>
             <div className="flex items-center gap-4">
