@@ -114,18 +114,18 @@ async def get_manual_section(section_id: str):
         
         search_key = section_id.upper()
         mapping = {
-            "LANDING": "THE LANDING PAGE",
-            "WIZARD": "THE WIZARD",
+            "LANDING": "LANDING PAGE",
+            "WIZARD": "WIZARD",
             "STORY_DNA": "STORY DNA LAB",
             "BLUEPRINT_VERIFICATION": "BLUEPRINT VERIFICATION",
             "VISUAL_SOUL": "VISUAL SOUL",
             "DIAGNOSTIC_LENS": "DIAGNOSTIC LENS",
-            "DASHBOARD": "THE DASHBOARD",
-            "BLUEPRINT": "THE BLUEPRINT PAGE",
-            "BLUEPRINT_PAGE": "THE BLUEPRINT PAGE",
-            "SCRIPT_EDITOR": "THE SCRIPT EDITOR",
-            "EDITOR": "THE SCRIPT EDITOR",
-            "BEAT_SHEET": "THE BLUEPRINT PAGE"
+            "DASHBOARD": "DASHBOARD",
+            "BLUEPRINT": "BLUEPRINT PAGE",
+            "BLUEPRINT_PAGE": "BLUEPRINT PAGE",
+            "SCRIPT_EDITOR": "SCRIPT EDITOR",
+            "EDITOR": "SCRIPT EDITOR",
+            "BEAT_SHEET": "BLUEPRINT PAGE"
         }
         search_key = mapping.get(search_key, search_key)
         
@@ -137,7 +137,8 @@ async def get_manual_section(section_id: str):
             if not stripped: continue
             
             if stripped.startswith('INT.') or stripped.startswith('EXT.'):
-                logger.debug(f"ManualSection: Checking slugline '{stripped}' against '{search_key}'")
+                # IMPROVED: Check for partial match or exact match to be more robust
+                # e.g. "SCRIPT EDITOR" will match "INT. THE SCRIPT EDITOR - NIGHT"
                 if search_key in stripped.upper():
                     start_line_idx = i
                     logger.info(f"ManualSection: Found match at line {i}: {stripped}")
