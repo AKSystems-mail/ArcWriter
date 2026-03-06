@@ -44,6 +44,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteIndex, setAutocompleteIndex] = useState(0);
   const [universeCharacters, setUniverseCharacters] = useState([]);
+  const [projectMetadata, setProjectMetadata] = useState(null);
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
 
@@ -98,6 +99,13 @@ const ScriptEditor = ({ universeId, projectId }) => {
           const cleanContent = data.source_material || data.bible_content || "No source material available.";
           setSourceContent(cleanContent);
           setUniverseCharacters(data.characters || []);
+          setProjectMetadata({
+            title: data.title,
+            logline: data.logline,
+            genre: data.genre,
+            vibe: data.vibe,
+            beat_sheet: data.beat_sheet_data || data.beat_sheet
+          });
         }
       } catch (error) {
         console.error("Error loading project data:", error);
@@ -186,16 +194,49 @@ const ScriptEditor = ({ universeId, projectId }) => {
           lastSavedBlocksRef.current = loadedBlocks;
           setIsSaved(true);
           setFocusedBlockId(loadedBlocks[0].id);
+          return;
+        }
+      }
+
+      // NO SCRIPT FOUND: Generate Starter Scene or Default
+      if (projectMetadata) {
+        setIsGeneratingScene(true);
+        try {
+          const token = await auth.currentUser?.getIdToken();
+          const response = await fetch('/api/script/generate_starter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+                universe_id: universeId,
+                project_id: projectId
+            })
+          });
+          
+          if (response.ok) {
+            const { blocks: starterBlocks } = await response.json();
+            if (starterBlocks && starterBlocks.length > 0) {
+              setBlocks(starterBlocks);
+              lastSavedBlocksRef.current = starterBlocks;
+              setFocusedBlockId(starterBlocks[0].id);
+              saveScriptToFirestore(starterBlocks);
+            }
+          }
+        } catch (err) {
+          console.warn("Failed to generate starter scene:", err);
+        } finally {
+          setIsGeneratingScene(false);
         }
       }
     } catch (error) {
       console.error("Error loading script:", error);
     }
-  }, [getDocumentRef]);
+  }, [getDocumentRef, projectMetadata, universeId, projectId, saveScriptToFirestore]);
 
   useEffect(() => {
-    loadScriptFromFirestore();
-  }, [loadScriptFromFirestore]);
+    if (projectMetadata) {
+        loadScriptFromFirestore();
+    }
+  }, [loadScriptFromFirestore, projectMetadata]);
 
   const resizeBlock = useCallback((id) => {
     const el = blockRefs.current[id];

@@ -38,6 +38,50 @@ class SnapshotRequest(BaseModel):
     blocks: List[Dict[str, Any]]
     name: Optional[str] = "Auto-save"
 
+class StarterRequest(BaseModel):
+    universe_id: str
+    project_id: str
+
+@router.post("/generate_starter")
+async def generate_starter(request: StarterRequest, user_id: str = Depends(get_current_user)):
+    logic_engine = LogicEngine()
+    project_config = await verify_project_ownership(request.universe_id, request.project_id, user_id)
+    
+    genre = project_config.get("genre", "Drama")
+    logline = project_config.get("logline", "")
+    beat_sheet = project_config.get("beat_sheet", {})
+    first_beat_desc = beat_sheet.get("opening_image", "A striking visual start.")
+    chars = [c.get("name", "Protagonist") for c in project_config.get("characters", [])]
+    synopsis = project_config.get("synopsis", "")
+    vibe = project_config.get("vibe", "Cinematic")
+
+    full_context = (
+        f"GENRE: {genre}\n"
+        f"LOGLINE: {logline}\n"
+        f"STORY VIBE: {vibe}\n"
+        f"STORY SUMMARY: {synopsis}\n"
+        f"CURRENT BEAT: Opening Image - {first_beat_desc}"
+    )
+
+    try:
+        scene_blocks = logic_engine.generate_scene_content(
+            beat_context=full_context,
+            characters=chars,
+            game_theory_type="Cooperative"
+        )
+        if not scene_blocks:
+            raise Exception("No blocks generated")
+        return {"blocks": scene_blocks}
+    except Exception as e:
+        print(f"Starter Generation failed: {e}")
+        # Fallback to absolute minimum
+        return {
+            "blocks": [
+                {"id": "initial-slug", "type": "Scene Heading", "text": "INT. STARTING POINT - DAY"},
+                {"id": "initial-action", "type": "Action", "text": "The story begins here."}
+            ]
+        }
+
 @router.post("/save_snapshot")
 async def save_snapshot(request: SnapshotRequest, user_id: str = Depends(get_current_user)):
     from app.utils.firebase_auth_utils import get_firestore_db
