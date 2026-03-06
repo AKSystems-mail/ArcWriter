@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronRight, FileText, ArrowLeft, Save, Target, BrainCircuit, RefreshCw, History } from 'lucide-react';
+import { ChevronRight, FileText, ArrowLeft, Save, Target, BrainCircuit, RefreshCw, History, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatLine } from '../utils/formatUtils';
 import StoryInsights from './StoryInsights';

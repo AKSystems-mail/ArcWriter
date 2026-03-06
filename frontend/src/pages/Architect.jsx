@@ -6,7 +6,7 @@ import MobilePitchDeck from '../components/MobilePitchDeck';
 import VisualsStudio from '../components/VisualsStudio';
 import { useResponsive } from '../hooks/useResponsive';
 import { auth } from '../firebase';
-import { BookOpen, LogOut, ChevronLeft } from 'lucide-react';
+import { BookOpen, LogOut, ChevronLeft, CreditCard } from 'lucide-react';
 
 const Architect = () => {
     const location = useLocation();
