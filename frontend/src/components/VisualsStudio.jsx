@@ -1,15 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ImageIcon, User, RefreshCw, Sparkles, CheckCircle2, Layout, UserCircle, Zap } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { storage, db, auth } from '../firebase';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import PricingModal from './PricingModal';
 
 const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
     const [regenerating, setRegenerating] = useState(null); // 'poster' or character name
     const [message, setMessage] = useState('');
     const [selectionVariants, setSelectionVariants] = useState(null); // { type, name, variants }
     const [isLocking, setIsLocking] = useState(false); // Feedback for selection click
+    const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+    const [userProfile, setUserProfile] = useState(null);
+
+    useEffect(() => {
+        if (!auth.currentUser) return;
+        const unsub = onSnapshot(doc(db, 'users', auth.currentUser.uid), (doc) => {
+            setUserProfile(doc.data());
+        });
+        return () => unsub();
+    }, []);
+
+    const checkCredits = (cost) => {
+        const credits = userProfile?.studio_credits || 0;
+        const isSubscribed = userProfile?.subscription_status === 'active';
+        if (!isSubscribed && credits < cost) {
+            setIsPricingModalOpen(true);
+            return false;
+        }
+        return true;
+    };
 
     // Pitch Package Configuration
     const [exportSettings, setExportSettings] = useState({
@@ -24,6 +45,9 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
     };
 
     const handleRegenerate = async (type, charName = null) => {
+        const cost = 25; // Standard regen cost
+        if (!checkCredits(cost)) return;
+
         const id = charName || type;
         setRegenerating(id);
         setMessage(`Art Dept: Rendering ${id}...`);
@@ -125,6 +149,8 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
     };
 
     const handleGenerateTeaser = async () => {
+        if (!checkCredits(50)) return; // Teasers cost 50
+        
         setRegenerating('teaser');
         setMessage("Motion Dept: Initializing Render...");
 
@@ -232,6 +258,10 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
 
     return (
         <section className="bg-[#080808] border border-white/5 rounded-sm p-10 md:p-16 relative overflow-hidden shadow-2xl">
+            <PricingModal 
+                isOpen={isPricingModalOpen} 
+                onClose={() => setIsPricingModalOpen(false)} 
+            />
             <div className="absolute top-0 right-0 p-12 opacity-[0.03]">
                 <Layout className="w-64 h-64 text-white" />
             </div>

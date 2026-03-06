@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { Target, Save, RefreshCw, ChevronRight } from 'lucide-react';
@@ -91,7 +91,7 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
 
   const [beats, setBeats] = useState({});
 
-  React.useEffect(() => {
+  useEffect(() => {
     const currentBeats = getActiveFrameworkBeats();
     setBeats(currentBeats.reduce((acc, beat) => ({
       ...acc,

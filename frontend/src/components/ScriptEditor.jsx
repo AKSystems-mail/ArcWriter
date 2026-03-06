@@ -5,8 +5,9 @@ import { formatLine } from '../utils/formatUtils';
 import StoryInsights from './StoryInsights';
 import SourceMaterialDrawer from './SourceMaterialDrawer';
 import HistorySidebar from './HistorySidebar';
+import PricingModal from './PricingModal';
 import { db, auth } from '../firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -43,6 +44,26 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteIndex, setAutocompleteIndex] = useState(0);
   const [universeCharacters, setUniverseCharacters] = useState([]);
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+
+  useEffect(() => {
+    if (!auth.currentUser) return;
+    const unsub = onSnapshot(doc(db, 'users', auth.currentUser.uid), (doc) => {
+        setUserProfile(doc.data());
+    });
+    return () => unsub();
+  }, []);
+
+  const checkCredits = (cost) => {
+    const credits = userProfile?.studio_credits || 0;
+    const isSubscribed = userProfile?.subscription_status === 'active';
+    if (!isSubscribed && credits < cost) {
+        setIsPricingModalOpen(true);
+        return false;
+    }
+    return true;
+  };
 
   const getDocumentRef = useCallback(() => {
     return doc(db, 'universes', universeId, 'projects', projectId, 'script', 'content');
@@ -346,6 +367,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
   };
 
   const handleSuggestDialogue = async () => {
+    if (!checkCredits(2)) return; // Suggest dialogue costs 2 credits
     setIsMagicMenuOpen(false);
     setIsGeneratingScene(true);
     try {
@@ -398,6 +420,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
   };
 
   const handleMagicWand = async () => {
+    if (!checkCredits(5)) return; // Generate scene costs 5 credits
     setIsMagicMenuOpen(false);
     setIsGeneratingScene(true);
     try {
@@ -439,6 +462,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
   };
 
   const handleHookScan = async () => {
+    if (!checkCredits(10)) return; // Hook scan costs 10 credits
     setIsAnalyzing(true);
     setHookScanResult(null);
     const scriptText = blocks.slice(0, 600).map(block => block.text).join('\n');
@@ -464,6 +488,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
   };
 
   const handleMacroAudit = async () => {
+    if (!checkCredits(10)) return; // Macro audit costs 10 credits
     setIsAnalyzing(true);
     setMacroAuditResult(null);
     const fullScriptText = blocks.map(block => block.text).join('\n');
@@ -486,6 +511,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
   };
 
   const handleAnalyzeSceneRequest = useCallback(async (persona) => {
+    if (!checkCredits(1)) return; // AI Critique costs 1 credit
     setIsAnalyzing(true);
     setLogicScore(null);
     if (!isSaved) await saveScriptToFirestore(blocks);
@@ -588,6 +614,10 @@ const ScriptEditor = ({ universeId, projectId }) => {
 
   return (
     <div className="flex h-screen bg-black overflow-hidden selection:bg-arc-teal/30 font-sans">
+      <PricingModal 
+        isOpen={isPricingModalOpen} 
+        onClose={() => setIsPricingModalOpen(false)} 
+      />
       <SourceMaterialDrawer isOpen={isSourceDrawerOpen} onToggle={() => setIsSourceDrawerOpen(!isSourceDrawerOpen)} content={sourceContent} onInsert={handleInsertSourceMaterial} />
       
       <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">

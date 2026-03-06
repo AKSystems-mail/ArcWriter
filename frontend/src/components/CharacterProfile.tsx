@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { auth } from '../firebase';
+import { db, auth } from '../firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import PricingModal from './PricingModal';
 import { User, Zap, Sparkles, RefreshCw, Check, UserCircle } from 'lucide-react';
 
@@ -25,9 +26,16 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
     const [generatedConceptUrls, setGeneratedConceptUrls] = useState<string[]>([]);
     const [anchorImageUrl, setAnchorImageUrl] = useState<string | null>(null);
 
-    const [userCredits, setUserCredits] = useState<number | null>(null);
-    const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
+    const [userProfile, setUserProfile] = useState<any>(null);
     const [isPricingModalOpen, setIsPricingModalOpen] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (!auth.currentUser) return;
+        const unsub = onSnapshot(doc(db, 'users', auth.currentUser.uid), (doc) => {
+            setUserProfile(doc.data());
+        });
+        return () => unsub();
+    }, []);
 
     useEffect(() => {
         if (initialCharacters && initialCharacters.length > 0) {
@@ -38,29 +46,9 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
         }
     }, [initialCharacters]);
 
-    const fetchUserData = async () => {
-        const currentUser = auth.currentUser;
-        if (!currentUser) return;
-        try {
-            const idToken = await currentUser.getIdToken();
-            const response = await fetch('/api/user/me', {
-                headers: { 'Authorization': `Bearer ${idToken}` },
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setUserCredits(data.studio_credits);
-                setIsSubscribed(data.subscription_status === 'active');
-            }
-        } catch (error) {
-            console.error("Error fetching user data:", error);
-        }
-    };
-
-    useEffect(() => {
-        fetchUserData();
-    }, []);
-
-    const canGenerateVisualConcepts = isSubscribed || (userCredits !== null && userCredits >= CHARACTER_CONCEPTS_COST);
+    const userCredits = userProfile?.studio_credits || 0;
+    const isSubscribed = userProfile?.subscription_status === 'active';
+    const canGenerateVisualConcepts = isSubscribed || userCredits >= CHARACTER_CONCEPTS_COST;
 
     const handleGenerateVisuals = async () => {
         if (!canGenerateVisualConcepts) {
@@ -234,14 +222,6 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
                                 <span className="text-xs font-black text-gray-700 uppercase tracking-widest italic">
                                     {isSubscribed ? "Studio Tier: Unlimited Renders" : `Operation Cost: ${CHARACTER_CONCEPTS_COST} Credits`}
                                 </span>
-                                {userCredits !== null && !isSubscribed && userCredits < CHARACTER_CONCEPTS_COST && (
-                                    <button
-                                        onClick={() => setIsPricingModalOpen(true)}
-                                        className="text-xs font-black text-arc-teal uppercase tracking-widest hover:text-white transition-colors"
-                                    >
-                                        Buy Credits +
-                                    </button>
-                                )}
                             </div>
                         </div>
                     </div>

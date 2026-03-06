@@ -5,7 +5,8 @@ import CharacterProfile from '../components/CharacterProfile';
 import MobilePitchDeck from '../components/MobilePitchDeck';
 import VisualsStudio from '../components/VisualsStudio';
 import { useResponsive } from '../hooks/useResponsive';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { BookOpen, LogOut, ChevronLeft, CreditCard } from 'lucide-react';
 
 const Architect = () => {
@@ -24,12 +25,26 @@ const Architect = () => {
             const token = await auth.currentUser?.getIdToken();
             if (!token) return;
 
-            const response = await fetch(`/api/project/${universeId}/${projectId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setProjectData(data);
+            // 1. Try API first
+            try {
+                const response = await fetch(`/api/project/${universeId}/${projectId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setProjectData(data);
+                    setLoading(false);
+                    return;
+                }
+            } catch (apiErr) {
+                console.warn("API Unavailable, falling back to direct Firestore fetch");
+            }
+
+            // 2. Fallback to direct Firestore if API fails
+            const projectRef = doc(db, 'universes', universeId, 'projects', projectId);
+            const snap = await getDoc(projectRef);
+            if (snap.exists()) {
+                setProjectData({ id: snap.id, ...snap.data() });
             }
         } catch (error) {
             console.error("Error fetching project:", error);

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Terminal, Activity, BrainCircuit, BarChart3, Scale, Target, ChevronRight, ChevronLeft, Zap, RefreshCw, Layers, FileText } from 'lucide-react';
 import SceneSeismograph from './SceneSeismograph';
 
@@ -18,7 +18,7 @@ const StoryInsights = ({
   isOpen,
   onToggle
 }) => {
-  const [activeTab, setActiveTab] = React.useState('scene'); // 'scene' | 'macro' | 'hook'
+  const [activeTab, setActiveTab] = useState('scene'); // 'scene' | 'macro' | 'hook'
 
   const PillarScore = ({ label, score }) => (
     <div className="flex flex-col gap-2">
