@@ -71,16 +71,38 @@ async def generate_starter(request: StarterRequest, user_id: str = Depends(get_c
         )
         if not scene_blocks:
             raise Exception("No blocks generated")
+        
+        # Save to Firestore immediately to prevent double-generation
+        from app.utils.firebase_auth_utils import get_firestore_db
+        db = get_firestore_db()
+        script_ref = db.collection("universes").document(request.universe_id)\
+            .collection("projects").document(request.project_id)\
+            .collection("script").document("content")
+        script_ref.set({"blocks": scene_blocks})
+        
         return {"blocks": scene_blocks}
     except Exception as e:
         print(f"Starter Generation failed: {e}")
-        # Fallback to absolute minimum
-        return {
-            "blocks": [
-                {"id": "initial-slug", "type": "Scene Heading", "text": "INT. STARTING POINT - DAY"},
-                {"id": "initial-action", "type": "Action", "text": "The story begins here."}
-            ]
-        }
+        # PROJECT-SPECIFIC FALLBACK: Use Title and Opening Image
+        slug = f"INT. {title.upper()} - STARTING POINT"
+        action = f"The story of {title} begins here. {first_beat_desc}"
+        fallback_blocks = [
+            {"id": "initial-slug", "type": "Scene Heading", "text": slug},
+            {"id": "initial-action", "type": "Action", "text": action}
+        ]
+        
+        # Also save fallback to Firestore
+        try:
+            from app.utils.firebase_auth_utils import get_firestore_db
+            db = get_firestore_db()
+            script_ref = db.collection("universes").document(request.universe_id)\
+                .collection("projects").document(request.project_id)\
+                .collection("script").document("content")
+            script_ref.set({"blocks": fallback_blocks})
+        except:
+            pass
+
+        return {"blocks": fallback_blocks}
 
 @router.post("/save_snapshot")
 async def save_snapshot(request: SnapshotRequest, user_id: str = Depends(get_current_user)):
