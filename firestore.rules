@@ -12,33 +12,24 @@ service cloud.firestore {
     match /universes/{universeId} {
       allow read, write: if request.auth != null && resource.data.owner_id == request.auth.uid;
       allow create: if request.auth != null && request.resource.data.owner_id == request.auth.uid;
-    }
-
-    // **COLLECTION GROUP RULE** for 'projects'
-    // This rule allows access to projects and all their subcollections (script, snapshots, etc.)
-    match /{path=**}/projects/{projectId} {
-      // Allow read if the user is the owner.
-      allow read: if request.auth != null && (resource == null || resource.data.owner_id == request.auth.uid);
       
-      // Allow write if the user is the owner.
-      allow write: if request.auth != null && (resource == null || resource.data.owner_id == request.auth.uid);
-      
-      // Allow create if the owner_id in the new document matches the user's ID.
-      allow create: if request.auth != null && request.resource.data.owner_id == request.auth.uid;
-
-      // Allow access to subcollections (script, snapshots, etc.)
-      match /{allSubcollections=**} {
-        allow read, write: if request.auth != null; // Ownership is checked at the parent project level in a real app, but for simplicity here we assume if they can reach this path they are authorized or we rely on the parent check. 
-        // Better: 
-        // allow read, write: if request.auth != null && get(/databases/$(database)/documents/universes/$(universeId)/projects/$(projectId)).data.owner_id == request.auth.uid;
-        // But since this is a COLLECTION GROUP path, we don't have universeId easily.
-        // The most robust way for subcollections in this specific hierarchy:
+      // Nested projects within a universe
+      match /projects/{projectId} {
+        allow read, write: if request.auth != null && get(/databases/$(database)/documents/universes/$(universeId)).data.owner_id == request.auth.uid;
+        
+        // Subcollections of projects
+        match /{allSubcollections=**} {
+          allow read, write: if request.auth != null && get(/databases/$(database)/documents/universes/$(universeId)).data.owner_id == request.auth.uid;
+        }
       }
     }
 
-    // Specific rules for nested structure to ensure ownership is checked
-    match /universes/{universeId}/projects/{projectId}/{allSubcollections=**} {
-      allow read, write: if request.auth != null && get(/databases/$(database)/documents/universes/$(universeId)/projects/$(projectId)).data.owner_id == request.auth.uid;
+    // **COLLECTION GROUP RULE** for 'projects'
+    // This allows listing projects across universes for the Dashboard.
+    match /{path=**}/projects/{projectId} {
+      allow read: if request.auth != null && (resource == null || resource.data.owner_id == request.auth.uid);
+      allow write: if request.auth != null && (resource == null || resource.data.owner_id == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.owner_id == request.auth.uid;
     }
     
     // Deny access to backend-only collections.
