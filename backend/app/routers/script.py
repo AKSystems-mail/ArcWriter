@@ -47,6 +47,7 @@ async def generate_starter(request: StarterRequest, user_id: str = Depends(get_c
     logic_engine = LogicEngine()
     project_config = await verify_project_ownership(request.universe_id, request.project_id, user_id)
     
+    title = project_config.get("title", "Untitled Project")
     genre = project_config.get("genre", "Drama")
     logline = project_config.get("logline", "")
     beat_sheet = project_config.get("beat_sheet", {})
@@ -145,7 +146,19 @@ async def list_snapshots(universe_id: str, project_id: str, user_id: str = Depen
         .collection("snapshots")\
         .order_by("created_at", direction="DESCENDING").limit(50).get()
         
-    return [{"id": s.id, "name": s.to_dict().get("name"), "created_at": s.to_dict().get("created_at")} for s in snaps]
+    results = []
+    for s in snaps:
+        d = s.to_dict()
+        ts = d.get("created_at")
+        # Convert Firestore timestamp to ISO string for JSON serialization
+        created_at_str = ts.isoformat() if hasattr(ts, 'isoformat') else str(ts)
+        results.append({
+            "id": s.id,
+            "name": d.get("name"),
+            "created_at": created_at_str
+        })
+        
+    return results
 
 @router.post("/restore_snapshot")
 async def restore_snapshot(request: Dict[str, str], user_id: str = Depends(get_current_user)):

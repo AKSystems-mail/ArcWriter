@@ -109,7 +109,7 @@ async def get_manual_section(section_id: str):
     """
     file_path = get_manual_path()
     try:
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
         
         search_key = section_id.upper()
