@@ -52,8 +52,54 @@ class AssetStudio:
             logger.error("AssetStudio: Client not initialized. Cannot generate poster.")
             return None
 
-        prompt = f"A high-quality movie poster for a {genre} film titled '{title}'. "
-        prompt += f"Visual style: {style or 'cinematic'}. "
+        # Universal Design Language: High-fidelity, photorealistic, cinematic
+        base_language = (
+            "Professional high-end cinematic photography, photorealistic people, crisp details, 8k resolution, "
+            "natural skin textures, professional color grading. Strictly NO cartoons, NO drawings, "
+            "NO illustrations, NO abstract art, NO 3D renders, NO anime."
+        )
+
+        # Genre-Specific Design Languages (Last 10 Years Trends)
+        genre_map = {
+            "Comedy": (
+                "High-key bright studio lighting, vibrant colors with orange and yellow accents, clean and polished look. "
+                "Layout: Awkward ensemble lineup or character duo centered. Typography: Bold red or yellow sans-serif title."
+            ),
+            "Drama": (
+                "Candid camera style, grainy film texture, natural moody lighting, soft focus backgrounds. "
+                "Composition: Human-centric, focusing on raw facial expressions and raw textures."
+            ),
+            "Action": (
+                "High contrast, dynamic motion, intense rim lighting. Composition: Strong silhouettes, "
+                "heavy negative space for urgency. Palette: Monochrome or sharp dual-tone."
+            ),
+            "Sci-Fi": (
+                "Atmospheric fog, massive scale, tiny human figures against giant architectural structures. "
+                "Color grading: Teal and orange or neon gradients. Technical futurism elements."
+            ),
+            "Horror": (
+                "Minimalist stark negative space, high-contrast red and black palette. "
+                "Creepy central motif, liminal space aesthetic, unsettling sharp lighting."
+            ),
+            "Thriller": (
+                "Low-key lighting, deep shadows, mysterious silhouettes. Tense atmosphere, "
+                "cold color palette with blues and grays."
+            ),
+            "Romance": (
+                "Warm golden hour lighting, soft and intimate composition. "
+                "Pastel color palette (lilacs, beiges). Elegant serif typography."
+            ),
+            "Western": (
+                "Dusty atmosphere, harsh sun lighting, earthy tones (browns, tans). "
+                "Wide panoramic scale, rugged textures."
+            )
+        }
+
+        genre_style = genre_map.get(genre, "Cinematic composition, professional lighting.")
+        
+        prompt = f"A high-quality movie poster for a {genre} film titled '{title}'. {base_language} "
+        prompt += f"Design Language: {genre_style} "
+        prompt += f"Visual style: {style or 'Professional Studio Photography'}. "
         prompt += f"Bottom tagline: {tagline}."
         
         contents = [prompt]
@@ -89,8 +135,14 @@ class AssetStudio:
         if not self.client: 
             return []
         
-        prompt = f"A professional cinematic headshot for: {description}. "
-        prompt += f"Neutral background, high detail, consistent visual style: {style or 'cinematic'}."
+        # Enhanced character prompt for photorealism
+        prompt = (
+            f"A professional cinematic character portrait for: {description}. "
+            "High-end studio photography, photorealistic person, sharp focus, 8k, natural skin textures, "
+            "detailed eyes and hair, professional lighting. Neutral cinematic background. "
+            f"Consistent visual style: {style or 'Professional Cinematic Photography'}. "
+            "Strictly NO cartoons, NO illustrations, NO drawings, NO 3D renders."
+        )
         
         b64_variants = []
         for i in range(4):
