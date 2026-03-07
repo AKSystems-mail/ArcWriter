@@ -29,10 +29,19 @@ def add_page_number(canvas, doc):
     canvas.restoreState()
 
 def get_manual_path():
-    file_path = "Screenwriter_Guide.md"
-    if not os.path.exists(file_path):
-        file_path = os.path.join(os.path.dirname(__file__), "..", "..", "Screenwriter_Guide.md")
-    return file_path
+    # Try multiple common locations to be very robust
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__))) # Root of backend/
+    paths = [
+        os.path.join(base_dir, "Screenwriter_Guide.md"),
+        "Screenwriter_Guide.md",
+        "backend/Screenwriter_Guide.md",
+        "/Users/akprod/dev/ArcWriter/backend/Screenwriter_Guide.md"
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            return p
+    # If all fail, raise error instead of returning broken path
+    raise FileNotFoundError("Screenwriter_Guide.md not found in expected locations.")
 
 @router.get("/download")
 async def download_manual():
@@ -172,11 +181,15 @@ async def get_manual_section(section_id: str):
         for line in scene_lines[1:]:
             indent = len(line) - len(line.lstrip())
             stripped = line.strip()
-            if indent >= 15:
+            if not stripped: continue
+
+            # Robust parsing based on content patterns
+            if stripped.isupper() and len(stripped) > 1 and not stripped.startswith('(') and not stripped.startswith('INT.') and not stripped.startswith('EXT.'):
                 result["character"] = stripped
-            elif indent >= 8 and stripped.startswith('(') and stripped.endswith(')'):
+            elif stripped.startswith('(') and stripped.endswith(')'):
                 result["parenthetical"] = stripped.strip('()')
-            elif indent >= 8:
+            elif result["character"] and (indent >= 8 or (not stripped.isupper())):
+                # If we have a character and the line is dialogue-ish
                 dialogue_parts.append(stripped)
             else:
                 action_parts.append(stripped)
