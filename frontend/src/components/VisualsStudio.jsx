@@ -4,6 +4,7 @@ import { apiClient } from '../api/client';
 import { storage, db, auth } from '../firebase';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import PricingModal from './PricingModal';
 import ContextualHelp from './ContextualHelp';
 
 const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
