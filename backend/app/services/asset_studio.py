@@ -149,11 +149,11 @@ class AssetStudio:
             try:
                 response = self.client.models.generate_content(
                     model='gemini-3.1-flash-image-preview',
-                    contents=[prompt],
+                    contents=contents,
                     config=types.GenerateContentConfig(
                         response_modalities=['IMAGE'],
                         image_config=types.ImageConfig(
-                            aspect_ratio='1:1'
+                            aspect_ratio='2:3'
                         )
                     )
                 )

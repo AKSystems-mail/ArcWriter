@@ -183,22 +183,31 @@ class ProjectResponse(BaseModel):
 
 @app.get("/api/project/{universe_name}/{project_id}", response_model=ProjectResponse)
 async def get_project_details(universe_name: str, project_id: str, user_id: str = Depends(get_current_user)):
-    project_config = await verify_project_ownership(universe_name, project_id, user_id)
+    try:
+        project_config = await verify_project_ownership(universe_name, project_id, user_id)
         
-    return ProjectResponse(
-        id=project_id,
-        name=project_config.get('title', project_id),
-        title=project_config.get('title', project_id),
-        logline=project_config.get('logline'),
-        genre=project_config.get('genre'),
-        poster_url=project_config.get('poster_url'),
-        teaser_url=project_config.get('teaser_url'),
-        bible_content=project_config.get('bible_content'),
-        created_at=project_config.get('created_at'),
-        characters=project_config.get('characters'),
-        beat_sheet_data=project_config.get('beat_sheet_data'),
-        source_material=project_config.get('source_material')
-    )
+        # Ensure created_at is serializable
+        ca = project_config.get('created_at')
+        ca_str = ca.isoformat() if ca and hasattr(ca, 'isoformat') else str(ca) if ca else None
+
+        return ProjectResponse(
+            id=project_id,
+            name=project_config.get('title', project_id),
+            title=project_config.get('title', project_id),
+            logline=project_config.get('logline'),
+            genre=project_config.get('genre'),
+            poster_url=project_config.get('poster_url'),
+            teaser_url=project_config.get('teaser_url'),
+            bible_content=project_config.get('bible_content'),
+            created_at=ca_str,
+            characters=project_config.get('characters'),
+            beat_sheet_data=project_config.get('beat_sheet_data'),
+            source_material=project_config.get('source_material')
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- Scene & Critique Endpoints ---
 class SceneRequest(BaseModel):

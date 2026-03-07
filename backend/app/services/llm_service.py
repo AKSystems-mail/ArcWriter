@@ -37,7 +37,7 @@ class LLMService:
                 import vertexai
                 vertexai.init(project=project_id, location=location)
                 self.client = genai.Client(vertex=True, project=project_id, location=location)
-                self.model_name = "gemini-2.5-flash"
+                self.model_name = "models/gemini-2.5-flash"
                 logger.info(f"LLMService: Initialized with Vertex AI ({self.model_name})")
             except Exception as e:
                 logger.error(f"LLMService: Vertex AI init failed: {e}")
