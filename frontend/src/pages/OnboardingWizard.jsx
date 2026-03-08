@@ -203,7 +203,8 @@ const OnboardingWizard = () => {
                         title: cleanMetadata.title,
                         tagline: cleanMetadata.logline,
                         genre: cleanMetadata.genre,
-                        style: data.vibe
+                        style: data.vibe,
+                        characters: cleanMetadata.character_descriptions
                     })
                 });
 

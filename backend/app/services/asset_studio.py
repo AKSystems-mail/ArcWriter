@@ -47,7 +47,7 @@ class AssetStudio:
             except Exception as e:
                 logger.error(f"AssetStudio: Vertex AI init failed: {e}")
 
-    def generate_poster(self, title: str, tagline: str, genre: str = "Sci-Fi", style: Optional[str] = None, image_references: List[str] = None) -> Optional[str]:
+    def generate_poster(self, title: str, tagline: str, genre: str = "Sci-Fi", style: Optional[str] = None, image_references: List[str] = None, characters: List[Dict[str, Any]] = None) -> Optional[str]:
         if not self.client:
             logger.error("AssetStudio: Client not initialized. Cannot generate poster.")
             return None
@@ -99,8 +99,22 @@ class AssetStudio:
         
         prompt = f"A high-quality movie poster for a {genre} film titled '{title}'. {base_language} "
         prompt += f"Design Language: {genre_style} "
+        
+        if characters:
+            prompt += "The poster MUST feature characters with these specific physical and ethnic backgrounds: "
+            for char in characters[:3]: # Limit to top 3 for clarity
+                prompt += f"{char.get('name')}: {char.get('description')}. "
+            prompt += "Represent these traits with extreme accuracy. "
+
         prompt += f"Visual style: {style or 'Professional Studio Photography'}. "
         prompt += f"Bottom tagline: {tagline}."
+        
+        # Legal & Ethical Safeguards
+        prompt += (
+            " Strictly NO real actor or director likenesses. NO real celebrities. "
+            "NO real studio logos or credit blocks with real names. "
+            "Use only original faces based on the provided descriptions."
+        )
         
         contents = [prompt]
         
@@ -135,13 +149,14 @@ class AssetStudio:
         if not self.client: 
             return []
         
-        # Enhanced character prompt for photorealism
+        # Enhanced character prompt for photorealism and ethnic accuracy
         prompt = (
             f"A professional cinematic character portrait for: {description}. "
+            "Critically important: Accurately represent the character's ethnic/racial background as described. "
             "High-end studio photography, photorealistic person, sharp focus, 8k, natural skin textures, "
             "detailed eyes and hair, professional lighting. Neutral cinematic background. "
             f"Consistent visual style: {style or 'Professional Cinematic Photography'}. "
-            "Strictly NO cartoons, NO illustrations, NO drawings, NO 3D renders."
+            "Strictly NO real actor likenesses. NO cartoons, NO illustrations, NO 3D renders."
         )
         
         b64_variants = []
@@ -149,11 +164,11 @@ class AssetStudio:
             try:
                 response = self.client.models.generate_content(
                     model='gemini-3.1-flash-image-preview',
-                    contents=contents,
+                    contents=[prompt],
                     config=types.GenerateContentConfig(
                         response_modalities=['IMAGE'],
                         image_config=types.ImageConfig(
-                            aspect_ratio='2:3'
+                            aspect_ratio='1:1'
                         )
                     )
                 )

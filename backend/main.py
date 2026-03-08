@@ -248,6 +248,7 @@ class AssetRequest(BaseModel):
     genre: Optional[str] = None
     universe_id: Optional[str] = None
     project_id: Optional[str] = None
+    characters: Optional[List[Dict[str, Any]]] = None
 
 @app.post("/api/assets/generate")
 async def generate_asset(request: AssetRequest, user_id: str = Depends(get_current_user)):
@@ -262,7 +263,8 @@ async def generate_asset(request: AssetRequest, user_id: str = Depends(get_curre
             title=request.title or "Untitled",
             tagline=one_sentence_summary,
             genre=request.genre or "Drama",
-            style=request.style
+            style=request.style,
+            characters=request.characters
         )
         if not base64_data:
             raise HTTPException(status_code=500, detail="Generation failed")
@@ -323,7 +325,8 @@ async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(ge
                 tagline=data.get("logline", ""),
                 genre=data.get("genre", "Drama"),
                 style=data.get("vibe", "Cinematic"),
-                image_references=image_references
+                image_references=image_references,
+                characters=characters
             )
             if not base64_data: raise HTTPException(status_code=500, detail="Poster generation failed")
             return {"b64_data": base64_data}

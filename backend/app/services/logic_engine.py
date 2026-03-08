@@ -79,6 +79,7 @@ class LogicEngine:
         system_instruction = (
             "You are a legendary Hollywood script consultant and character designer.\n\n"
             "MANDATE: You MUST identify and invent names/descriptions for at least 4-6 primary characters.\n"
+            "MANDATE: Character descriptions MUST be visual and specific. Include: age, build, hair/eye color, style, and EXPLICIT ethnic/racial background (e.g., 'Black', 'South Asian', 'Latine', 'East Asian', 'Caucasian', etc.). This is critical for visual consistency.\n"
             "MANDATE: You MUST provide detailed text for all 15 Save the Cat beats.\n\n"
             "Return a JSON object with keys: 'genre', 'logline', 'structure_suggestion', 'title', 'synopsis', "
             "'character_descriptions' (list of {name, role, description}), and 'beat_sheet' (15 beats)."
