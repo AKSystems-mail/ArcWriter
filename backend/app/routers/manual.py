@@ -91,9 +91,10 @@ async def download_manual():
             if not stripped: continue
             indent = len(line) - len(line.lstrip())
             if indent >= 15:
-                if stripped in ['FADE IN:', 'FADE OUT.', 'CUT TO:', 'BACK TO:', 'FADE TO BLACK.', 'THE END']:
+                if stripped in ['FADE IN:', 'FADE OUT.', 'CUT TO:', 'BACK TO:', 'FADE TO BLACK.', 'THE END', 'CHOOSE YOUR PATH:', 'IF ARCHITECT MODE:', 'IF EXPLORER MODE:', 'BACK TO STORY:']:
                     story_elements.append(Paragraph(stripped, styles['ScriptSlug']))
-                else: story_elements.append(Paragraph(stripped, styles['ScriptChar']))
+                else:
+                    story_elements.append(Paragraph(stripped, styles['ScriptChar']))
             elif indent >= 8 and stripped.startswith('(') and stripped.endswith(')'):
                 story_elements.append(Paragraph(stripped, styles['ScriptParenthetical']))
             elif indent >= 8: story_elements.append(Paragraph(stripped, styles['ScriptDialogue']))

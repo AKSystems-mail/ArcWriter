@@ -80,6 +80,10 @@ The System hums. It strips the old file down to its
 structural essence, identifying characters and 
 pacing issues from the previous draft.
 
+                                               CHOOSE YOUR PATH:
+
+                                               IF ARCHITECT MODE:
+
 INT. BLUEPRINT VERIFICATION - ARCHITECT
 
                     SYSTEM
@@ -90,6 +94,8 @@ INT. BLUEPRINT VERIFICATION - ARCHITECT
                     ANNA
           The logline is sharp. I'm ready 
           to engineer the Beat Sheet.
+
+                                               IF EXPLORER MODE:
 
 INT. BLUEPRINT VERIFICATION - EXPLORER
 
@@ -106,6 +112,8 @@ INT. BLUEPRINT VERIFICATION - EXPLORER
           It's already prepped. I'm just 
           waiting for you to pick up the 
           pen.
+
+                                               BACK TO STORY:
 
 INT. VISUAL SOUL - CONTINUOUS
 
