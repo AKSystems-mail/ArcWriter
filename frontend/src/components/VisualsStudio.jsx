@@ -191,11 +191,21 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                 const response = await apiClient(`/api/assets/teaser_status?operation_id=${encodeURIComponent(opId)}&t=${Date.now()}`);
                 
                 if (!response.ok) {
-                    const errorBody = await response.text(); // Get raw error response
+                    const errorBody = await response.text();
                     console.error(`Art Dept: Teaser status poll failed (${response.status}):`, errorBody);
-                    return; // Still retry, but log the error
+                    // Do not return here; let the catch block handle it or continue polling if transient
+                    throw new Error(`Server error: ${response.status}`);
                 }
                 const status = await response.json();
+
+                // Check for terminal error state from backend
+                if (status.status === 'error') {
+                    clearInterval(interval);
+                    setMessage(`Motion Error: ${status.message || 'Render failed'}`);
+                    setRegenerating(null);
+                    alert(`Motion Dept Error: ${status.message || 'The render operation failed.'}`);
+                    return;
+                }
 
                 if (status.done) {
                     clearInterval(interval);
@@ -207,6 +217,7 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                         if (onRefresh) onRefresh();
                     } else {
                         setMessage("Art Dept: Render failed to return data.");
+                        alert("Motion Dept Error: Render completed but no video data was returned.");
                     }
                     setRegenerating(null);
                 } else {
@@ -215,6 +226,12 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                 }
             } catch (err) {
                 console.warn("Poll failed, retrying...", err);
+                // If it's a persistent failure (e.g., 404 or auth), we might want to stop
+                if (err.message.includes('401') || err.message.includes('403')) {
+                    clearInterval(interval);
+                    setRegenerating(null);
+                    setMessage("Auth Error: Please refresh.");
+                }
             }
         }, 15000); // Check every 15 seconds
     };

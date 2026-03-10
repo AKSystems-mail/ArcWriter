@@ -16,11 +16,29 @@
     "predeploy": "cd frontend && npm run build",
     "headers": [
       {
+        "source": "/",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
         "source": "**",
         "headers": [
           {
             "key": "Cross-Origin-Opener-Policy",
-            "value": "same-origin-allow-popups"
+            "value": "unsafe-none"
           },
           {
             "key": "Cross-Origin-Embedder-Policy",

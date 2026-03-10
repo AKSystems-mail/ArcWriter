@@ -100,7 +100,7 @@ class PDFService:
                 qr_img.hAlign = 'LEFT'
                 
                 # Table for QR + Text
-                qr_data = [[qr_img, Paragraph("<b>Scan to view the Motion Teaser.</b><br/>This cinematic 5-second render captures the atmosphere and visual vibe of the production.", self.styles['ArcBody'])]]
+                qr_data = [[qr_img, Paragraph("<b>Scan to view the Motion Teaser.</b><br/>This cinematic 8-second render captures the atmosphere and visual vibe of the production.", self.styles['ArcBody'])]]
                 qr_table = Table(qr_data, colWidths=[1.6*inch, 4*inch])
                 qr_table.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
                 story.append(qr_table)

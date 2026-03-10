@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { 
     signInWithPopup, 
-    signInWithRedirect,
-    getRedirectResult,
     GoogleAuthProvider, 
     onAuthStateChanged, 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword,
     sendPasswordResetEmail,
-    sendEmailVerification
+    sendEmailVerification,
+    setPersistence,
+    browserLocalPersistence
 } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { Mail, Lock, UserPlus, ArrowLeft, Loader2, Info } from 'lucide-react';
 
 const LoginScreen: React.FC = () => {
+    // Auth Version: 2.5.4-REDR
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [mode, setMode] = useState<'social' | 'email' | 'signup' | 'reset'>('social');
@@ -26,37 +27,28 @@ const LoginScreen: React.FC = () => {
     const provider = new GoogleAuthProvider();
 
     useEffect(() => {
-        const checkRedirect = async () => {
-            try {
-                const result = await getRedirectResult(auth);
-                if (result) {
-                    navigate('/app');
-                }
-            } catch (err: any) {
-                console.error("Error getting redirect result:", err);
-                setError(err.message);
-            }
-        };
-        checkRedirect();
-
+        // Simple listener: if user is detected, move to app.
         const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) {
+            if (user && !loading) {
                 navigate('/app');
             }
         });
         return () => unsubscribe();
-    }, [auth, navigate]);
+    }, [auth, navigate, loading]);
 
     const handleGoogleSignIn = async () => {
         setLoading(true);
         setError(null);
         try {
-            // Using redirect instead of popup for better reliability across browsers
-            await signInWithRedirect(auth, provider);
+            await setPersistence(auth, browserLocalPersistence);
+            await signInWithPopup(auth, provider);
+            // Navigation is handled by the useEffect listener
         } catch (err: any) {
-            console.error("Error during Google Sign-In initiation:", err);
+            console.error("Error during Google Sign-In:", err);
             if (err.code === 'auth/popup-closed-by-user') {
-                setError("Login process was interrupted. Please try again.");
+                setError("Sign-in window was closed. Please try again.");
+            } else if (err.code === 'auth/cancelled-popup-request') {
+                setError("Only one sign-in window can be open at a time.");
             } else {
                 setError(err.message);
             }
@@ -236,7 +228,7 @@ const LoginScreen: React.FC = () => {
 
                 <div className="mt-12 pt-8 border-t border-white/5">
                     <p className="text-gray-800 text-[8px] font-black uppercase tracking-[0.4em]">
-                        Precision Instruments Active
+                        Precision Instruments Active | v2.5.4
                     </p>
                 </div>
             </div>

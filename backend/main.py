@@ -18,6 +18,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Utility imports for endpoints
+from app.utils.firebase_auth_utils import get_current_user, get_firestore_db, verify_project_ownership
+
 # Lazy Service Registry
 class ServiceRegistry:
     def __init__(self):
@@ -80,11 +83,27 @@ class ServiceRegistry:
 
 services = ServiceRegistry()
 
-from app.utils.firebase_auth_utils import verify_token, get_firestore_db, initialize_firebase_admin, get_current_user, verify_project_ownership
-from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing
+# Global flag to track initialization
+_initialized = False
 
-# Initialize Firebase Admin SDK (v2 bridge)
-initialize_firebase_admin()
+def lazy_initialize():
+    global _initialized
+    if not _initialized:
+        # Move heavy imports here
+        from app.utils.firebase_auth_utils import initialize_firebase_admin
+        initialize_firebase_admin()
+        
+        from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing
+        app.include_router(onboarding.router)
+        app.include_router(users.router)
+        app.include_router(pitchdeck.router)
+        app.include_router(script.router)
+        app.include_router(bible.router)
+        app.include_router(manual.router)
+        app.include_router(public.router)
+        app.include_router(billing.router)
+        
+        _initialized = True
 
 # Arc Studio API - Initialized with Security Hardening
 app = FastAPI(title="Arc Studio API")
@@ -104,15 +123,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.include_router(onboarding.router)
-app.include_router(users.router)
-app.include_router(pitchdeck.router)
-app.include_router(script.router)
-app.include_router(bible.router)
-app.include_router(manual.router)
-app.include_router(public.router)
-app.include_router(billing.router)
 
 @app.get("/")
 async def root():
@@ -373,10 +383,12 @@ async def generate_teaser(request: TeaserRequest, user_id: str = Depends(get_cur
         prompt = f"Cinematic scene from a {data.get('genre')} film. {data.get('logline')}. Visual vibe: {data.get('vibe')}."
         
         # Async Pivot: Get operation object immediately
-        operation = services.asset_studio.generate_teaser(prompt=prompt)
+        logger.info(f"Initializing Teaser: Genre={data.get('genre')}, Prompt={prompt}")
+        operation = services.asset_studio.generate_teaser(prompt=prompt, genre=data.get('genre', 'Sci-Fi'))
         if not operation:
             raise HTTPException(status_code=500, detail="Failed to initialize motion render")
             
+        logger.info(f"Teaser Operation Created: {operation.name}")
         return {"operation_id": operation.name}
     except Exception as e:
         logger.error(f"Teaser Initialization Failure: {e}")
@@ -414,6 +426,9 @@ async def get_teaser_status(operation_id: str, user_id: str = Depends(get_curren
     ]
 )
 def api(req: https_fn.Request) -> https_fn.Response:
+    # Ensure app is initialized before handling request
+    lazy_initialize()
+    
     # Quick health check for Cloud Run
     if req.path == "/health":
         return FlaskResponse("OK", status=200)

@@ -169,7 +169,7 @@ const Dashboard: React.FC = () => {
                 <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-6">
                     <div>
                         <div className="flex items-center gap-3 mb-4">
-                            <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] italic">Studio Archives</span>
+                            <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] italic">Studio Archives | v2.5.4-REDR</span>
                             <ContextualHelp sectionId="DASHBOARD" />
                         </div>
                         <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none">

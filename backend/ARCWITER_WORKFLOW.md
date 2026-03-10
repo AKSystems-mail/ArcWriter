@@ -83,7 +83,7 @@ The structural and visual overview of your project.
 *   **Visuals Assets Studio**: (Component within Blueprint)
     *   **Official Poster Generation**: Generate and regenerate high-fidelity movie posters with concise taglines.
     *   **Character Anchor Generation**: Generate and select cinematic headshots for key characters (4 variants).
-    *   **Cinematic Teaser Generation**: Initiate asynchronous generation of 5-second motion teasers (Veo 2.0).
+    *   **Cinematic Teaser Generation**: Initiate asynchronous generation of 8-second motion teasers (Veo 3.0 Fast) with native synchronized audio.
     *   **Pitch Package Export**: Compile a multi-part PDF (Poster, Story Summary, Cast Dossiers, Full Script) for pitching.
 *   **Beat Sheet Form**: Review and refine the 15 narrative beats (e.g., Save the Cat, Hero's Journey).
 *   **Personnel Dossiers**: Detailed view and management of characters, including generated visual anchors.

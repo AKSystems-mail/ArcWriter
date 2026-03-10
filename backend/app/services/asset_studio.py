@@ -181,18 +181,34 @@ class AssetStudio:
                 logger.error(f"AssetStudio: Variant {i+1} failed: {e}")
         return b64_variants
 
-    def generate_teaser(self, prompt: str, aspect_ratio: str = "16:9") -> Optional[Any]:
+    def generate_teaser(self, prompt: str, genre: str = "Sci-Fi", aspect_ratio: str = "16:9") -> Optional[Any]:
         if not self.client:
             return None
 
-        enhanced_prompt = f"Professional cinematic motion shot, 8k, highly detailed: {prompt}"
+        # Genre-specific audio signatures for immersive music soundtracks
+        audio_map = {
+            "Sci-Fi": "Audio: Dark ambient synth-wave, futuristic drones, no dialogue.",
+            "Action": "Audio: Fast-paced orchestral percussion, high-energy cinematic pulses.",
+            "Horror": "Audio: Eerie atonal violin screeches, low-frequency rhythmic thumping.",
+            "Drama": "Audio: Somber solo piano melody, natural room ambience, no speech.",
+            "Thriller": "Audio: Tense ticking sounds, rising atmospheric tension, sharp metallic clangs.",
+            "Romance": "Audio: Soft acoustic guitar, warm romantic pads, intimate atmosphere.",
+            "Western": "Audio: Rhythmic acoustic strumming, whistling wind, cinematic dusty atmosphere.",
+            "Comedy": "Audio: Upbeat whimsical orchestral pluck, bright and energetic tempo."
+        }
+        
+        audio_footer = audio_map.get(genre, "Audio: Cinematic orchestral soundtrack, no dialogue.")
+        enhanced_prompt = f"Professional cinematic motion shot, 8k, highly detailed: {prompt}. {audio_footer}"
         
         try:
+            # Switching to Veo 3.0 Standard for maximum reliability and priority availability
+            # This maintains 8s duration and native multimodal audio
             operation = self.client.models.generate_videos(
-                model='veo-2.0-generate-001',
+                model='veo-3.0-generate-001',
                 prompt=enhanced_prompt,
                 config=types.GenerateVideosConfig(
-                    aspect_ratio=aspect_ratio
+                    aspect_ratio=aspect_ratio,
+                    duration_seconds=8
                 )
             )
             return operation
@@ -219,10 +235,10 @@ class AssetStudio:
     def get_operation_status(self, operation_id: str) -> Dict[str, Any]:
         """Checks the status of a long-running motion operation."""
         if not self.client: 
-            return {"status": "error"}
+            return {"status": "error", "done": True, "message": "Client not initialized"}
         try:
-            op_obj = types.GenerateVideosOperation(name=operation_id)
-            operation = self.client.operations.get(op_obj)
+            # Reverting back to keyword argument 'name' which IS the correct parameter for google-genai SDK
+            operation = self.client.operations.get(name=operation_id)
             
             result = {
                 "done": operation.done,
@@ -233,19 +249,22 @@ class AssetStudio:
             if operation.done:
                 if operation.response:
                     res = operation.response
+                    # Extract generated videos from the response
                     if hasattr(res, 'generated_videos') and len(res.generated_videos) > 0:
                         video_obj = res.generated_videos[0]
+                        # Handle GCS URI or raw bytes
                         if hasattr(video_obj, 'video') and hasattr(video_obj.video, 'uri') and video_obj.video.uri:
                             result["video_uri"] = video_obj.video.uri
                         elif hasattr(video_obj, 'video') and hasattr(video_obj.video, 'video_bytes') and video_obj.video.video_bytes:
                             result["video_uri"] = self._upload_video_bytes(video_obj.video.video_bytes, operation_id)
                 elif operation.error:
-                    return {"status": "error", "message": str(operation.error)}
+                    logger.error(f"AssetStudio: Operation {operation_id} reported error: {operation.error}")
+                    return {"status": "error", "done": True, "message": str(operation.error)}
             
             return result
         except Exception as e:
             logger.error(f"AssetStudio: Status check failed for {operation_id}: {e}")
-            return {"status": "error", "message": str(e)}
+            return {"status": "error", "done": True, "message": str(e)}
 
     def generate_character_concepts(self, description: str, visual_style: str = "cinematic") -> List[str]:
         return []
