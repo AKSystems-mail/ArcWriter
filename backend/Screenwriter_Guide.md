@@ -1,4 +1,4 @@
-THE ARCWRITER'S GUIDE
+ THE ARCWRITER'S GUIDE
 
                                   A Screenplay
                                        by
@@ -39,100 +39,158 @@ It’s fast. No friction.
 
 INT. THE WIZARD - CONTINUOUS
 
-Anna stands before two massive, glowing doors.
+Anna stands before two massive, glowing doors. 
 
 Door #1 is labeled: THE DISCOVERY (Mood First).
 Door #2 is labeled: THE BLUEPRINT (Structure First).
 
-                    ANNA
-          I have a plot. I need structure.
+                    SYSTEM
+          Choose your trajectory, Anna.
 
-She steps through THE BLUEPRINT door.
+                    ANNA
+          What's the difference?
+
+                    SYSTEM
+          The Discovery is the "Draft-First" 
+          method. We jump straight to the page; 
+          I’ll generate your first scene so 
+          you can start reacting to the world. 
+          The Blueprint is the "Structure-First" 
+          method, prioritizing narrative logic 
+          before the draft begins.
+
+Anna pauses, her hand hovering between the two.
 
 INT. STORY DNA LAB - CONTINUOUS
 
-A prompt appears: "STORY DNA."
+A prompt appears: "STORY DNA." 
 
-Anna types: "A rom-com where the couple breaks up in the
-first scene and spends the movie trying to stay apart."
-
-The System hums. It processes.
+Anna looks at her old PDF script—a relic from a 
+failed project. She clicks "IMPORT MANUSCRIPT."
 
                     SYSTEM
-          Narrative Brief Received.
-          Cinematic Universe: Standalone.
+          Manuscript detected. Should I 
+          preserve the formatting?
 
                     ANNA
-          (Smirking)
-          Not bad.
+          Yes. Run it in Screenplay Mode. 
+          Reverse engineer the logic.
 
-She hits "NEXT."
+The System hums. It strips the old file down to its 
+structural essence, identifying characters and 
+pacing issues from the previous draft.
 
-INT. BLUEPRINT VERIFICATION - MOMENTS LATER
-
-The System displays the architectural core.
+INT. BLUEPRINT VERIFICATION - ARCHITECT
 
                     SYSTEM
-          Asset Title: Love in the Algorithm.
-          Distilled Logline: Two ex-lovers fight to
-          keep their distance in a small town that
-          wants them together.
-          Structural Framework: Save the Cat.
-          Identified Cast: 4 Profiles Generated.
+          The foundation is laid. Review 
+          your Structural DNA. Is the 
+          framework sound?
 
-Anna nods. The foundation is solid.
+                    ANNA
+          The logline is sharp. I'm ready 
+          to engineer the Beat Sheet.
+
+INT. BLUEPRINT VERIFICATION - EXPLORER
+
+                    SYSTEM
+          I've extracted the Narrative 
+          Skeleton from your notes. Once 
+          you verify these details, we'll 
+          head straight to the page.
+
+                    ANNA
+          And the Opening Image?
+
+                    SYSTEM
+          It's already prepped. I'm just 
+          waiting for you to pick up the 
+          pen.
 
 INT. VISUAL SOUL - CONTINUOUS
 
-The System asks for a VIBE. Anna selects "ROMANTIC COMEDY."
+                    SYSTEM
+          Choose your visual palette. This 
+          defines the aesthetic for your 
+          Official Posters, Character 
+          Anchors, and Teasers.
 
-Instantly, the room fills with concept art. Pastel colors.
-Quirky fonts. A poster generates on the wall.
+Anna selects "ROMANTIC COMEDY." Instantly, the room fills 
+with concept art. Pastel colors. A poster generates on the wall.
 
                     ANNA
+          The visual identity is locked. 
           Now it feels real.
 
 INT. DIAGNOSTIC LENS - CONTINUOUS
 
-The System asks: "WHO IS CRITIQUING THIS?"
+                    SYSTEM
+          How should I analyze your work? 
+          Market Viability? Structural 
+          Integrity? Select the lens for 
+          my audits.
 
-Anna selects: "MARKET VIABILITY." She wants this script to
-sell.
+Anna selects "MARKET VIABILITY." 
+
+                    SYSTEM
+          Understood. I will prioritize 
+          commercial appeal and high 
+          stakes in every critique.
 
 INT. THE DASHBOARD - DAY
 
-Anna arrives at her command center. Her project sits at
-the top of the list.
+Anna arrives at her command center. It’s clean. High-
+resolution project posters line the screen like a 
+streaming service.
 
-To her left, the ARCHIVE (The Cutting Room Floor).
-To her right, the UPGRADE button (The Studio Deal).
+                    SYSTEM
+          The studio is active, Anna. 
+          The active assets are ready. 
 
-She clicks the blue button: BLUEPRINT PAGE.
+                    ANNA
+          What about the older drafts?
+
+                    SYSTEM
+          They're in the Archive. Safe, 
+          but out of the way. 
+
+                    ANNA
+          Good. I’m focusing on the new 
+          lead. Let's see the Blueprint.
+
+Anna selects her latest project. She clicks the orange 
+target icon: THE BLUEPRINT.
 
 INT. THE BLUEPRINT PAGE - CONTINUOUS
 
-This is the war room.
+This is the war room. 
 
-On the wall: The Official Poster.
-On the desk: Personnel Dossiers (Character Anchors).
-On the screen: A Cinematic Teaser rendering in the background.
-On the whiteboard: The BEAT SHEET. 15 empty slots waiting
-for her genius.
+On the wall: The Official Poster. 
+On the desk: Personnel Dossiers (Character Anchors). 
+On the screen: A Cinematic Teaser rendering in the background. 
+On the whiteboard: THE BEAT SHEET. 15 narrative beats, 
+pre-filled by the Logic Engine, waiting for her 
+tactical refinement.
+
+                    SYSTEM
+          The structure is locked. The 
+          visuals are rendered. Should 
+          I compile the Pitch Package?
 
                     ANNA
-          (Cracking knuckles)
-          Time to build.
+          Not yet. I need to get the 
+          actual script down first.
 
-She fills in the beats. The logic holds. She hits the big
-button: SCRIPT EDITOR.
+She hits the big orange button: SCRIPT EDITOR.
 
 INT. THE SCRIPT EDITOR - NIGHT
 
-The blank page is back. But this time, it's not scary.
-It's formatted.
+Anna enters the editor. The screen isn't blank—the 
+Logic Engine has already prepped her "Opening Image" 
+starter scene. 
 
-Anna types. "INT. COFFEE SHOP - DAY."
-The software auto-formats it. She types "CHLOE," and it
+Anna types. "INT. COFFEE SHOP - DAY." 
+The software auto-formats it. She types "CHLOE," and it 
 centers it.
 
 She gets stuck. She stares at the cursor.
@@ -140,7 +198,7 @@ She gets stuck. She stares at the cursor.
                     ANNA
           What does she say next?
 
-She clicks the DRAFT ASSIST icon (a small sparkle). A menu
+She clicks the DRAFT ASSIST icon (a small sparkle). A menu 
 drops down.
 
 1. AUTO-DRAFT SCENE
@@ -159,15 +217,65 @@ Anna picks #2. It inserts perfectly.
           (Nodding)
           Subtext. Always subtext.
 
-She glances at the STORY INSIGHTS sidebar. A red light
-blinks.
+Anna glances at the SOURCE MATERIAL drawer—her original 
+notes are just a click away. She saves a milestone 
+in the TIME MACHINE: "The Pivot."
+
+She then looks at the STORY INSIGHTS sidebar. A red 
+light blinks.
+
+INT. STORY INSIGHTS - SCENE - CONTINUOUS
 
                     SYSTEM
-          Gatekeeper Audit: Hook Velocity High.
-          Macro Audit: No major plot holes.
+          This is the "Scene Dynamics" 
+          audit. I analyze the current 
+          sequence for tension and 
+          rationality.
 
                     ANNA
-          Everyone's a critic. But at least you're
+          And the seismograph?
+
+                    SYSTEM
+          That's your "Emotional Rhythm." 
+          It tracks the rise and fall of 
+          conflict. If it's a flat line, 
+          your scene is dead.
+
+INT. STORY INSIGHTS - MACRO - CONTINUOUS
+
+                    SYSTEM
+          The "Macro Audit" scans the 
+          entire project. I’m looking for 
+          plot holes and character arc 
+          drift.
+
+                    ANNA
+          It says my structural integrity 
+          is at 70%. 
+
+                    SYSTEM
+          You have a logic gap in Act 2. 
+          The protagonist's motivation 
+          is unclear. Check your 
+          Midpoint.
+
+INT. STORY INSIGHTS - HOOK - CONTINUOUS
+
+                    SYSTEM
+          The "Gatekeeper Audit" is my 
+          executive simulator. I scan 
+          the first 10 pages. 
+
+                    ANNA
+          What's the verdict?
+
+                    SYSTEM
+          "READ." Your hook velocity 
+          is high. The narrative 
+          catalyst is undeniable.
+
+                    ANNA
+          Everyone's a critic. But at least you're 
           honest.
 
 EXT. HOLLYWOOD - DAY

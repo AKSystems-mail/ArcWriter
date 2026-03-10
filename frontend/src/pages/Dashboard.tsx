@@ -79,7 +79,7 @@ const Dashboard: React.FC = () => {
 
     const handleArchiveProject = async (e: React.MouseEvent, project: Project) => {
         e.stopPropagation();
-        if (window.confirm("Trigger the Inciting Incident? This will move the project to the Cutting Room Floor for 30 days.")) {
+        if (window.confirm("Trigger Pinch Point 1? This will move the project to the Archive for 30 days.")) {
             try {
                 const projectRef = doc(db, 'universes', project.universe_id, 'projects', project.id);
                 await updateDoc(projectRef, { status: 'archived', archived_at: new Date() });
@@ -96,7 +96,7 @@ const Dashboard: React.FC = () => {
             const projectRef = doc(db, 'universes', project.universe_id, 'projects', project.id);
             await updateDoc(projectRef, { status: 'active' });
             setProjects(prev => prev.map(p => p.id === project.id ? { ...p, status: 'active' } : p));
-            alert("Redemption achieved. Project is back in your active list.");
+            alert("Back to Production. Project is in your active list.");
         } catch (error) {
             console.error("Restore failed:", error);
         }
@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
 
     const handlePermanentDelete = async (e: React.MouseEvent, project: Project) => {
         e.stopPropagation();
-        const confirmation = window.prompt(`This is the Point of No Return. To permanently delete this project, type its name: "${project.title}"`);
+        const confirmation = window.prompt(`Burn the Negative. To permanently delete this project, type its name: "${project.title}"`);
         
         if (confirmation === project.title) {
             try {

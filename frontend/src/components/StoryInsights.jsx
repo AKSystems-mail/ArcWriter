@@ -50,6 +50,13 @@ const StoryInsights = ({
             <div className="flex items-center gap-4">
                 <Activity className="w-4 h-4 text-arc-teal opacity-50" />
                 <h2 className="font-black text-[10px] tracking-[0.2em] uppercase text-gray-400">Insights</h2>
+                <ContextualHelp 
+                    sectionId={
+                        activeTab === 'scene' ? 'INSIGHTS_SCENE' : 
+                        activeTab === 'macro' ? 'INSIGHTS_MACRO' : 
+                        'INSIGHTS_HOOK'
+                    } 
+                />
             </div>
             <div className="flex bg-white/5 p-1 rounded-sm border border-white/5">
                 {['scene', 'macro', 'hook'].map((tab) => (

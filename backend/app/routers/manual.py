@@ -127,6 +127,8 @@ async def get_manual_section(section_id: str):
             "WIZARD": "WIZARD",
             "STORY_DNA": "STORY DNA LAB",
             "BLUEPRINT_VERIFICATION": "BLUEPRINT VERIFICATION",
+            "BLUEPRINT_VERIFICATION_ARCHITECT": "BLUEPRINT VERIFICATION - ARCHITECT",
+            "BLUEPRINT_VERIFICATION_EXPLORER": "BLUEPRINT VERIFICATION - EXPLORER",
             "VISUAL_SOUL": "VISUAL SOUL",
             "DIAGNOSTIC_LENS": "DIAGNOSTIC LENS",
             "DASHBOARD": "DASHBOARD",
@@ -134,7 +136,10 @@ async def get_manual_section(section_id: str):
             "BLUEPRINT_PAGE": "BLUEPRINT PAGE",
             "SCRIPT_EDITOR": "SCRIPT EDITOR",
             "EDITOR": "SCRIPT EDITOR",
-            "BEAT_SHEET": "BLUEPRINT PAGE"
+            "BEAT_SHEET": "BLUEPRINT PAGE",
+            "INSIGHTS_SCENE": "STORY INSIGHTS - SCENE",
+            "INSIGHTS_MACRO": "STORY INSIGHTS - MACRO",
+            "INSIGHTS_HOOK": "STORY INSIGHTS - HOOK"
         }
         search_key = mapping.get(search_key, search_key)
         

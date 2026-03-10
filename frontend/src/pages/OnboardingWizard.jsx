@@ -423,8 +423,8 @@ const OnboardingWizard = () => {
         <div className="w-full max-w-6xl mx-auto px-4 z-10">
             <div className="text-center mb-16">
                 <div className="flex items-center justify-center gap-3 mb-4">
-                    <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] italic">Phase 02: Verification</span>
-                    <ContextualHelp sectionId="BLUEPRINT_VERIFICATION" />
+                    <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] italic">Structural Review</span>
+                    <ContextualHelp sectionId={data.mode === 'explorer' ? "BLUEPRINT_VERIFICATION_EXPLORER" : "BLUEPRINT_VERIFICATION_ARCHITECT"} />
                 </div>
                 <h2 className="text-5xl md:text-7xl font-black text-white mb-4 tracking-tighter uppercase leading-none">The Blueprint</h2>
                 <p className="text-gray-500 text-lg font-light">Refine the distilled Story DNA before initializing the studio.</p>

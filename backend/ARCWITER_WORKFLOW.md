@@ -42,22 +42,23 @@ The intelligent gatekeeper that directs users based on their project history.
 A step-by-step guide to setting up a new project.
 
 *   **Step 1: Choose Your Workflow (Mode Selection)**:
-    *   **The Discovery (Explorer Mode)**: Focus on mood and aesthetic, starting with loose concepts.
-    *   **The Blueprint (Architect Mode)**: Focus on structure and plot points, engineering narrative logic.
+    *   **The Discovery (Explorer Mode)**: "Mood First." Redirects directly to the **Script Editor** after initialization. The backend automatically generates the **Opening Image** scene based on the Story DNA to provide immediate creative momentum.
+    *   **The Blueprint (Architect Mode)**: "Structure First." Redirects to the **Beat Sheet** page. Users refine the 15 narrative beats before proceeding to the editor.
 *   **Step 2: Story DNA (Pitch Notes / Manuscript Import)**:
     *   **Cinematic Universe Selection**: Link to an existing universe or create a new one.
     *   **Narrative Brief**: Input a logline/pitch for AI analysis.
     *   **Import Manuscript**: Upload a PDF screenplay for reverse engineering.
-        *   **Screenplay Mode**: Option to treat the imported PDF as a script, preserving block types.
+        *   **Screenplay Mode**: If toggled, the system preserves the original block types (Dialogue, Action, etc.).
+        *   **Logic Priority**: If a manuscript is imported, the system redirects to the **Script Editor** regardless of the selected Mode (Discovery/Blueprint).
 *   **Step 3: The Blueprint (Verification & Refinement)**:
     *   **Asset Title**: Edit the project title.
     *   **Distilled Logline**: Review and refine the AI-generated logline.
     *   **Structural Framework**: Select or confirm the narrative structure (e.g., Hero's Journey, Save the Cat).
-    *   **Identified Cast**: Review and edit AI-identified characters (name, role, description).
+    *   **Identified Cast**: Review and edit AI-identified characters. Even in Explorer mode, this step ensures the "continuity engine" has a baseline for its generations.
 *   **Step 4: Visual Soul (Vibe Selection)**:
-    *   Select a visual aesthetic (genre/style) to calibrate the AI rendering engine for concept art and posters (e.g., Sci-Fi, Noir, Fantasy).
+    *   Select a visual aesthetic. Calibrates both the Image Engine (Posters/Teasers) and the Tonal Engine (AI Critique style).
 *   **Step 5: Diagnostic Lens (AI Analysis Persona)**:
-    *   Choose the AI's feedback persona for script review (e.g., Market Viability, Thematic Consistency, Structural Integrity). This influences how the AI prioritizes its critique.
+    *   Choose the AI's feedback persona. This influences the "Logic Score" and "Macro Audit" priorities.
 *   **Project Finalization**: After completing the wizard, the project is created, initial assets (poster) are generated, and the user is redirected to the Beat Sheet or Editor.
 
 ---
