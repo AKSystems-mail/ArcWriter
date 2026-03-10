@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
     signInWithPopup, 
+    signInWithRedirect,
+    getRedirectResult,
     GoogleAuthProvider, 
     onAuthStateChanged, 
     signInWithEmailAndPassword, 
@@ -24,6 +26,19 @@ const LoginScreen: React.FC = () => {
     const provider = new GoogleAuthProvider();
 
     useEffect(() => {
+        const checkRedirect = async () => {
+            try {
+                const result = await getRedirectResult(auth);
+                if (result) {
+                    navigate('/app');
+                }
+            } catch (err: any) {
+                console.error("Error getting redirect result:", err);
+                setError(err.message);
+            }
+        };
+        checkRedirect();
+
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
                 navigate('/app');
@@ -36,12 +51,15 @@ const LoginScreen: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            await signInWithPopup(auth, provider);
-            navigate('/app');
+            // Using redirect instead of popup for better reliability across browsers
+            await signInWithRedirect(auth, provider);
         } catch (err: any) {
-            console.error("Error during Google Sign-In:", err);
-            setError(err.message);
-        } finally {
+            console.error("Error during Google Sign-In initiation:", err);
+            if (err.code === 'auth/popup-closed-by-user') {
+                setError("Login process was interrupted. Please try again.");
+            } else {
+                setError(err.message);
+            }
             setLoading(false);
         }
     };
