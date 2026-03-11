@@ -8,7 +8,7 @@ import { getStorage } from "firebase/storage";
 // You can find this in your Firebase project settings
 const firebaseConfig = {
   apiKey: "AIzaSyDO4a-57crAv1n-ZJc2NV8KgtQoZapmSls",
-  authDomain: "arc-studio-box.firebaseapp.com",
+  authDomain: "arcwriter.us",
   projectId: "arc-studio-box",
   storageBucket: "arc-studio-box.firebasestorage.app",
   messagingSenderId: "784508378100",
