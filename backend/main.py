@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import requests
+import traceback
 from fastapi.responses import StreamingResponse
 from google.oauth2 import service_account
 import stripe
@@ -387,11 +388,23 @@ async def generate_teaser(request: TeaserRequest, user_id: str = Depends(get_cur
         operation = services.asset_studio.generate_teaser(prompt=prompt, genre=data.get('genre', 'Sci-Fi'))
         if not operation:
             raise HTTPException(status_code=500, detail="Failed to initialize motion render")
+        
+        # Safely extract operation name
+        operation_name = None
+        if isinstance(operation, str):
+            operation_name = operation
+        elif hasattr(operation, 'name'):
+            operation_name = operation.name
+        else:
+            raise HTTPException(status_code=500, detail="Invalid operation object from API")
             
-        logger.info(f"Teaser Operation Created: {operation.name}")
-        return {"operation_id": operation.name}
+        logger.info(f"Teaser Operation Created: {operation_name}")
+        return {"operation_id": operation_name}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Teaser Initialization Failure: {e}")
+        logger.error(f"Exception traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/assets/teaser_status")

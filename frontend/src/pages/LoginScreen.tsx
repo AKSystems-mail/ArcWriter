@@ -90,8 +90,21 @@ const LoginScreen: React.FC = () => {
             <div className="absolute inset-0 z-0 bg-cover bg-center opacity-10 grayscale" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1517604907996-f947bb3ef008?auto=format&fit=crop&w=2070&q=80')" }}></div>
 
             <div className="relative z-10 p-10 md:p-16 bg-[#080808] backdrop-blur-xl border border-white/5 rounded-sm shadow-2xl text-center max-w-md w-full animate-fade-in mx-4">
-                <div className="flex justify-center mb-10">
-                    <img src="/ArcWriter_logo.png" alt="ArcWriter" className="h-10 w-auto" />
+                <button 
+                    onClick={() => navigate('/')}
+                    className="absolute top-6 left-6 text-[8px] font-black uppercase tracking-widest text-gray-700 hover:text-white transition-all flex items-center gap-2 group"
+                >
+                    <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" />
+                    Back to Landing
+                </button>
+
+                <div className="flex justify-center mb-10 mt-4">
+                    <img 
+                        src="/ArcWriter_logo.png" 
+                        alt="ArcWriter" 
+                        className="h-12 w-auto cursor-pointer hover:scale-105 transition-transform" 
+                        onClick={() => navigate('/')}
+                    />
                 </div>
                 
                 <span className="text-arc-teal text-[9px] font-black uppercase tracking-[0.5em] mb-4 block italic">Phase 00: Authentication</span>

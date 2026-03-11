@@ -211,9 +211,23 @@ class AssetStudio:
                     duration_seconds=8
                 )
             )
+            
+            # Verify operation object structure
+            if isinstance(operation, str):
+                # If API returns a string, wrap it as operation name
+                logger.warning(f"AssetStudio: API returned string instead of operation object: {operation}")
+                # Create a minimal operation-like object
+                class OperationWrapper:
+                    def __init__(self, name):
+                        self.name = name
+                        self.done = False
+                return OperationWrapper(operation)
+            
+            logger.info(f"AssetStudio: Operation type: {type(operation)}, has name: {hasattr(operation, 'name')}")
             return operation
         except Exception as e:
             logger.error(f"AssetStudio: Motion Initialization Failure: {e}")
+            logger.error(f"Exception traceback: {traceback.format_exc()}")
             return None
 
     def _upload_video_bytes(self, video_bytes: bytes, operation_id: str) -> Optional[str]:
@@ -237,18 +251,24 @@ class AssetStudio:
         if not self.client: 
             return {"status": "error", "done": True, "message": "Client not initialized"}
         try:
-            # Reverting back to keyword argument 'name' which IS the correct parameter for google-genai SDK
-            operation = self.client.operations.get(name=operation_id)
+            # Use positional argument for the operation name
+            operation = self.client.operations.get(operation_id)
+            
+            # Handle case where operation might be a string or other unexpected type
+            if isinstance(operation, str):
+                logger.warning(f"AssetStudio: operations.get returned string: {operation}")
+                return {"status": "error", "done": True, "message": "Unexpected API response format"}
             
             result = {
-                "done": operation.done,
-                "name": operation.name,
+                "done": getattr(operation, 'done', False),
+                "name": getattr(operation, 'name', operation_id),
                 "video_uri": None
             }
 
-            if operation.done:
-                if operation.response:
-                    res = operation.response
+            if result["done"]:
+                response = getattr(operation, 'response', None)
+                if response:
+                    res = response
                     # Extract generated videos from the response
                     if hasattr(res, 'generated_videos') and len(res.generated_videos) > 0:
                         video_obj = res.generated_videos[0]
@@ -257,13 +277,15 @@ class AssetStudio:
                             result["video_uri"] = video_obj.video.uri
                         elif hasattr(video_obj, 'video') and hasattr(video_obj.video, 'video_bytes') and video_obj.video.video_bytes:
                             result["video_uri"] = self._upload_video_bytes(video_obj.video.video_bytes, operation_id)
-                elif operation.error:
-                    logger.error(f"AssetStudio: Operation {operation_id} reported error: {operation.error}")
-                    return {"status": "error", "done": True, "message": str(operation.error)}
+                error = getattr(operation, 'error', None)
+                if error:
+                    logger.error(f"AssetStudio: Operation {operation_id} reported error: {error}")
+                    return {"status": "error", "done": True, "message": str(error)}
             
             return result
         except Exception as e:
             logger.error(f"AssetStudio: Status check failed for {operation_id}: {e}")
+            logger.error(f"Exception traceback: {traceback.format_exc()}")
             return {"status": "error", "done": True, "message": str(e)}
 
     def generate_character_concepts(self, description: str, visual_style: str = "cinematic") -> List[str]:

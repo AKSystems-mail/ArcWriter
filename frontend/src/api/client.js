@@ -26,10 +26,10 @@ export const apiClient = async (endpoint, options = {}) => {
             return Promise.reject(new Error("Session expired"));
         }
     } else {
-        // If no user and we might need one. 
-        // For now, we proceed. If the backend returns 401, we'll handle it below.
-        // Ideally, we could check if the route requires auth, but that's complex here.
-        console.warn("Making API call without authenticated user.");
+        // Suppress warning for known public routes (like manual/help sections)
+        if (!endpoint.includes('/api/manual/')) {
+            console.warn("Making API call without authenticated user.");
+        }
     }
 
     // Ensure Content-Type is set for JSON requests if not provided/applicable

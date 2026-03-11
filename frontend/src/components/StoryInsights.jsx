@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Terminal, Activity, BrainCircuit, BarChart3, Scale, Target, ChevronRight, ChevronLeft, Zap, RefreshCw, Layers, FileText } from 'lucide-react';
 import SceneSeismograph from './SceneSeismograph';
+import ContextualHelp from './ContextualHelp';
 
 const StoryInsights = ({ 
   onAnalyzeScene, 

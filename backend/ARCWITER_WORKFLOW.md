@@ -54,9 +54,9 @@ A step-by-step guide to setting up a new project.
     *   **Asset Title**: Edit the project title.
     *   **Distilled Logline**: Review and refine the AI-generated logline.
     *   **Structural Framework**: Select or confirm the narrative structure (e.g., Hero's Journey, Save the Cat).
-    *   **Identified Cast**: Review and edit AI-identified characters. Even in Explorer mode, this step ensures the "continuity engine" has a baseline for its generations.
+    *   **Identified Cast (Visual DNA Mandate)**: Review AI-identified characters. Character descriptions now include age, build, and **explicit ethnic/racial background** to ensure visual consistency in posters and teasers.
 *   **Step 4: Visual Soul (Vibe Selection)**:
-    *   Select a visual aesthetic. Calibrates both the Image Engine (Posters/Teasers) and the Tonal Engine (AI Critique style).
+    *   Select a visual aesthetic. Calibrates the **Gemini 3.1 Flash Image Preview** engine for posters and character anchors.
 *   **Step 5: Diagnostic Lens (AI Analysis Persona)**:
     *   Choose the AI's feedback persona. This influences the "Logic Score" and "Macro Audit" priorities.
 *   **Project Finalization**: After completing the wizard, the project is created, initial assets (poster) are generated, and the user is redirected to the Beat Sheet or Editor.
@@ -81,50 +81,40 @@ Your central hub for managing all projects.
 The structural and visual overview of your project.
 *   **Header Navigation**: Quick access to Dashboard and Script Editor.
 *   **Visuals Assets Studio**: (Component within Blueprint)
-    *   **Official Poster Generation**: Generate and regenerate high-fidelity movie posters with concise taglines.
-    *   **Character Anchor Generation**: Generate and select cinematic headshots for key characters (4 variants).
-    *   **Cinematic Teaser Generation**: Initiate asynchronous generation of 8-second motion teasers (Veo 3.0 Fast) with native synchronized audio.
-    *   **Pitch Package Export**: Compile a multi-part PDF (Poster, Story Summary, Cast Dossiers, Full Script) for pitching.
-*   **Beat Sheet Form**: Review and refine the 15 narrative beats (e.g., Save the Cat, Hero's Journey).
+    *   **Official Poster Generation (Gemini 3.1)**: Generate movie posters with concise, one-sentence taglines and cast-accurate visuals.
+    *   **Character Anchor Generation (Gemini 3.1)**: Generate 1:1 square headshots based on specific physical and ethnic descriptions.
+    *   **Cinematic Teaser Generation (Veo 3.0 Standard)**: Initiate asynchronous generation of 8-second widescreen teasers with native synchronized audio.
+    *   **Pitch Package Export**: Compile a multi-part PDF (Poster, Story Summary, Cast Dossiers, Full Script).
+*   **Beat Sheet Form**: Review and refine the 15 narrative beats.
 *   **Personnel Dossiers**: Detailed view and management of characters, including generated visual anchors.
 *   **Upgrade Plan Button**: Easy access to the Billing page.
 
 ### 3. Script Editor (`/project/:projectId/editor`)
 Your dedicated space for writing and refining the screenplay.
-*   **Screenplay Formatting**: Automated formatting for Scene Headings, Action, Character, Dialogue, Parentheticals.
-*   **Block-based Editing**: Edit script in discrete blocks with auto-resizing.
-*   **Intelligent Autocomplete**: Suggestions for character names and locations from the Universe.
-*   **Auto-Save & Version Control**: Automatic saving with Time Machine (snapshots/milestones) for version history.
-*   **Draft Assist (Magic Wand)**:
-    *   **Auto-Draft Scene**: AI generates a full scene based on context.
-    *   **Suggest Dialogue**: AI provides 3 distinct dialogue options (Direct, Subtextual, Conflict-heavy) for the current context.
-*   **Story Insights Sidebar**: (Component within Editor)
-    *   **AI Critique**: Receive feedback from different personas (Producer, Auteur, Architect).
-    *   **Gatekeeper Audit (Hook Scan)**: Analyzes the first 10 pages for hook velocity and passes a "READ" or "PASS" verdict.
-    *   **Macro Audit**: Deep structural analysis of the entire script for plot holes, character arcs, and blueprint alignment. Includes a "Resolution Scanner" for story stability.
-*   **Source Material Drawer**: Access your initial pitch, synopsis, or imported manuscript for reference.
+*   **Screenplay Formatting**: Automated formatting for all industry-standard block types.
+*   **Intelligent Autocomplete**: Universe-aware character and location suggestions.
+*   **Auto-Save & Time Machine**: Snapshots and milestones for full version control.
+*   **Draft Assist (Magic Wand)**: AI-powered scene generation and context-aware dialogue suggestions.
+*   **Story Insights Sidebar**: 
+    *   **AI Critique**: Multi-persona feedback.
+    *   **Gatekeeper Audit**: "READ/PASS" verdict for the first 10 pages.
+    *   **Macro Audit**: High-level structural and logic scan.
+*   **Source Material Drawer**: Instant reference to original pitch and Story DNA.
 *   **Upgrade Plan Button**: Easy access to the Billing page.
 
 ---
 
 ## ACT III: The Deal - Billing & Management
 
-Managing your ArcWriter Studio subscription and credits.
-
 ### 1. Billing Page (`/billing`)
-Overview of plans, credits, and subscription.
 *   **Current Balance**: Displays available Studio Credits.
-*   **Active Plan**: Shows current subscription tier (e.g., Explorer, Writer's Room, Studio Pass).
-*   **Production Tiers**: Compare and select different plans (Explorer, Writer's Room, Studio Pass).
-*   **Annual/Monthly Toggle**: Option for discounted annual plans.
-*   **Beta Code Redemption**: For authorized testers.
-*   **Smart Back Navigation**: Returns to the previous page or defaults to the Dashboard.
+*   **Active Plan**: Explorer (Free), Writer's Room ($15/mo), or Studio Pass ($49 once).
+*   **Smart Back Navigation**: Intelligently returns users to their previous workflow.
 
 ---
 
 ## Denouement: Seamless Experience
 
-*   **Cross-Origin-Opener-Policy (COOP) Issue**: Noted browser warning, does not impact core functionality.
-*   **Firebase Storage**: Securely handles all asset uploads.
-*   **Firestore Data**: All project data stored in Firestore, with real-time sync where applicable.
-*   **Backend API**: FastAPI backend provides robust, secure, and performant AI services.
+*   **Security Policies**: Configured for custom domain (`arcwriter.us`) compatibility.
+*   **Instant Help**: Pre-cached screenplay-style manual for zero-latency lookups.
+*   **Firebase Core**: Utilizes standard-compliant Firestore, Storage, and Function architectures.
