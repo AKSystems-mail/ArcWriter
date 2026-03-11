@@ -727,7 +727,14 @@ const ScriptEditor = ({ universeId, projectId }) => {
 
           <div className="relative">
             <button 
-                onClick={() => setIsMagicMenuOpen(!isMagicMenuOpen)} 
+                onClick={() => {
+                    if (isMagicMenuOpen || isSuggestionModalOpen) {
+                        setIsMagicMenuOpen(false);
+                        setIsSuggestionModalOpen(false);
+                    } else {
+                        setIsMagicMenuOpen(true);
+                    }
+                }} 
                 disabled={isGeneratingScene} 
                 className="group px-10 py-4 bg-white hover:bg-purple-600 text-black hover:text-white font-black text-[10px] uppercase tracking-[0.4em] transition-all duration-500 rounded-sm flex items-center gap-4 shadow-2xl shadow-white/5 disabled:opacity-50"
             >

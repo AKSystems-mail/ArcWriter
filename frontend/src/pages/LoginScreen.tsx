@@ -29,20 +29,22 @@ const LoginScreen: React.FC = () => {
     useEffect(() => {
         // Simple listener: if user is detected, move to app.
         const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user && !loading) {
+            if (user) {
                 navigate('/app');
             }
         });
         return () => unsubscribe();
-    }, [auth, navigate, loading]);
+    }, [navigate]);
 
     const handleGoogleSignIn = async () => {
         setLoading(true);
         setError(null);
         try {
             await setPersistence(auth, browserLocalPersistence);
-            await signInWithPopup(auth, provider);
-            // Navigation is handled by the useEffect listener
+            const result = await signInWithPopup(auth, provider);
+            if (result.user) {
+                navigate('/app');
+            }
         } catch (err: any) {
             console.error("Error during Google Sign-In:", err);
             if (err.code === 'auth/popup-closed-by-user') {
@@ -52,6 +54,7 @@ const LoginScreen: React.FC = () => {
             } else {
                 setError(err.message);
             }
+        } finally {
             setLoading(false);
         }
     };

@@ -14,127 +14,62 @@ logger = logging.getLogger(__name__)
 
 class AssetStudio:
     def __init__(self):
-        self.key = os.getenv("GEMINI_API_KEY")
-        self.project = os.getenv("GOOGLE_CLOUD_PROJECT") or "arc-studio-box"
-        self.location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-        
         self.client = None
-        if self.key:
-            try:
-                self.client = genai.Client(api_key=self.key.strip())
-                logger.info("AssetStudio: Initialized with API Key")
-            except Exception as e:
-                logger.error(f"AssetStudio: API Key init failed: {e}")
+        self._initialize_client()
 
-        if not self.client:
-            try:
-                creds = None
-                if os.path.exists('serviceAccountKey.json'):
-                    from google.oauth2 import service_account
-                    scopes = ['https://www.googleapis.com/auth/cloud-platform']
-                    creds = service_account.Credentials.from_service_account_file(
-                        'serviceAccountKey.json', 
-                        scopes=scopes
-                    )
-                
-                self.client = genai.Client(
-                    vertexai=True, 
-                    project=self.project, 
-                    location=self.location,
-                    credentials=creds
-                )
-                logger.info(f"AssetStudio: Initialized with Vertex AI (project={self.project})")
-            except Exception as e:
-                logger.error(f"AssetStudio: Vertex AI init failed: {e}")
+    def _initialize_client(self):
+        try:
+            api_key = os.environ.get("GEMINI_API_KEY")
+            if not api_key:
+                logger.error("AssetStudio: GEMINI_API_KEY not found in environment")
+                return
 
-    def generate_poster(self, title: str, tagline: str, genre: str = "Sci-Fi", style: Optional[str] = None, image_references: List[str] = None, characters: List[Dict[str, Any]] = None) -> Optional[str]:
+            self.client = genai.Client(
+                api_key=api_key,
+                http_options={'api_version': 'v1alpha'}
+            )
+            logger.info("AssetStudio: Gemini Client initialized successfully.")
+        except Exception as e:
+            logger.error(f"AssetStudio: Failed to initialize Gemini Client: {e}")
+
+    def generate_poster(self, title: str, tagline: str, genre: str, style: str = "Cinematic", image_references: List[str] = None, characters: List[Dict] = None) -> Optional[str]:
         if not self.client:
-            logger.error("AssetStudio: Client not initialized. Cannot generate poster.")
             return None
 
-        # Universal Design Language: High-fidelity, photorealistic, cinematic
-        base_language = (
-            "Professional high-end cinematic photography, photorealistic people, crisp details, 8k resolution, "
-            "natural skin textures, professional color grading. Strictly NO cartoons, NO drawings, "
-            "NO illustrations, NO abstract art, NO 3D renders, NO anime."
-        )
-
-        # Genre-Specific Design Languages (Last 10 Years Trends)
-        genre_map = {
-            "Comedy": (
-                "High-key bright studio lighting, vibrant colors with orange and yellow accents, clean and polished look. "
-                "Layout: Awkward ensemble lineup or character duo centered. Typography: Bold red or yellow sans-serif title."
-            ),
-            "Drama": (
-                "Candid camera style, grainy film texture, natural moody lighting, soft focus backgrounds. "
-                "Composition: Human-centric, focusing on raw facial expressions and raw textures."
-            ),
-            "Action": (
-                "High contrast, dynamic motion, intense rim lighting. Composition: Strong silhouettes, "
-                "heavy negative space for urgency. Palette: Monochrome or sharp dual-tone."
-            ),
-            "Sci-Fi": (
-                "Atmospheric fog, massive scale, tiny human figures against giant architectural structures. "
-                "Color grading: Teal and orange or neon gradients. Technical futurism elements."
-            ),
-            "Horror": (
-                "Minimalist stark negative space, high-contrast red and black palette. "
-                "Creepy central motif, liminal space aesthetic, unsettling sharp lighting."
-            ),
-            "Thriller": (
-                "Low-key lighting, deep shadows, mysterious silhouettes. Tense atmosphere, "
-                "cold color palette with blues and grays."
-            ),
-            "Romance": (
-                "Warm golden hour lighting, soft and intimate composition. "
-                "Pastel color palette (lilacs, beiges). Elegant serif typography."
-            ),
-            "Western": (
-                "Dusty atmosphere, harsh sun lighting, earthy tones (browns, tans). "
-                "Wide panoramic scale, rugged textures."
-            )
-        }
-
-        genre_style = genre_map.get(genre, "Cinematic composition, professional lighting.")
-        
-        prompt = f"A high-quality movie poster for a {genre} film titled '{title}'. {base_language} "
-        prompt += f"Design Language: {genre_style} "
-        
+        # Build prompt using character anchors if available
+        char_descriptions = ""
         if characters:
-            prompt += "The poster MUST feature characters with these specific physical and ethnic backgrounds: "
-            for char in characters[:3]: # Limit to top 3 for clarity
-                prompt += f"{char.get('name')}: {char.get('description')}. "
-            prompt += "Represent these traits with extreme accuracy. "
+            char_descriptions = "\nCharacters to feature:\n" + "\n".join([f"- {c.get('name')}: {c.get('description')}" for c in characters])
 
-        prompt += f"Visual style: {style or 'Professional Studio Photography'}. "
-        prompt += f"Bottom tagline: {tagline}."
-        
-        # Legal & Ethical Safeguards
-        prompt += (
-            " Strictly NO real actor or director likenesses. NO real celebrities. "
-            "NO real studio logos or credit blocks with real names. "
-            "Use only original faces based on the provided descriptions."
+        prompt = (
+            f"A high-end cinematic movie poster for a film titled '{title}'.\n"
+            f"Tagline: '{tagline}'\n"
+            f"Genre: {genre}\n"
+            f"Style: {style}\n"
+            f"{char_descriptions}\n\n"
+            "Visual Guidelines: Professional graphic design, balanced composition, high-quality typography. "
+            "Sharp focus, vibrant cinematic lighting, studio quality. "
+            "Ensure consistency with any provided character visual references. "
+            "Strictly NO real actor likenesses. NO messy AI text (except the clear title if possible)."
         )
-        
-        contents = [prompt]
-        
-        if image_references:
-            for b64 in image_references:
-                clean_b64 = b64.split("base64,")[-1] if "base64," in b64 else b64
-                contents.append(types.Part.from_bytes(data=base64.b64decode(clean_b64), mime_type="image/jpeg"))
 
         try:
+            contents = [prompt]
+            if image_references:
+                for b64 in image_references[:4]:
+                    contents.append(types.Part.from_bytes(data=base64.b64decode(b64), mime_type='image/png'))
+
             response = self.client.models.generate_content(
                 model='gemini-3.1-flash-image-preview',
                 contents=contents,
                 config=types.GenerateContentConfig(
-                    response_modalities=['IMAGE'],
+                    response_modalalities=['IMAGE'],
                     image_config=types.ImageConfig(
                         aspect_ratio='2:3'
                     )
                 )
             )
-            
+
             if response.parts:
                 for part in response.parts:
                     if part.inline_data:
@@ -147,8 +82,10 @@ class AssetStudio:
 
     def generate_character_anchor(self, description: str, style: str = None) -> List[str]:
         if not self.client: 
+            logger.error("AssetStudio: Client not initialized for character anchor")
             return []
         
+        logger.info(f"AssetStudio: Generating Character Anchor for: {description[:50]}...")
         # Enhanced character prompt for photorealism and ethnic accuracy
         prompt = (
             f"A professional cinematic character portrait for: {description}. "
@@ -159,26 +96,40 @@ class AssetStudio:
             "Strictly NO real actor likenesses. NO cartoons, NO illustrations, NO 3D renders."
         )
         
-        b64_variants = []
-        for i in range(4):
+        from concurrent.futures import ThreadPoolExecutor
+        
+        def generate_single_variant(i):
             try:
+                logger.info(f"AssetStudio: Starting variant {i+1} thread...")
+                start_time = time.time()
                 response = self.client.models.generate_content(
                     model='gemini-3.1-flash-image-preview',
                     contents=[prompt],
                     config=types.GenerateContentConfig(
-                        response_modalities=['IMAGE'],
+                        response_modalalities=['IMAGE'],
                         image_config=types.ImageConfig(
                             aspect_ratio='1:1'
                         )
                     )
                 )
+                duration = time.time() - start_time
+                logger.info(f"AssetStudio: Variant {i+1} completed in {duration:.2f}s")
                 if response.parts:
                     for part in response.parts:
                         if part.inline_data:
-                            b64_variants.append(base64.b64encode(part.inline_data.data).decode('utf-8'))
-                            break
+                            return base64.b64encode(part.inline_data.data).decode('utf-8')
             except Exception as e:
                 logger.error(f"AssetStudio: Variant {i+1} failed: {e}")
+            return None
+
+        # Execute 4 requests in parallel to prevent 60s timeout
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            results = list(executor.map(generate_single_variant, range(4)))
+        
+        # Filter out None results
+        b64_variants = [r for r in results if r is not None]
+        
+        logger.info(f"AssetStudio: Successfully generated {len(b64_variants)} character variants in parallel")
         return b64_variants
 
     def generate_teaser(self, prompt: str, genre: str = "Sci-Fi", aspect_ratio: str = "16:9") -> Optional[Any]:
@@ -197,18 +148,20 @@ class AssetStudio:
             "Comedy": "Audio: Upbeat whimsical orchestral pluck, bright and energetic tempo."
         }
         
-        audio_footer = audio_map.get(genre, "Audio: Cinematic orchestral soundtrack, no dialogue.")
-        enhanced_prompt = f"Professional cinematic motion shot, 8k, highly detailed: {prompt}. {audio_footer}"
-        
+        audio_cue = audio_map.get(genre, "Audio: Immersive cinematic soundscape.")
+        full_prompt = f"{prompt}. {audio_cue}"
+
         try:
-            # Switching to Veo 3.0 Standard for maximum reliability and priority availability
-            # This maintains 8s duration and native multimodal audio
-            operation = self.client.models.generate_videos(
+            logger.info(f"AssetStudio: Requesting Teaser Render (Veo 3.0): {full_prompt[:100]}...")
+            operation = self.client.models.generate_content(
                 model='veo-3.0-generate-001',
-                prompt=enhanced_prompt,
-                config=types.GenerateVideosConfig(
-                    aspect_ratio=aspect_ratio,
-                    duration_seconds=8
+                contents=[full_prompt],
+                config=types.GenerateContentConfig(
+                    response_modalalities=['VIDEO'],
+                    video_config=types.VideoConfig(
+                        aspect_ratio=aspect_ratio,
+                        duration_seconds=8
+                    )
                 )
             )
             
@@ -239,53 +192,47 @@ class AssetStudio:
             blob_name = f"teasers/teaser_{op_short}_{int(time.time())}.mp4"
             blob = bucket.blob(blob_name)
             
-            blob.upload_from_string(video_bytes, content_type='video/mp4')
+            # Force direct buffer upload to bypass connection resets
+            with io.BytesIO(video_bytes) as buf:
+                blob.upload_from_file(buf, content_type='video/mp4')
+            
             blob.make_public()
             return blob.public_url
         except Exception as e:
-            logger.error(f"AssetStudio: Failed to upload video bytes: {e}")
+            logger.error(f"AssetStudio: Video Upload Failed: {e}")
             return None
 
-    def get_operation_status(self, operation_id: str) -> Dict[str, Any]:
-        """Checks the status of a long-running motion operation."""
-        if not self.client: 
+    def get_teaser_status(self, operation_id: str) -> Dict[str, Any]:
+        """Checks the status of a long-running video generation task."""
+        if not self.client:
             return {"status": "error", "done": True, "message": "Client not initialized"}
-        try:
-            # Use positional argument for the operation name
-            operation = self.client.operations.get(operation_id)
-            
-            # Handle case where operation might be a string or other unexpected type
-            if isinstance(operation, str):
-                logger.warning(f"AssetStudio: operations.get returned string: {operation}")
-                return {"status": "error", "done": True, "message": "Unexpected API response format"}
-            
-            result = {
-                "done": getattr(operation, 'done', False),
-                "name": getattr(operation, 'name', operation_id),
-                "video_uri": None
-            }
 
-            if result["done"]:
-                response = getattr(operation, 'response', None)
-                if response:
-                    res = response
-                    # Extract generated videos from the response
-                    if hasattr(res, 'generated_videos') and len(res.generated_videos) > 0:
-                        video_obj = res.generated_videos[0]
-                        # Handle GCS URI or raw bytes
-                        if hasattr(video_obj, 'video') and hasattr(video_obj.video, 'uri') and video_obj.video.uri:
-                            result["video_uri"] = video_obj.video.uri
-                        elif hasattr(video_obj, 'video') and hasattr(video_obj.video, 'video_bytes') and video_obj.video.video_bytes:
-                            result["video_uri"] = self._upload_video_bytes(video_obj.video.video_bytes, operation_id)
-                error = getattr(operation, 'error', None)
-                if error:
-                    logger.error(f"AssetStudio: Operation {operation_id} reported error: {error}")
-                    return {"status": "error", "done": True, "message": str(error)}
+        try:
+            # Position argument syntax for operation name
+            op = self.client.operations.get(operation_id)
             
-            return result
+            if op.done:
+                if op.error:
+                    logger.error(f"AssetStudio: Teaser Error from API: {op.error}")
+                    return {"status": "error", "done": True, "message": str(op.error)}
+                
+                # Check for video data in response
+                if op.response and hasattr(op.response, 'video'):
+                    video_uri = self._upload_video_bytes(op.response.video.bytes, operation_id)
+                    return {"status": "success", "done": True, "video_uri": video_uri}
+                elif op.response and hasattr(op.response, 'parts'):
+                    # Handle multimodal response parts
+                    for part in op.response.parts:
+                        if hasattr(part, 'video'):
+                            video_uri = self._upload_video_bytes(part.video.bytes, operation_id)
+                            return {"status": "success", "done": True, "video_uri": video_uri}
+                
+                return {"status": "error", "done": True, "message": "No video data found in completed response"}
+            
+            return {"status": "processing", "done": False}
         except Exception as e:
             logger.error(f"AssetStudio: Status check failed for {operation_id}: {e}")
-            logger.error(f"Exception traceback: {traceback.format_exc()}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return {"status": "error", "done": True, "message": str(e)}
 
     def generate_character_concepts(self, description: str, visual_style: str = "cinematic") -> List[str]:

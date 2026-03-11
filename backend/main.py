@@ -302,10 +302,9 @@ class RegenerateRequest(BaseModel):
 
 @app.post("/api/assets/regenerate")
 async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(get_current_user)):
-    cost = 25 # Regeneration is more expensive
-    await services.user_service.deduct_credits(user_id, cost)
-    
+    """Regenerates a specific asset (poster or character anchor). Billing occurs ONLY on success."""
     try:
+        logger.info(f"Regenerate Request: type={request.type}, character={request.character_name}")
         db = get_firestore_db()
         project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
         project_doc = project_ref.get()
@@ -316,6 +315,7 @@ async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(ge
         data = project_doc.to_dict()
         
         if request.type == 'poster':
+            logger.info(f"Regenerating Poster for project {request.project_id}")
             # Step 9: Consistent Poster Logic
             # 1. Look for locked anchors in the character list
             characters = data.get("characters", [])
@@ -325,11 +325,12 @@ async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(ge
                 if anchor_url and 'placehold.co' not in anchor_url:
                     # Fetch image and convert to B64 for reference
                     try:
-                        resp = requests.get(anchor_url)
+                        logger.info(f"Fetching anchor for {char.get('name')}: {anchor_url}")
+                        resp = requests.get(anchor_url, timeout=10)
                         if resp.ok:
                             image_references.append(base64.b64encode(resp.content).decode('utf-8'))
-                    except:
-                        logger.warning(f"Failed to fetch anchor for {char.get('name')}")
+                    except Exception as e:
+                        logger.warning(f"Failed to fetch anchor for {char.get('name')}: {e}")
 
             base64_data = services.asset_studio.generate_poster(
                 title=data.get("title", "Untitled"),
@@ -339,29 +340,45 @@ async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(ge
                 image_references=image_references,
                 characters=characters
             )
-            if not base64_data: raise HTTPException(status_code=500, detail="Poster generation failed")
+            if not base64_data: 
+                logger.error("Poster generation failed (returned None)")
+                raise HTTPException(status_code=500, detail="Poster generation failed")
+            
+            # SUCCESS: Deduct credits now
+            await services.user_service.deduct_credits(user_id, 25)
             return {"b64_data": base64_data}
             
         elif request.type == 'character' and request.character_name:
+            logger.info(f"Regenerating Character Anchor: {request.character_name}")
             characters = data.get("characters", [])
             char_data = next((c for c in characters if c.get("name") == request.character_name), None)
             
             if not char_data:
+                logger.error(f"Character {request.character_name} not found")
                 raise HTTPException(status_code=404, detail="Character not found")
                 
             # Step 8 Sync: Regeneration also returns 4 variants for selection
+            logger.info(f"Calling generate_character_anchor for {request.character_name}")
             variants = services.asset_studio.generate_character_anchor(
                 description=char_data.get("description", ""),
                 style=data.get("vibe", "Cinematic")
             )
-            if not variants: raise HTTPException(status_code=500, detail="Character anchor generation failed")
+            if not variants: 
+                logger.error("Character anchor generation failed (returned empty)")
+                raise HTTPException(status_code=500, detail="Character anchor generation failed")
+            
+            # SUCCESS: Deduct credits now
+            await services.user_service.deduct_credits(user_id, 25)
+            logger.info(f"Successfully generated {len(variants)} variants")
             return {"variants": variants}
             
         return {"error": "Invalid regeneration type"}
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         logger.error(f"Regenerate Asset Failure: {e}")
-        traceback.print_exc()
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 class TeaserRequest(BaseModel):
@@ -370,9 +387,7 @@ class TeaserRequest(BaseModel):
 
 @app.post("/api/assets/generate_teaser")
 async def generate_teaser(request: TeaserRequest, user_id: str = Depends(get_current_user)):
-    cost = 50 
-    await services.user_service.deduct_credits(user_id, cost)
-    
+    """Initializes a cinematic teaser render. Billing occurs ONLY on successful initialization."""
     try:
         db = get_firestore_db()
         project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
@@ -389,15 +404,18 @@ async def generate_teaser(request: TeaserRequest, user_id: str = Depends(get_cur
         if not operation:
             raise HTTPException(status_code=500, detail="Failed to initialize motion render")
         
-        # Safely extract operation name
+        # Safely extract operation name - prevent 'str' object has no attribute 'name'
         operation_name = None
         if isinstance(operation, str):
             operation_name = operation
         elif hasattr(operation, 'name'):
             operation_name = operation.name
         else:
-            raise HTTPException(status_code=500, detail="Invalid operation object from API")
+            # Fallback to string representation if it's some other object without .name
+            operation_name = str(operation)
             
+        # SUCCESS: Deduct credits only if the motion operation was successfully created
+        await services.user_service.deduct_credits(user_id, 50)
         logger.info(f"Teaser Operation Created: {operation_name}")
         return {"operation_id": operation_name}
     except HTTPException:
