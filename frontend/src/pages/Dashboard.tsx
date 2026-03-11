@@ -172,8 +172,8 @@ const Dashboard: React.FC = () => {
                             <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] italic">Studio Archives | v2.5.4-REDR</span>
                             <ContextualHelp sectionId="DASHBOARD" />
                         </div>
-                        <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none">
-                            {view === 'active' ? <>Active <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Assets</span></> : <>Cutting <br /><span className="text-red-500">Room Floor</span></>}
+                        <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-[1.1] py-2">
+                            {view === 'active' ? <>Active <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600 pr-4">Assets</span></> : <>Cutting <br /><span className="text-red-500">Room Floor</span></>}
                         </h1>
                     </div>
                     
