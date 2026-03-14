@@ -70,15 +70,18 @@ class LLMService:
             )
             
             raw_text = response.text
+            logger.info(f"LLMService: Raw response length: {len(raw_text)}")
             
             try:
                 return json.loads(raw_text)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
+                logger.warning(f"LLMService: Standard JSON parse failed: {e}")
                 # 1. Try stripping markdown blocks and whitespace
                 cleaned = re.sub(r"```json\s*|\s*```", "", raw_text).strip()
                 try:
                     return json.loads(cleaned)
                 except json.JSONDecodeError:
+                    logger.warning("LLMService: Cleaned JSON parse failed, trying balanced search...")
                     # 2. Try finding the outermost { and } using balanced search
                     # This is more robust than simple regex for nested JSON
                     start_idx = cleaned.find('{')
@@ -88,14 +91,34 @@ class LLMService:
                         try:
                             return json.loads(potential_json)
                         except json.JSONDecodeError:
-                            # 3. Final attempt: Try fixing common trailing comma issue
+                            logger.warning("LLMService: Balanced JSON parse failed, trying aggressive cleaning...")
+                            # 3. Aggressive: Try to escape unescaped double quotes inside values
+                            # This looks for quotes that are not followed by : or , or } or ]
+                            # and not preceded by : or [ or , or {
+                            # Very tricky, but let's try a common fix for trailing commas first
                             fixed = re.sub(r",\s*([\]\}])", r"\1", potential_json)
                             try:
                                 return json.loads(fixed)
                             except:
+                                # Final attempt: provide what we have even if partial
                                 pass
                 
-                logger.error(f"JSON parsing failed. Raw response snippet: {raw_text[:500]}...")
+                # FALLBACK: If we can see keys like 'structural_integrity_score', try to regex them out
+                # This ensures the user gets a number even if the full report fails to parse
+                fallback_result = {}
+                score_match = re.search(r'"structural_integrity_score":\s*(\d+)', raw_text)
+                if score_match:
+                    fallback_result["structural_integrity_score"] = int(score_match.group(1))
+                    
+                report_match = re.search(r'"full_audit_report":\s*"(.*?)"', raw_text, re.DOTALL)
+                if report_match:
+                    fallback_result["full_audit_report"] = report_match.group(1)
+                
+                if fallback_result:
+                    logger.info("LLMService: Used regex fallback for partial JSON recovery.")
+                    return fallback_result
+
+                logger.error(f"LLMService: All JSON parsing attempts failed. Raw snippet: {raw_text[:1000]}...")
                 return {"error": "JSON parsing failed", "raw": raw_text}
 
         except Exception as e:

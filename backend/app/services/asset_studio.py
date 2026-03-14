@@ -24,11 +24,13 @@ class AssetStudio:
                 logger.error("AssetStudio: GEMINI_API_KEY not found in environment")
                 return
 
+            # Note: We use vertexai=False to use the Gemini Developer API (AI Studio)
+            # Switch to v1beta for newest model support
             self.client = genai.Client(
                 api_key=api_key,
-                http_options={'api_version': 'v1alpha'}
+                http_options={'api_version': 'v1beta'}
             )
-            logger.info("AssetStudio: Gemini Client initialized successfully.")
+            logger.info("AssetStudio: Gemini Client initialized successfully (v1beta).")
         except Exception as e:
             logger.error(f"AssetStudio: Failed to initialize Gemini Client: {e}")
 
@@ -54,26 +56,23 @@ class AssetStudio:
         )
 
         try:
-            contents = [prompt]
-            if image_references:
-                for b64 in image_references[:4]:
-                    contents.append(types.Part.from_bytes(data=base64.b64decode(b64), mime_type='image/png'))
-
-            response = self.client.models.generate_content(
-                model='gemini-3.1-flash-image-preview',
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    response_modalalities=['IMAGE'],
-                    image_config=types.ImageConfig(
-                        aspect_ratio='2:3'
-                    )
+            # For Imagen 4, we use the specialized generate_images method
+            # Note: image_references (edit/masking) requires a different workflow in Imagen 4,
+            # so for now we focus on text-to-image generation which is the primary use case here.
+            response = self.client.models.generate_images(
+                model='imagen-4.0-generate-001',
+                prompt=prompt,
+                config=types.GenerateImagesConfig(
+                    number_of_images=1,
+                    aspect_ratio='3:4',
+                    safety_filter_level='block_low_and_above',
+                    person_generation='allow_adult'
                 )
             )
 
-            if response.parts:
-                for part in response.parts:
-                    if part.inline_data:
-                        return base64.b64encode(part.inline_data.data).decode('utf-8')
+            if response.generated_images:
+                img = response.generated_images[0]
+                return base64.b64encode(img.image.image_bytes).decode('utf-8')
             
             return None
         except Exception as e:
@@ -86,101 +85,85 @@ class AssetStudio:
             return []
         
         logger.info(f"AssetStudio: Generating Character Anchor for: {description[:50]}...")
-        # Enhanced character prompt for photorealism and ethnic accuracy
         prompt = (
             f"A professional cinematic character portrait for: {description}. "
-            "Critically important: Accurately represent the character's ethnic/racial background as described. "
-            "High-end studio photography, photorealistic person, sharp focus, 8k, natural skin textures, "
-            "detailed eyes and hair, professional lighting. Neutral cinematic background. "
-            f"Consistent visual style: {style or 'Professional Cinematic Photography'}. "
-            "Strictly NO real actor likenesses. NO cartoons, NO illustrations, NO 3D renders."
+            "High-end studio photography, photorealistic person, sharp focus, 8k, natural skin textures. "
+            f"Consistent visual style: {style or 'Professional Cinematic Photography'}."
         )
         
         from concurrent.futures import ThreadPoolExecutor
         
         def generate_single_variant(i):
             try:
-                logger.info(f"AssetStudio: Starting variant {i+1} thread...")
-                start_time = time.time()
-                response = self.client.models.generate_content(
-                    model='gemini-3.1-flash-image-preview',
-                    contents=[prompt],
-                    config=types.GenerateContentConfig(
-                        response_modalalities=['IMAGE'],
-                        image_config=types.ImageConfig(
-                            aspect_ratio='1:1'
-                        )
+                response = self.client.models.generate_images(
+                    model='imagen-4.0-generate-001',
+                    prompt=prompt,
+                    config=types.GenerateImagesConfig(
+                        number_of_images=1,
+                        aspect_ratio='1:1',
+                        safety_filter_level='block_low_and_above',
+                        person_generation='allow_adult'
                     )
                 )
-                duration = time.time() - start_time
-                logger.info(f"AssetStudio: Variant {i+1} completed in {duration:.2f}s")
-                if response.parts:
-                    for part in response.parts:
-                        if part.inline_data:
-                            return base64.b64encode(part.inline_data.data).decode('utf-8')
+                if response.generated_images:
+                    img = response.generated_images[0]
+                    return base64.b64encode(img.image.image_bytes).decode('utf-8')
             except Exception as e:
                 logger.error(f"AssetStudio: Variant {i+1} failed: {e}")
             return None
 
-        # Execute 4 requests in parallel to prevent 60s timeout
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            results = list(executor.map(generate_single_variant, range(4)))
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(generate_single_variant, range(2)))
         
-        # Filter out None results
-        b64_variants = [r for r in results if r is not None]
-        
-        logger.info(f"AssetStudio: Successfully generated {len(b64_variants)} character variants in parallel")
-        return b64_variants
+        return [r for r in results if r is not None]
 
-    def generate_teaser(self, prompt: str, genre: str = "Sci-Fi", aspect_ratio: str = "16:9") -> Optional[Any]:
+    def generate_teaser(self, prompt: str, genre: str = "scifi", aspect_ratio: str = "16:9") -> Optional[Any]:
         if not self.client:
             return None
 
-        # Genre-specific audio signatures for immersive music soundtracks
+        # Align audio with 'Visual Soul' IDs from the Onboarding Wizard
         audio_map = {
-            "Sci-Fi": "Audio: Dark ambient synth-wave, futuristic drones, no dialogue.",
-            "Action": "Audio: Fast-paced orchestral percussion, high-energy cinematic pulses.",
-            "Horror": "Audio: Eerie atonal violin screeches, low-frequency rhythmic thumping.",
-            "Drama": "Audio: Somber solo piano melody, natural room ambience, no speech.",
-            "Thriller": "Audio: Tense ticking sounds, rising atmospheric tension, sharp metallic clangs.",
-            "Romance": "Audio: Soft acoustic guitar, warm romantic pads, intimate atmosphere.",
-            "Western": "Audio: Rhythmic acoustic strumming, whistling wind, cinematic dusty atmosphere.",
-            "Comedy": "Audio: Upbeat whimsical orchestral pluck, bright and energetic tempo."
+            "scifi": "Audio: Dark ambient synth-wave, futuristic drones, no dialogue.",
+            "fantasy": "Audio: Ethereal orchestral strings, mystical choir hums, magical chimes.",
+            "horror": "Audio: Eerie atonal violin screeches, low-frequency rhythmic thumping, heavy breathing.",
+            "comedy": "Audio: Upbeat whimsical orchestral pluck, bright and energetic tempo, playful tuba.",
+            "indie": "Audio: Somber solo piano melody, natural room ambience, intimate and grounded.",
+            "noir": "Audio: Dark moody jazz, lonely trumpet, rainy street ambience, cinematic bass.",
+            "western": "Audio: Rhythmic acoustic strumming, whistling wind, cinematic dusty atmosphere.",
+            "romance": "Audio: Soft acoustic guitar, warm romantic pads, intimate and uplifting atmosphere."
         }
         
-        audio_cue = audio_map.get(genre, "Audio: Immersive cinematic soundscape.")
-        full_prompt = f"{prompt}. {audio_cue}"
-
+        # Fallback for genre normalization (handles title-case or ID mismatches)
+        normalized_genre = str(genre).lower().replace(" ", "")
+        if "drama" in normalized_genre: normalized_genre = "indie"
+        if "action" in normalized_genre: normalized_genre = "scifi" # Default high energy to sci-fi/synth
+        
+        audio_footer = audio_map.get(normalized_genre, "Audio: Cinematic orchestral soundtrack, no dialogue.")
+        enhanced_prompt = f"Professional cinematic motion shot, 8k, highly detailed: {prompt}. {audio_footer}"
+        
         try:
-            logger.info(f"AssetStudio: Requesting Teaser Render (Veo 3.0): {full_prompt[:100]}...")
-            operation = self.client.models.generate_content(
+            logger.info(f"AssetStudio: Initializing Motion Render with model 'veo-3.0-generate-001'")
+            logger.info(f"AssetStudio: Prompt: {enhanced_prompt}")
+            
+            # Using correct generate_videos method for Veo
+            # Start video generation - Standard model for production quality
+            operation = self.client.models.generate_videos(
                 model='veo-3.0-generate-001',
-                contents=[full_prompt],
-                config=types.GenerateContentConfig(
-                    response_modalalities=['VIDEO'],
-                    video_config=types.VideoConfig(
-                        aspect_ratio=aspect_ratio,
-                        duration_seconds=8
-                    )
+                prompt=enhanced_prompt,
+                config=types.GenerateVideosConfig(
+                    aspect_ratio=aspect_ratio,
+                    duration_seconds=8
                 )
             )
-            
-            # Verify operation object structure
-            if isinstance(operation, str):
-                # If API returns a string, wrap it as operation name
-                logger.warning(f"AssetStudio: API returned string instead of operation object: {operation}")
-                # Create a minimal operation-like object
-                class OperationWrapper:
-                    def __init__(self, name):
-                        self.name = name
-                        self.done = False
-                return OperationWrapper(operation)
-            
-            logger.info(f"AssetStudio: Operation type: {type(operation)}, has name: {hasattr(operation, 'name')}")
-            return operation
+
+            # The SDK now returns an operation object with a name attribute (the ID)
+            # or sometimes just the ID string depending on version. We normalize to string ID.
+            operation_id = operation.name if hasattr(operation, 'name') else str(operation)
+            logger.info(f"AssetStudio: Operation successfully created: {operation_id}")
+            return operation_id
         except Exception as e:
             logger.error(f"AssetStudio: Motion Initialization Failure: {e}")
-            logger.error(f"Exception traceback: {traceback.format_exc()}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return None
 
     def _upload_video_bytes(self, video_bytes: bytes, operation_id: str) -> Optional[str]:
@@ -192,44 +175,109 @@ class AssetStudio:
             blob_name = f"teasers/teaser_{op_short}_{int(time.time())}.mp4"
             blob = bucket.blob(blob_name)
             
-            # Force direct buffer upload to bypass connection resets
-            with io.BytesIO(video_bytes) as buf:
-                blob.upload_from_file(buf, content_type='video/mp4')
-            
+            blob.upload_from_string(video_bytes, content_type='video/mp4')
             blob.make_public()
             return blob.public_url
         except Exception as e:
-            logger.error(f"AssetStudio: Video Upload Failed: {e}")
+            logger.error(f"AssetStudio: Failed to upload video bytes: {e}")
             return None
 
-    def get_teaser_status(self, operation_id: str) -> Dict[str, Any]:
-        """Checks the status of a long-running video generation task."""
-        if not self.client:
+    def get_operation_status(self, operation_id: str) -> Dict[str, Any]:
+        """Checks the status of a long-running motion operation."""
+        if not self.client: 
             return {"status": "error", "done": True, "message": "Client not initialized"}
-
         try:
-            # Position argument syntax for operation name
-            op = self.client.operations.get(operation_id)
+            logger.info(f"AssetStudio: Polling SDK for operation: {operation_id}")
             
-            if op.done:
-                if op.error:
-                    logger.error(f"AssetStudio: Teaser Error from API: {op.error}")
-                    return {"status": "error", "done": True, "message": str(op.error)}
-                
-                # Check for video data in response
-                if op.response and hasattr(op.response, 'video'):
-                    video_uri = self._upload_video_bytes(op.response.video.bytes, operation_id)
-                    return {"status": "success", "done": True, "video_uri": video_uri}
-                elif op.response and hasattr(op.response, 'parts'):
-                    # Handle multimodal response parts
-                    for part in op.response.parts:
-                        if hasattr(part, 'video'):
-                            video_uri = self._upload_video_bytes(part.video.bytes, operation_id)
-                            return {"status": "success", "done": True, "video_uri": video_uri}
-                
-                return {"status": "error", "done": True, "message": "No video data found in completed response"}
+            # SDK FIX: The public get() method requires an SDK Operation object handle.
+            # We create a GenerateVideosOperation handle using the string ID.
+            # This object has the .name attribute AND the .from_api_response method 
+            # that the SDK internally calls to parse the server response.
+            op_handle = types.GenerateVideosOperation(name=operation_id)
+            operation = self.client.operations.get(op_handle)
             
-            return {"status": "processing", "done": False}
+            # Log basic state
+            logger.info(f"AssetStudio: SDK Response Type: {type(operation)}")
+            
+            # LOG FULL RAW RESPONSE
+            try:
+                # Most SDK objects have a to_json() or can be cast to dict
+                raw_json = operation.model_dump_json() if hasattr(operation, 'model_dump_json') else str(operation)
+                logger.info(f"AssetStudio: FULL RAW OPERATION: {raw_json}")
+            except Exception as e:
+                logger.warning(f"AssetStudio: Could not dump full operation JSON: {e}")
+
+            is_done = getattr(operation, 'done', False)
+            has_res = bool(getattr(operation, 'response', None))
+            has_err = bool(getattr(operation, 'error', None))
+            logger.info(f"AssetStudio: Op {operation_id} -> done: {is_done}, has_response: {has_res}, has_error: {has_err}")
+
+            result = {
+                "done": is_done,
+                "name": operation_id,
+                "video_uri": None,
+                "status": "processing"
+            }
+
+            if has_err:
+                logger.error(f"AssetStudio: Operation {operation_id} reported error: {operation.error}")
+                return {"status": "error", "done": True, "message": str(operation.error)}
+
+            if is_done:
+                logger.info(f"AssetStudio: Operation {operation_id} marked as DONE. Parsing response...")
+                if has_res:
+                    res = operation.response
+                    # Veo responses contain generated_videos
+                    if hasattr(res, 'generated_videos') and len(res.generated_videos) > 0:
+                        video_obj = res.generated_videos[0]
+                        # Correct attribute access for video content
+                        v_attr = getattr(video_obj, 'video', None)
+                        if v_attr:
+                            uri = getattr(v_attr, 'uri', None)
+                            v_bytes = getattr(v_attr, 'video_bytes', None)
+                            
+                            if uri:
+                                # If the URI is an internal Google API link, we must download and re-host it
+                                # because the frontend cannot access authenticated Google API files directly.
+                                if "generativelanguage.googleapis.com" in uri:
+                                    logger.info(f"AssetStudio: Downloading internal video from {uri}")
+                                    try:
+                                        video_res = requests.get(uri, headers={"x-goog-api-key": os.environ.get("GEMINI_API_KEY")})
+                                        if video_res.status_code == 200:
+                                            result["video_uri"] = self._upload_video_bytes(video_res.content, operation_id)
+                                            result["status"] = "completed"
+                                        else:
+                                            logger.error(f"AssetStudio: Failed to download internal video: {video_res.status_code}")
+                                            result["status"] = "error"
+                                            result["message"] = "Cloud storage sync failed"
+                                    except Exception as download_err:
+                                        logger.error(f"AssetStudio: Error during video proxy: {download_err}")
+                                        result["status"] = "error"
+                                        result["message"] = "Cloud storage sync error"
+                                else:
+                                    result["video_uri"] = uri
+                                    result["status"] = "completed"
+                            elif v_bytes:
+                                logger.info(f"AssetStudio: Found video_bytes for {operation_id}. Uploading...")
+                                result["video_uri"] = self._upload_video_bytes(v_bytes, operation_id)
+                                result["status"] = "completed"
+                        
+                        if result["video_uri"]:
+                            logger.info(f"AssetStudio: Finalized video URI: {result['video_uri']}")
+                        else:
+                            logger.warning(f"AssetStudio: No URI/Bytes in video object for {operation_id}")
+                            result["status"] = "error"
+                            result["message"] = "No video data in response"
+                    else:
+                        logger.warning(f"AssetStudio: No generated_videos found in response for {operation_id}")
+                        result["status"] = "error"
+                        result["message"] = "Response missing video field"
+                else:
+                    logger.warning(f"AssetStudio: Op {operation_id} DONE but has no response object")
+                    result["status"] = "error"
+                    result["message"] = "Empty response"
+            
+            return result
         except Exception as e:
             logger.error(f"AssetStudio: Status check failed for {operation_id}: {e}")
             logger.error(f"Traceback: {traceback.format_exc()}")

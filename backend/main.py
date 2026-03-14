@@ -400,24 +400,14 @@ async def generate_teaser(request: TeaserRequest, user_id: str = Depends(get_cur
         
         # Async Pivot: Get operation object immediately
         logger.info(f"Initializing Teaser: Genre={data.get('genre')}, Prompt={prompt}")
-        operation = services.asset_studio.generate_teaser(prompt=prompt, genre=data.get('genre', 'Sci-Fi'))
-        if not operation:
+        operation_id = services.asset_studio.generate_teaser(prompt=prompt, genre=data.get('genre', 'Sci-Fi'))
+        if not operation_id:
             raise HTTPException(status_code=500, detail="Failed to initialize motion render")
-        
-        # Safely extract operation name - prevent 'str' object has no attribute 'name'
-        operation_name = None
-        if isinstance(operation, str):
-            operation_name = operation
-        elif hasattr(operation, 'name'):
-            operation_name = operation.name
-        else:
-            # Fallback to string representation if it's some other object without .name
-            operation_name = str(operation)
             
         # SUCCESS: Deduct credits only if the motion operation was successfully created
         await services.user_service.deduct_credits(user_id, 50)
-        logger.info(f"Teaser Operation Created: {operation_name}")
-        return {"operation_id": operation_name}
+        logger.info(f"Teaser Operation Created: {operation_id}")
+        return {"operation_id": operation_id}
     except HTTPException:
         raise
     except Exception as e:

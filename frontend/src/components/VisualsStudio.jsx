@@ -10,6 +10,7 @@ import ContextualHelp from './ContextualHelp';
 const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
     const [regenerating, setRegenerating] = useState(null); // 'poster' or character name
     const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
     const [selectionVariants, setSelectionVariants] = useState(null); // { type, name, variants }
     const [isLocking, setIsLocking] = useState(false); // Feedback for selection click
     const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
@@ -84,9 +85,14 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
 
         } catch (error) {
             console.error("Visuals Studio Error:", error);
-            alert(`Art Dept Error: ${error.message}`);
+            if (error.message === 'QUOTA_EXHAUSTED') {
+                setError("System Busy: High traffic in the Art Dept. Please try again in 60 seconds.");
+            } else {
+                setError(`Art Dept Error: ${error.message}`);
+            }
         } finally {
             setRegenerating(null);
+            setTimeout(() => setError(''), 8000);
         }
     };
 
@@ -128,7 +134,8 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
             if (onRefresh) onRefresh();
             setTimeout(() => setMessage(''), 5000);
         } catch (err) {
-            alert(`Upload failed: ${err.message}`);
+            setError(`Upload failed: ${err.message}`);
+            setTimeout(() => setError(''), 5000);
             setIsLocking(false);
         } finally {
             setRegenerating(null);
@@ -177,33 +184,40 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
 
         } catch (error) {
             console.error("Teaser Error:", error);
-            alert(`Motion Dept Error: ${error.message}`);
+            if (error.message === 'QUOTA_EXHAUSTED') {
+                setError("System Busy: Motion queue full. Please wait 60 seconds.");
+            } else {
+                setError(`Motion Dept Error: ${error.message}`);
+            }
             setRegenerating(null);
+            setTimeout(() => setError(''), 8000);
         }
     };
 
     const pollTeaserStatus = async (opId) => {
+        console.log("Art Dept: Starting poll for operation:", opId);
         setMessage("Motion Dept: Rendering Cinematic Asset... (Est. 2-3 mins. You can safely navigate away; we'll sync the result automatically.)");
         
         const interval = setInterval(async () => {
             try {
+                console.log("Art Dept: Polling status for:", opId);
                 // Use query parameter and cache-buster to ensure fresh status
                 const response = await apiClient(`/api/assets/teaser_status?operation_id=${encodeURIComponent(opId)}&t=${Date.now()}`);
                 
                 if (!response.ok) {
                     const errorBody = await response.text();
                     console.error(`Art Dept: Teaser status poll failed (${response.status}):`, errorBody);
-                    // Do not return here; let the catch block handle it or continue polling if transient
                     throw new Error(`Server error: ${response.status}`);
                 }
                 const status = await response.json();
+                console.log("Art Dept: Polling result:", status);
 
                 // Check for terminal error state from backend
                 if (status.status === 'error') {
                     clearInterval(interval);
-                    setMessage(`Motion Error: ${status.message || 'Render failed'}`);
+                    setError(`Motion Error: ${status.message || 'Render failed'}`);
                     setRegenerating(null);
-                    alert(`Motion Dept Error: ${status.message || 'The render operation failed.'}`);
+                    setTimeout(() => setError(''), 8000);
                     return;
                 }
 
@@ -216,8 +230,8 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                         setMessage("Studio Delivery: Teaser Completed!");
                         if (onRefresh) onRefresh();
                     } else {
-                        setMessage("Art Dept: Render failed to return data.");
-                        alert("Motion Dept Error: Render completed but no video data was returned.");
+                        setError("Art Dept Error: Render completed but no video data returned.");
+                        setTimeout(() => setError(''), 8000);
                     }
                     setRegenerating(null);
                 } else {
@@ -230,7 +244,8 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                 if (err.message.includes('401') || err.message.includes('403')) {
                     clearInterval(interval);
                     setRegenerating(null);
-                    setMessage("Auth Error: Please refresh.");
+                    setError("Auth Error: Please refresh.");
+                    setTimeout(() => setError(''), 5000);
                 }
             }
         }, 15000); // Check every 15 seconds
@@ -300,6 +315,11 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                         {message && (
                             <div className="bg-arc-teal/5 border border-arc-teal/20 text-arc-teal px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-3 animate-pulse">
                                 <Sparkles className="w-4 h-4" /> {message}
+                            </div>
+                        )}
+                        {error && (
+                            <div className="bg-arc-orange/5 border border-arc-orange/20 text-arc-orange px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-3 animate-bounce">
+                                <Zap className="w-4 h-4" /> {error}
                             </div>
                         )}
                         <div className="flex items-center gap-4">
@@ -417,16 +437,30 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                                 <div className="aspect-video bg-black rounded-none overflow-hidden border border-white/5 group relative shadow-2xl border-dashed border-white/10">
                                     {projectData?.teaser_url ? (
                                         <>
-                                            <video src={projectData.teaser_url} className="w-full h-full object-cover" autoPlay loop muted playsInline />
-                                            {/* Hover overlay for existing teaser */}
-                                            <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                                            <video 
+                                                src={projectData.teaser_url} 
+                                                className="w-full h-full object-cover" 
+                                                autoPlay 
+                                                loop 
+                                                playsInline 
+                                                controls
+                                            />
+                                            {/* Discrete Control for Teaser */}
+                                            <div className="absolute top-4 right-4 z-20">
                                                 <button 
                                                     onClick={handleGenerateTeaser}
                                                     disabled={regenerating === 'teaser'}
-                                                    className="bg-white text-black px-8 py-4 rounded-sm font-black text-[10px] uppercase tracking-[0.3em] flex items-center gap-3 hover:bg-arc-orange hover:text-white transition-all shadow-2xl cursor-pointer"
+                                                    title="Regenerate Teaser"
+                                                    className="bg-black/40 hover:bg-arc-orange text-white p-3 rounded-full backdrop-blur-md border border-white/10 transition-all shadow-2xl group/btn"
                                                 >
-                                                    {regenerating === 'teaser' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                                                    {regenerating === 'teaser' ? 'Rendering...' : 'Regenerate Teaser'}
+                                                    {regenerating === 'teaser' ? (
+                                                        <RefreshCw className="w-4 h-4 animate-spin" />
+                                                    ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            <Zap className="w-4 h-4" />
+                                                            <span className="text-[8px] font-black uppercase tracking-widest overflow-hidden w-0 group-hover/btn:w-20 transition-all duration-500 whitespace-nowrap">Regenerate</span>
+                                                        </div>
+                                                    )}
                                                 </button>
                                             </div>
                                         </>

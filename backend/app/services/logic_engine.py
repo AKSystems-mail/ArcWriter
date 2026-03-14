@@ -203,6 +203,7 @@ class LogicEngine:
             "1. SETUP/PAYOFF (Chekhov's Gun): Is everything in Act 3 earned? Is anything missing from Act 1?\n"
             "2. CHARACTER ARCS: Do characters evolve consistently from start to finish?\n"
             "3. BLUEPRINT ALIGNMENT: Does the script follow the 15-beat master structure provided?\n\n"
+            "Return JSON ONLY. STRICT JSON MANDATE: Escape all internal quotes within strings using backslashes.\n"
             "Return JSON: { 'structural_integrity_score': int, 'plothole_warnings': [str], 'pacing_verdict': str, 'full_audit_report': str }\n\n"
             "FORMATTING RULE: Provide 'full_audit_report' as a numbered list with empty lines between items."
         )

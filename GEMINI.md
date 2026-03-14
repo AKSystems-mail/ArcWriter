@@ -15,6 +15,10 @@
     - Implemented in-memory caching for the Screenwriter's Guide PDF (near-zero latency download).
     - Added background pre-fetching for all help icons; screenplay-style help sections now appear instantly.
     - **Code Stability**: Renamed `ContextualHelp.tsx` to `.jsx` to resolve production bundling `ReferenceError`.
+- **Insight Persistence COMPLETE**:
+    -   Implemented state synchronization for all script analysis tools (Scene Diagnostic, Macro Structural Audit, Hook Scan).
+    -   Results are now stored in Firestore under the `insights` field of the project document.
+    -   Insights automatically reload when the editor is opened, allowing users to use AI feedback as a persistent guide during revisions.
 - **UI/UX Polishing**:
     - **Login**: Added "Back to Landing" navigation and clickable logo.
     - **Dashboard**: Fixed "Active Assets" visibility with real-time `onSnapshot` listeners and resolved visual clipping on the header.

@@ -8,7 +8,7 @@ import HistorySidebar from './HistorySidebar';
 import PricingModal from './PricingModal';
 import ContextualHelp from './ContextualHelp';
 import { db, auth } from '../firebase';
-import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -107,6 +107,17 @@ const ScriptEditor = ({ universeId, projectId }) => {
             vibe: data.vibe,
             beat_sheet: data.beat_sheet_data || data.beat_sheet
           });
+          
+          // Load persisted insights
+          if (data.insights) {
+              setLogicScore(data.insights.logic_score || null);
+              setSceneDynamics(data.insights.scene_dynamics || null);
+              setHookScanResult(data.insights.hook_scan_result || null);
+              setMacroAuditResult(data.insights.macro_audit_result || null);
+              if (data.insights.ai_feedback_messages) {
+                  setAiFeedbackMessages(data.insights.ai_feedback_messages);
+              }
+          }
         }
       } catch (error) {
         console.error("Error loading project data:", error);
@@ -521,6 +532,11 @@ const ScriptEditor = ({ universeId, projectId }) => {
       if (!response.ok) throw new Error('Hook Scan Failed');
       const data = await response.json();
       setHookScanResult(data);
+      
+      // PERSIST: Save to Firestore
+      await updateDoc(projectRef, {
+          'insights.hook_scan_result': data
+      });
     } catch (error) {
       console.error("Error:", error);
       alert("Gatekeeper Audit failed. Please try again.");
@@ -543,7 +559,19 @@ const ScriptEditor = ({ universeId, projectId }) => {
       });
       if (!response.ok) throw new Error('Macro Audit Failed');
       const data = await response.json();
+      
+      // Basic validation to ensure we have at least some data to display
+      if (!data || (!data.structural_integrity_score && !data.full_audit_report)) {
+          throw new Error('Audit engine returned empty results. Try adding more content.');
+      }
+      
       setMacroAuditResult(data);
+      
+      // PERSIST: Save to Firestore
+      const projectRef = getProjectRef();
+      await updateDoc(projectRef, {
+          'insights.macro_audit_result': data
+      });
     } catch (error) {
       console.error("Error:", error);
       alert("Structural Audit failed. Ensure script is long enough.");
@@ -578,9 +606,18 @@ const ScriptEditor = ({ universeId, projectId }) => {
       });
       if (!response.ok) throw new Error('Failed');
       const data = await response.json();
-      setAiFeedbackMessages((prev) => [...prev, `[AI] ${data.critique}`]);
+      const newFeedback = [...aiFeedbackMessages, `[AI] ${data.critique}`];
+      setAiFeedbackMessages(newFeedback);
       setLogicScore(data.score);
       if (data.tension_curve) setSceneDynamics(data);
+      
+      // PERSIST: Save to Firestore
+      const projectRef = getProjectRef();
+      await updateDoc(projectRef, {
+          'insights.logic_score': data.score,
+          'insights.scene_dynamics': data.tension_curve ? data : null,
+          'insights.ai_feedback_messages': newFeedback
+      });
     } catch (error) {
       console.error("Error:", error);
       setAiFeedbackMessages((prev) => [...prev, `[ERROR] Analysis failed.`]);

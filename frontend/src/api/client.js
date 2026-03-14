@@ -50,12 +50,16 @@ export const apiClient = async (endpoint, options = {}) => {
 
         if (response.status === 401) {
             console.error("Unauthorized access. Redirecting to login...");
-            // Redirect to login page
-            // Note: This is a hard redirect. If using React Router, we might want to use a callback or event.
-            // But for a utility function, this is often the most direct way.
             window.location.href = '/login';
             return Promise.reject(new Error("Unauthorized"));
         }
+
+        if (response.status === 429) {
+            console.error("Rate limit hit (429).");
+            return Promise.reject(new Error("QUOTA_EXHAUSTED"));
+        }
+
+        return response;
 
         return response;
     } catch (error) {

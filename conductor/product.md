@@ -15,6 +15,7 @@ ArcWriter transforms the solitary and often disorganized writing process into a 
 - **Dual-Mode Onboarding:** catering to both "Pantsers" (Explorer) and "Plotters" (Architect).
 - **Universe Architecture:** A RAG-powered project bible to maintain consistency across scripts.
 - **Game Theory Logic Engine:** Mathematical stress-testing to identify and resolve plot holes.
+- **Persistent Narrative Feedback:** All structural audits and scene diagnostics are persisted in Firestore, serving as a constant guide for the writer until the next manual check.
 - **Pitch Deck Automation:** Automatically assembling script data, characters, and structural beats into a professional, ready-to-present pitch package.
 
 ## Success Metrics
