@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { collectionGroup, query, where, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
-import { Plus, Film, BookOpen, Clock, ChevronRight, Edit2, Trash2, RotateCcw, XCircle, Target, LogOut, CreditCard } from 'lucide-react';
+import { Plus, Film, BookOpen, Clock, ChevronRight, Edit2, Trash2, RotateCcw, XCircle, Target, LogOut, CreditCard, Activity } from 'lucide-react';
 import ContextualHelp from '../components/ContextualHelp';
 
 interface Project {
@@ -141,10 +141,20 @@ const Dashboard: React.FC = () => {
         <div className="min-h-screen bg-black text-white">
             {/* Top Navigation */}
             <nav className="w-full z-[100] px-8 py-6 flex justify-between items-center bg-[#050505] border-b border-white/5">
-                <div className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate('/')}>
-                    <img src="/ArcWriter_logo.png" alt="ArcWriter" className="h-8" />
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate('/')}>
+                        <img src="/ArcWriter_logo.png" alt="ArcWriter" className="h-8" />
+                        <div className="h-4 w-px bg-gray-800"></div>
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/70 group-hover:text-arc-teal transition-colors">Architecture</span>
+                    </div>
                     <div className="h-4 w-px bg-gray-800"></div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-400 group-hover:text-arc-teal transition-colors">Architecture</span>
+                    <button 
+                        onClick={() => navigate('/tracker')}
+                        className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/60 hover:text-arc-teal transition-all group"
+                    >
+                        <Activity className="w-3.5 h-3.5 text-arc-teal group-hover:animate-pulse" />
+                        <span>Pitch Tracker</span>
+                    </button>
                 </div>
                 
                 <div className="flex items-center gap-6">

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ImageIcon, User, RefreshCw, Sparkles, CheckCircle2, Layout, UserCircle, Zap } from 'lucide-react';
+import { ImageIcon, User, RefreshCw, Sparkles, CheckCircle2, Layout, UserCircle, Zap, Shield, Share2 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { storage, db, auth } from '../firebase';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import PricingModal from './PricingModal';
+import ScriptIdentityModal from './ScriptIdentityModal';
+import ShareProjectModal from './ShareProjectModal';
 import ContextualHelp from './ContextualHelp';
 
 const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
@@ -14,6 +15,8 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
     const [selectionVariants, setSelectionVariants] = useState(null); // { type, name, variants }
     const [isLocking, setIsLocking] = useState(false); // Feedback for selection click
     const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+    const [isIdentityModalOpen, setIsIdentityModalOpen] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [userProfile, setUserProfile] = useState(null);
 
     useEffect(() => {
@@ -251,7 +254,7 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
         }, 15000); // Check every 15 seconds
     };
 
-    const handleDownloadPitchDeck = async () => {
+    const handleDownloadPitchDeck = async (regData = {}) => {
         setRegenerating('download');
         setMessage("Studio: Compiling Custom Pitch Package...");
         
@@ -261,26 +264,33 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
             // Build section filter
             const sections = Object.keys(exportSettings).filter(k => exportSettings[k]).join(',');
             
-            const response = await fetch(`/api/pitchdeck/download/${universeId}/${projectId}?sections=${sections}`, {
+            // Add recipient watermark if provided
+            let url = `/api/pitchdeck/download/${universeId}/${projectId}?sections=${sections}`;
+            if (regData.recipient) {
+                url += `&recipient=${encodeURIComponent(regData.recipient)}`;
+            }
+            
+            const response = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (!response.ok) throw new Error("Download failed");
 
             const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
+            const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
+            a.href = downloadUrl;
             a.download = `${projectData?.title || 'Project'}_PitchPackage.pdf`;
             document.body.appendChild(a);
             a.click();
-            window.URL.revokeObjectURL(url);
+            window.URL.revokeObjectURL(downloadUrl);
             
             setMessage("Studio Delivery: Package Exported!");
             setTimeout(() => setMessage(''), 5000);
         } catch (error) {
             console.error("Export Error:", error);
-            alert("Studio Error: Failed to compile pitch package.");
+            setError("Studio Error: Failed to compile pitch package.");
+            setTimeout(() => setError(''), 5000);
         } finally {
             setRegenerating(null);
         }
@@ -294,6 +304,21 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
             <PricingModal 
                 isOpen={isPricingModalOpen} 
                 onClose={() => setIsPricingModalOpen(false)} 
+            />
+            <ScriptIdentityModal
+                isOpen={isIdentityModalOpen}
+                onClose={() => setIsIdentityModalOpen(false)}
+                projectData={projectData}
+                universeId={universeId}
+                projectId={projectId}
+                onConfirm={handleDownloadPitchDeck}
+            />
+            <ShareProjectModal
+                isOpen={isShareModalOpen}
+                onClose={() => setIsShareModalOpen(false)}
+                universeId={universeId}
+                projectId={projectId}
+                projectTitle={projectData?.title || 'Untitled Project'}
             />
             <div className="absolute top-0 right-0 p-12 opacity-[0.03]">
                 <Layout className="w-64 h-64 text-white" />
@@ -309,7 +334,7 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                         <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter">
                             Visuals <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Assets</span>
                         </h2>
-                        <p className="text-gray-500 mt-4 text-lg font-light italic">High-fidelity conceptual anchors for pitch-readiness.</p>
+                        <p className="text-white/70 mt-4 text-lg font-light italic">High-fidelity conceptual anchors for pitch-readiness.</p>
                     </div>
                     <div className="flex flex-col items-end gap-4">
                         {message && (
@@ -325,7 +350,7 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                         <div className="flex items-center gap-4">
                             {/* Export Config Toggles */}
                             <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-sm border border-white/5 mr-2">
-                                <span className="text-[8px] font-black uppercase tracking-widest text-gray-600 mr-2 border-r border-white/10 pr-3">Include:</span>
+                                <span className="text-[8px] font-black uppercase tracking-widest text-white/40 mr-2 border-r border-white/10 pr-3">Include:</span>
                                 {[
                                     { id: 'cover', label: 'Poster' },
                                     { id: 'story', label: 'Story' },
@@ -335,21 +360,31 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                                     <button
                                         key={item.id}
                                         onClick={() => toggleSetting(item.id)}
-                                        className={`text-[8px] font-black uppercase tracking-tighter px-2 py-1 transition-all ${exportSettings[item.id] ? 'text-arc-teal bg-arc-teal/10' : 'text-gray-700 bg-transparent'}`}
+                                        className={`text-[8px] font-black uppercase tracking-tighter px-2 py-1 transition-all ${exportSettings[item.id] ? 'text-arc-teal bg-arc-teal/10' : 'text-white/40 bg-transparent'}`}
                                     >
                                         {item.label}
                                     </button>
                                 ))}
                             </div>
 
-                            <button 
-                                onClick={handleDownloadPitchDeck}
+                            <button
+                                onClick={() => setIsShareModalOpen(true)}
                                 disabled={!!regenerating}
-                                className={`text-[9px] font-black uppercase tracking-[0.2em] px-8 py-4 rounded-sm transition-all shadow-xl flex items-center gap-3 ${isProjectComplete ? 'bg-arc-orange text-white hover:bg-white hover:text-black animate-glow' : 'bg-white/5 text-gray-600 cursor-not-allowed'}`}
+                                className="text-[9px] font-black uppercase tracking-[0.2em] bg-white hover:bg-arc-teal text-black hover:text-white px-8 py-4 rounded-sm transition-all disabled:opacity-50 shadow-xl flex items-center gap-3"
                             >
-                                <Layout className="w-4 h-4" />
-                                {regenerating === 'download' ? "Compiling PDF..." : "Export Package"}
+                                <Share2 className="w-4 h-4" />
+                                Share Studio Pitch
                             </button>
+
+                            <button
+                                onClick={() => setIsIdentityModalOpen(true)}
+                                disabled={!!regenerating}
+                                className={`text-[9px] font-black uppercase tracking-[0.2em] px-8 py-4 rounded-sm transition-all shadow-xl flex items-center gap-3 ${isProjectComplete ? 'bg-arc-orange text-white hover:bg-white hover:text-black animate-glow' : 'bg-white/5 text-white/40 cursor-not-allowed'}`}
+                            >
+                                <Shield className="w-4 h-4" />
+                                {regenerating === 'download' ? "Compiling PDF..." : "Authorize Final Export"}
+                            </button>
+
                             <button 
                                 onClick={handleBulkGenerateAnchors}
                                 disabled={!!regenerating}
@@ -370,7 +405,7 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                                     <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] mb-2 block italic">Selection Required</span>
                                     <h3 className="text-3xl font-black text-white uppercase tracking-tighter">Choose Anchor: {selectionVariants.name}</h3>
                                 </div>
-                                <button onClick={() => setSelectionVariants(null)} className="text-gray-500 hover:text-white uppercase font-black text-[10px] tracking-widest transition-colors">Cancel</button>
+                                <button onClick={() => setSelectionVariants(null)} className="text-white/70 hover:text-arc-teal uppercase font-black text-[10px] tracking-widest transition-colors">Cancel</button>
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                                 {selectionVariants.variants.map((v, i) => (
@@ -401,19 +436,19 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                     {/* Production Assets Section */}
                     <div className="lg:col-span-4 flex flex-col gap-12">
                         <div className="flex justify-between items-center">
-                            <label className="text-[10px] uppercase font-black tracking-widest text-gray-600 block">Production Assets</label>
+                            <label className="text-[10px] uppercase font-black tracking-widest text-white/40 block">Production Assets</label>
                             <span className="text-[9px] font-black text-arc-orange uppercase tracking-widest italic">Phase 04 deliverables</span>
                         </div>
 
                         <div className="flex flex-col gap-12">
                             {/* Poster */}
                             <div className="space-y-4">
-                                <span className="text-[8px] font-black text-gray-700 uppercase tracking-widest ml-1">Official Poster</span>
+                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest ml-1">Official Poster</span>
                                 <div className="aspect-[2/3] bg-black rounded-none overflow-hidden border border-white/5 group relative shadow-2xl">
                                     {projectData?.poster_url && !projectData.poster_url.includes('placehold.co') ? (
                                         <img src={projectData.poster_url} alt="Poster" className="w-full h-full object-cover transition-all duration-1000" />
                                     ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center text-gray-800">
+                                        <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center text-white/20">
                                             <ImageIcon className="w-12 h-12 mb-4 opacity-20" />
                                             <span className="text-[9px] font-black uppercase tracking-[0.3em]">Awaiting Render</span>
                                         </div>
@@ -444,6 +479,11 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                                                 loop 
                                                 playsInline 
                                                 controls
+                                                onPlay={() => {
+                                                    // Note: VisualsStudio is for the writer, but we can track their plays too
+                                                    // or just leave it for the public PitchDeckView.
+                                                    console.log("Teaser playback started");
+                                                }}
                                             />
                                             {/* Discrete Control for Teaser */}
                                             <div className="absolute top-4 right-4 z-20">
@@ -465,7 +505,7 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                                             </div>
                                         </>
                                     ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center text-gray-800">
+                                        <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center text-white/20">
                                             <Zap className="w-12 h-12 mb-4 opacity-20" />
                                             <span className="text-[9px] font-black uppercase tracking-[0.3em] mb-6">Awaiting Motion</span>
                                             <button 
@@ -486,7 +526,7 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                     {/* Characters Section */}
                     <div className="lg:col-span-8">
                         <div className="flex justify-between items-center mb-6">
-                            <label className="text-[10px] uppercase font-black tracking-widest text-gray-600 block">Personnel Dossiers</label>
+                            <label className="text-[10px] uppercase font-black tracking-widest text-white/40 block">Personnel Dossiers</label>
                             <span className="text-[9px] font-black text-arc-orange uppercase tracking-widest italic">{projectData?.characters?.length || 0} Entities</span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -501,7 +541,7 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                                                 <img src={char.anchor_url} alt={char.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center">
-                                                    <User className="w-8 h-8 text-gray-800" />
+                                                    <User className="w-8 h-8 text-white/20" />
                                                 </div>
                                             )}
                                         </div>
@@ -510,12 +550,12 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                                             <p className="text-[9px] uppercase font-black tracking-[0.2em] text-arc-teal mt-1">{char.role}</p>
                                         </div>
                                     </div>
-                                    <p className="text-sm text-gray-500 font-light leading-relaxed italic line-clamp-3">"{char.description}"</p>
+                                    <p className="text-sm text-white/60 font-light leading-relaxed italic line-clamp-3">"{char.description}"</p>
                                     <div className="mt-auto pt-4 flex justify-between items-center">
                                         <button 
                                             onClick={() => handleRegenerate('character', char.name)}
                                             disabled={regenerating === char.name}
-                                            className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-600 hover:text-white flex items-center gap-2 transition-colors disabled:opacity-50"
+                                            className="text-[9px] font-black uppercase tracking-[0.3em] text-white/70 hover:text-arc-teal flex items-center gap-2 transition-colors disabled:opacity-50"
                                         >
                                             {regenerating === char.name ? <RefreshCw className="w-3 h-3 animate-spin text-arc-teal" /> : <RefreshCw className="w-3 h-3" />}
                                             Regenerate Anchor

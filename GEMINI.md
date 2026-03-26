@@ -18,7 +18,12 @@
 - **Insight Persistence COMPLETE**:
     -   Implemented state synchronization for all script analysis tools (Scene Diagnostic, Macro Structural Audit, Hook Scan).
     -   Results are now stored in Firestore under the `insights` field of the project document.
-    -   Insights automatically reload when the editor is opened, allowing users to use AI feedback as a persistent guide during revisions.
+- **Fortress Protocol & Secure Sharing COMPLETE (Local)**:
+    -   **Industry Title Page**: Professional Courier-font title pages with WGA registration and legal footers.
+    -   **Dynamic Watermarking**: Anti-leak diagonal watermarks embedded in PDF exports and web viewer.
+    -   **Interactive Pitch Deck**: Standalone mobile-optimized web viewer (`/pitch/:hash`) with cinematic hero assets and distraction-free script reader.
+    -   **Anti-Copy Engine**: Frontend protection blocking right-click, text selection, and keyboard shortcuts.
+    -   **Share Logic**: Random hash-based URLs with optional password protection and expiration dates.
 - **UI/UX Polishing**:
     - **Login**: Added "Back to Landing" navigation and clickable logo.
     - **Dashboard**: Fixed "Active Assets" visibility with real-time `onSnapshot` listeners and resolved visual clipping on the header.

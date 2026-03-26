@@ -190,13 +190,13 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
                             <option>Hero's Journey</option>
                             <option>Story Circle</option>
                         </select>
-                        <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 rotate-90 text-gray-600 pointer-events-none" />
+                        <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 rotate-90 text-white/60 pointer-events-none" />
                     </div>
                 </div>
 
                 <div className="flex items-center gap-8 bg-black/50 p-6 border border-white/5 rounded-sm">
                     <div className="text-right">
-                        <p className="text-[9px] font-black text-gray-600 uppercase tracking-[0.3em] mb-2">Pitch Readiness</p>
+                        <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.3em] mb-2">Pitch Readiness</p>
                         <p className="text-3xl font-black text-white tracking-tighter">{readiness}%</p>
                     </div>
                     <div className="relative w-16 h-16">
@@ -230,7 +230,7 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
                 {getActiveFrameworkBeats().map((beat, idx) => (
                     <div key={beat.name} className="relative group">
                         <div className="flex items-center gap-4 mb-6">
-                            <span className="text-[10px] font-black text-gray-700 w-6">{(idx + 1).toString().padStart(2, '0')}</span>
+                            <span className="text-[10px] font-black text-white/40 w-6">{(idx + 1).toString().padStart(2, '0')}</span>
                             <div className="h-px flex-1 bg-white/5" />
                             <label className="text-white font-black text-xs uppercase tracking-[0.2em]">{beat.name}</label>
                         </div>
@@ -245,7 +245,7 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
                             <div className="absolute top-0 left-0 w-[1px] h-0 bg-arc-orange group-focus-within:h-full transition-all duration-500" />
                         </div>
 
-                        <p className="mt-4 text-[10px] text-gray-600 font-bold uppercase tracking-widest pl-2">
+                        <p className="mt-4 text-[10px] text-white/60 font-bold uppercase tracking-widest pl-2">
                             {beat.description}
                         </p>
                     </div>
@@ -255,7 +255,7 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
             <div className="mt-24 pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-8">
                 <div className="flex items-center gap-4">
                     <div className={`w-2 h-2 rounded-full ${message.includes('ERROR') ? 'bg-red-500' : 'bg-arc-teal'} animate-pulse`} />
-                    <span className="text-gray-500 font-black uppercase tracking-[0.2em] text-[9px]">{message || 'SYSTEM READY'}</span>
+                    <span className="text-white/70 font-black uppercase tracking-[0.2em] text-[9px]">{message || 'SYSTEM READY'}</span>
                 </div>
                 
                 <button

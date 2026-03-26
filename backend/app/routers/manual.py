@@ -8,6 +8,7 @@ from reportlab.lib.enums import TA_CENTER
 import io
 import re
 import os
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ def get_manual_path():
         os.path.join(base_dir, "Screenwriter_Guide.md"),
         "Screenwriter_Guide.md",
         "backend/Screenwriter_Guide.md",
+        "../Screenwriter_Guide.md",
         "/Users/akprod/dev/ArcWriter/backend/Screenwriter_Guide.md"
     ]
     for p in paths:
@@ -117,12 +119,13 @@ async def get_manual_section(section_id: str):
     """
     Returns a specific screenplay scene as JSON.
     """
-    file_path = get_manual_path()
     try:
+        file_path = get_manual_path()
         with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
         
         search_key = section_id.upper()
+        logger.info(f"ManualSection: Fetching section '{search_key}'")
         mapping = {
             "LANDING": "LANDING PAGE",
             "WIZARD": "WIZARD",
@@ -203,7 +206,6 @@ async def get_manual_section(section_id: str):
         result["action"] = " ".join(action_parts)
         result["dialogue"] = " ".join(dialogue_parts)
         return result
-
     except Exception as e:
         if isinstance(e, HTTPException): raise e
         logger.error(f"Failed to fetch help section {section_id}: {e}")

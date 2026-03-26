@@ -32,6 +32,19 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.owner_id == request.auth.uid;
     }
     
+    // Rules for Pitch Sharing and Tracking
+    match /share_links/{shareId} {
+      // Only the owner can manage links or see analytics
+      allow read, write: if request.auth != null && resource.data.owner_id == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.owner_id == request.auth.uid;
+      
+      // Events sub-collection (Analytics)
+      match /events/{eventId} {
+        allow read: if request.auth != null && get(/databases/$(database)/documents/share_links/$(shareId)).data.owner_id == request.auth.uid;
+        allow write: if false; // Only backend (Admin SDK) should write events
+      }
+    }
+
     // Deny access to backend-only collections.
     match /leads/{leadId} {
       allow read, write: if false;

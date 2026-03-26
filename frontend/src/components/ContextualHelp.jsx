@@ -57,14 +57,14 @@ const ContextualHelp = ({ sectionId, className = "" }) => {
                 {loading ? (
                     <div className="bg-[#050505] border border-white/5 p-20 flex flex-col items-center justify-center rounded-sm">
                         <Loader2 className="w-8 h-8 text-arc-teal animate-spin mb-4" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Accessing Studio Manual...</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/70">Accessing Studio Manual...</span>
                     </div>
                 ) : error ? (
                     <div className="bg-[#050505] border border-red-500/20 p-12 text-center rounded-sm">
                         <p className="text-red-400 text-xs font-black uppercase tracking-widest mb-4">Manual Section Missing</p>
                         <button 
                             onClick={() => setIsOpen(false)}
-                            className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white"
+                            className="text-[10px] font-black uppercase tracking-widest text-white/70 hover:text-arc-teal"
                         >
                             [Close]
                         </button>
@@ -90,7 +90,7 @@ const ContextualHelp = ({ sectionId, className = "" }) => {
                     e.stopPropagation();
                     setIsOpen(true);
                 }}
-                className={`text-gray-600 hover:text-arc-teal transition-colors focus:outline-none ${className}`}
+                className={`text-white/60 hover:text-arc-teal transition-colors focus:outline-none ${className}`}
                 title="Help"
             >
                 <HelpCircle className="w-4 h-4" />

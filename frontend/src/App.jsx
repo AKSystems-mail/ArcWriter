@@ -16,6 +16,8 @@ import Analyze from './pages/Analyze';
 import Billing from './pages/Billing';
 import OnboardingWizard from './pages/OnboardingWizard';
 import ScriptEditorPage from './pages/ScriptEditorPage';
+import PitchDeckView from './pages/PitchDeckView';
+import PitchTrackerPage from './pages/PitchTrackerPage';
 import NotFoundPage from './pages/NotFoundPage';
 import './index.css';
 
@@ -111,6 +113,7 @@ function App() {
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/login" element={<LoginScreen />} />
                     <Route path="/analyze" element={<Analyze />} />
+                    <Route path="/pitch/:shareHash" element={<PitchDeckView />} />
 
                     {/* The Traffic Controller (Default Logged-in Route) */}
                     <Route
@@ -160,6 +163,14 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <ScriptEditorPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/tracker"
+                        element={
+                            <ProtectedRoute>
+                                <PitchTrackerPage />
                             </ProtectedRoute>
                         }
                     />

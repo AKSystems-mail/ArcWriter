@@ -18,14 +18,18 @@ interface CharacterProfileProps {
 const CHARACTER_CONCEPTS_COST = 5;
 
 const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, projectId, initialCharacters }) => {
+    const [characters, setCharacters] = useState<any[]>(initialCharacters || []);
+    const [activeIndex, setActiveTab] = useState<number>(0);
+    
+    // Active character fields
     const [name, setName] = useState<string>('');
     const [role, setRole] = useState<string>('');
     const [archetype, setArchetype] = useState<string>('');
     const [physicalDescription, setPhysicalDescription] = useState<string>('');
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [generatedConceptUrls, setGeneratedConceptUrls] = useState<string[]>([]);
     const [anchorImageUrl, setAnchorImageUrl] = useState<string | null>(null);
 
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [generatedConceptUrls, setGeneratedConceptUrls] = useState<string[]>([]);
     const [userProfile, setUserProfile] = useState<any>(null);
     const [isPricingModalOpen, setIsPricingModalOpen] = useState<boolean>(false);
 
@@ -37,14 +41,62 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
         return () => unsub();
     }, []);
 
+    // Sync state when switching characters or initial data loads
     useEffect(() => {
-        if (initialCharacters && initialCharacters.length > 0) {
-            const firstChar = initialCharacters[0];
-            setName(firstChar.name || '');
-            setRole(firstChar.role || '');
-            setPhysicalDescription(firstChar.description || '');
+        if (characters.length > 0 && characters[activeIndex]) {
+            const char = characters[activeIndex];
+            setName(char.name || '');
+            setRole(char.role || '');
+            setArchetype(char.archetype || '');
+            setPhysicalDescription(char.description || '');
+            setAnchorImageUrl(char.anchor_url || null);
+            setGeneratedConceptUrls([]); // Reset renders on switch
         }
-    }, [initialCharacters]);
+    }, [activeIndex, characters]);
+
+    const handleAddCharacter = () => {
+        const newChar = { name: 'NEW ENTITY', role: '', description: '', archetype: '' };
+        setCharacters([...characters, newChar]);
+        setActiveTab(characters.length);
+    };
+
+    const handleSyncToBible = async () => {
+        try {
+            const idToken = await auth.currentUser?.getIdToken();
+            if (!idToken) return;
+
+            const updatedCharacters = [...characters];
+            updatedCharacters[activeIndex] = {
+                ...updatedCharacters[activeIndex],
+                name,
+                role,
+                archetype,
+                description: physicalDescription,
+                anchor_url: anchorImageUrl
+            };
+
+            const response = await fetch('/api/bible/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({
+                    universe_name: universeId,
+                    project_id: projectId,
+                    section_header: '## Principal Cast',
+                    characters: updatedCharacters
+                }),
+            });
+            
+            if (response.ok) {
+                setCharacters(updatedCharacters);
+                console.log("Art Dept: Personnel Dossiers synced to Bible");
+            }
+        } catch (error) {
+            console.error("Error syncing characters:", error);
+        }
+    };
 
     const userCredits = userProfile?.studio_credits || 0;
     const isSubscribed = userProfile?.subscription_status === 'active';
@@ -134,21 +186,44 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
             </div>
 
             <div className="relative z-10">
-                <div className="mb-16 border-b border-white/5 pb-12">
-                    <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Section 03: Personnel</span>
-                    <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter">
-                        Entity <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Dossier</span>
-                    </h2>
-                    <p className="text-gray-500 mt-4 text-lg font-light italic">Configure character DNA and generate cinematic concept art.</p>
+                <div className="mb-16 border-b border-white/5 pb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
+                    <div>
+                        <span className="text-arc-orange text-[10px] font-black uppercase tracking-[0.5em] mb-4 block italic">Section 03: Personnel</span>
+                        <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter">
+                            Entity <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Dossier</span>
+                        </h2>
+                        <p className="text-white/60 mt-4 text-lg font-light italic">Configure character DNA and generate cinematic concept art.</p>
+                    </div>
+
+                    <div className="flex flex-col gap-4 w-full md:w-auto">
+                        <label className="text-[10px] uppercase font-black tracking-widest text-white/40 block ml-1">Personnel Selection</label>
+                        <div className="flex flex-wrap gap-2">
+                            {characters.map((char, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => setActiveTab(idx)}
+                                    className={`px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all border ${activeIndex === idx ? 'bg-white text-black border-white' : 'bg-transparent text-white/40 border-white/5 hover:border-white/20 hover:text-white'}`}
+                                >
+                                    {char.name || 'UNNAMED'}
+                                </button>
+                            ))}
+                            <button
+                                onClick={handleAddCharacter}
+                                className="px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all border border-dashed border-arc-teal/30 text-arc-teal hover:bg-arc-teal hover:text-black hover:border-arc-teal"
+                            >
+                                + Add Entity
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                     <div className="space-y-10">
                         <div>
-                            <label className="text-[10px] uppercase font-black tracking-widest text-gray-600 mb-4 block">Identity Configuration</label>
+                            <label className="text-[10px] uppercase font-black tracking-widest text-white/40 mb-4 block">Identity Configuration</label>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="space-y-2">
-                                    <span className="text-xs font-black uppercase text-gray-700 tracking-widest ml-1">Asset Name</span>
+                                    <span className="text-xs font-black uppercase text-white/40 tracking-widest ml-1">Asset Name</span>
                                     <input
                                         type="text"
                                         className="w-full bg-black border border-white/10 rounded-sm p-5 text-white focus:border-arc-teal outline-none transition-all uppercase font-bold tracking-tight"
@@ -159,7 +234,7 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
                                 </div>
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <span className="text-xs font-black uppercase text-gray-700 tracking-widest ml-1">Story Role</span>
+                                        <span className="text-xs font-black uppercase text-white/40 tracking-widest ml-1">Story Role</span>
                                         <select
                                             className="w-full bg-black border border-white/10 rounded-sm p-5 text-white text-xs font-black uppercase tracking-widest focus:border-arc-teal outline-none appearance-none cursor-pointer"
                                             value={role}
@@ -174,7 +249,7 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <span className="text-xs font-black uppercase text-gray-700 tracking-widest ml-1">Archetype</span>
+                                        <span className="text-xs font-black uppercase text-white/40 tracking-widest ml-1">Archetype</span>
                                         <input
                                             type="text"
                                             className="w-full bg-black border border-white/10 rounded-sm p-5 text-white focus:border-arc-teal outline-none transition-all uppercase font-bold tracking-tight"
@@ -190,10 +265,10 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
 
                     <div className="space-y-10">
                         <div className="space-y-2">
-                            <label className="text-xs uppercase font-black tracking-widest text-gray-600 mb-4 block">Aesthetic Specification</label>
+                            <label className="text-xs uppercase font-black tracking-widest text-white/40 mb-4 block">Aesthetic Specification</label>
                             <textarea
                                 rows={6}
-                                className="w-full bg-black border border-white/10 rounded-sm p-8 text-white font-courier text-lg focus:border-arc-teal outline-none transition-all resize-none leading-relaxed placeholder:text-gray-900 font-normal"
+                                className="w-full bg-black border border-white/10 rounded-sm p-8 text-white font-courier text-lg focus:outline-none focus:border-arc-teal transition-all resize-none leading-relaxed placeholder:text-gray-900 font-normal italic"
                                 value={physicalDescription}
                                 onChange={(e) => setPhysicalDescription(e.target.value)}
                                 placeholder="DRAFTING CINEMATIC LOOK SPECIFICATIONS..."
@@ -201,25 +276,33 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
                         </div>
 
                         <div className="flex flex-col gap-4">
-                            <button
-                                onClick={handleGenerateVisuals}
-                                disabled={isLoading || !physicalDescription.trim() || !canGenerateVisualConcepts}
-                                className={`w-full py-6 rounded-sm font-black text-[10px] uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-4 shadow-2xl
-                                            ${(isLoading || !physicalDescription.trim() || !canGenerateVisualConcepts) 
-                                                ? 'bg-black text-gray-700 border border-white/5 cursor-not-allowed' 
-                                                : 'bg-white text-black hover:bg-arc-orange hover:text-white shadow-white/5'} `}
-                            >
-                                {isLoading ? (
-                                    <RefreshCw className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <>
-                                        <Zap className="w-4 h-4" /> Initialize Render
-                                    </>
-                                )}
-                            </button>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={handleSyncToBible}
+                                    className="flex-1 bg-white/5 border border-white/10 text-white font-black py-6 rounded-sm text-[10px] uppercase tracking-[0.4em] hover:bg-white hover:text-black transition-all"
+                                >
+                                    Commit to Bible
+                                </button>
+                                <button
+                                    onClick={handleGenerateVisuals}
+                                    disabled={isLoading || !physicalDescription.trim() || !canGenerateVisualConcepts}
+                                    className={`flex-[2] py-6 rounded-sm font-black text-[10px] uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-4 shadow-2xl
+                                                ${(isLoading || !physicalDescription.trim() || !canGenerateVisualConcepts) 
+                                                    ? 'bg-black text-white/20 border border-white/5 cursor-not-allowed' 
+                                                    : 'bg-white text-black hover:bg-arc-orange hover:text-white shadow-white/5'} `}
+                                >
+                                    {isLoading ? (
+                                        <RefreshCw className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Zap className="w-4 h-4" /> Initialize Render
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                             
                             <div className="flex justify-between items-center px-2">
-                                <span className="text-xs font-black text-gray-700 uppercase tracking-widest italic">
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest italic">
                                     {isSubscribed ? "Studio Tier: Unlimited Renders" : `Operation Cost: ${CHARACTER_CONCEPTS_COST} Credits`}
                                 </span>
                             </div>
@@ -234,7 +317,7 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
                                 <Sparkles className="w-6 h-6 text-arc-teal" /> 
                                 Studio <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Renders</span>
                             </h3>
-                            <span className="text-xs font-black text-gray-600 uppercase tracking-widest">Select Visual Anchor</span>
+                            <span className="text-xs font-black text-white/40 uppercase tracking-widest">Select Visual Anchor</span>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                             {generatedConceptUrls.map((url, index) => (

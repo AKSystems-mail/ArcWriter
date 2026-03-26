@@ -82,19 +82,22 @@ class ServiceRegistry:
             self._stripe_service = StripeService(self.user_service)
         return self._stripe_service
 
-services = ServiceRegistry()
-
 # Global flag to track initialization
 _initialized = False
+services = None
 
 def lazy_initialize():
-    global _initialized
+    global _initialized, services
     if not _initialized:
+        # Instantiate services here
+        services = ServiceRegistry()
+        
         # Move heavy imports here
         from app.utils.firebase_auth_utils import initialize_firebase_admin
         initialize_firebase_admin()
         
-        from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing
+        # Defer router registration to avoid deployment discovery timeouts
+        from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing, share
         app.include_router(onboarding.router)
         app.include_router(users.router)
         app.include_router(pitchdeck.router)
@@ -103,6 +106,7 @@ def lazy_initialize():
         app.include_router(manual.router)
         app.include_router(public.router)
         app.include_router(billing.router)
+        app.include_router(share.router)
         
         _initialized = True
 
@@ -129,12 +133,14 @@ app.add_middleware(
 async def root():
     return {"message": "Hello World - Arc Studio API (FastAPI) is live"}
 
-# --- Universe Management Endpoints ---
-class UniverseResponse(BaseModel):
-    name: str
-
-@app.get("/api/universes", response_model=List[UniverseResponse])
+@app.get("/api/universes", response_model=List[Any])
 async def list_universes(user_id: str = Depends(get_current_user)):
+    # Local import for response model
+    from pydantic import BaseModel
+    class UniverseResponse(BaseModel):
+        name: str
+    
+    lazy_initialize()
     db = get_firestore_db()
     universes_ref = db.collection("universes").where("owner_id", "==", user_id)
     universes = []
@@ -195,6 +201,7 @@ class ProjectResponse(BaseModel):
 @app.get("/api/project/{universe_name}/{project_id}", response_model=ProjectResponse)
 async def get_project_details(universe_name: str, project_id: str, user_id: str = Depends(get_current_user)):
     try:
+        logger.info(f"Main: Fetching details for project {project_id} in universe {universe_name} for user {user_id}")
         project_config = await verify_project_ownership(universe_name, project_id, user_id)
         
         # Ensure created_at is serializable
@@ -216,6 +223,7 @@ async def get_project_details(universe_name: str, project_id: str, user_id: str 
             source_material=project_config.get('source_material')
         )
     except Exception as e:
+        logger.error(f"Main: get_project_details failed for {project_id}: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -457,4 +465,5 @@ def api(req: https_fn.Request) -> https_fn.Response:
 
 if __name__ == "__main__":
     import uvicorn
+    lazy_initialize()
     uvicorn.run(app, host="0.0.0.0", port=5000)

@@ -650,7 +650,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
     if (currentPage.length > 0) pages.push(currentPage);
     return pages.map((pageBlocks, pageIndex) => (
       <div key={pageIndex} className="script-page relative mb-8 shadow-2xl border-b-2 border-dashed border-gray-200">
-        <div className="absolute top-4 right-8 text-gray-400 text-xs font-mono select-none">{pageIndex + 1}.</div>
+        <div className="absolute top-4 right-8 text-black/20 text-xs font-mono select-none">{pageIndex + 1}.</div>
         {pageBlocks.map((block) => {
           const { className } = formatLine(block.type, block.text);
           return (
@@ -705,23 +705,24 @@ const ScriptEditor = ({ universeId, projectId }) => {
             <div className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate('/dashboard')}>
                 <img src="/ArcWriter_logo.png" alt="ArcWriter" className="h-6 opacity-80 group-hover:opacity-100 transition-opacity" />
                 <div className="h-4 w-px bg-gray-800"></div>
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 group-hover:text-arc-teal transition-colors">Studio</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white group-hover:text-arc-teal transition-colors">Studio</span>
                 <ContextualHelp sectionId="SCRIPT_EDITOR" className="ml-2" />
-            </div>
-            <div className="h-4 w-px bg-gray-800"></div>
-            <div className="flex items-center gap-4">
-              <button 
+                </div>
+                <div className="h-4 w-px bg-gray-800"></div>
+                <div className="flex items-center gap-4">
+                <button
                 onClick={() => navigate(`/project/${projectId}/beat-sheet`, { state: { project_id: projectId, universe_id: universeId } })}
-                className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 hover:text-white transition-all group"
-              >
+                className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-white hover:text-arc-teal transition-all group"
+                >
                 <Target className="w-3.5 h-3.5 text-arc-orange group-hover:scale-110 transition-transform" />
                 <span>Blueprint</span>
-              </button>
-              <div className="h-4 w-px bg-gray-800"></div>
-              <button 
+                </button>
+                <div className="h-4 w-px bg-gray-800"></div>
+                <button
                 onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] transition-all group ${isHistoryOpen ? 'text-arc-teal' : 'text-gray-500 hover:text-white'}`}
-              >
+                className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] transition-all group ${isHistoryOpen ? 'text-arc-teal' : 'text-white hover:text-arc-teal'}`}
+                >
+
                 <History className="w-3.5 h-3.5 group-hover:rotate-[-45deg] transition-transform" />
                 <span>Time Machine</span>
               </button>
@@ -803,7 +804,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
                         "{option}"
                     </button>
                   ))}
-                  <button onClick={() => setIsSuggestionModalOpen(false)} className="mt-4 text-[9px] text-gray-600 hover:text-white uppercase font-black tracking-widest transition-colors">Discard Suggestions</button>
+                  <button onClick={() => setIsSuggestionModalOpen(false)} className="mt-4 text-[9px] text-white/70 hover:text-arc-teal uppercase font-black tracking-widest transition-colors">Discard Suggestions</button>
                </div>
             )}
           </div>
@@ -842,7 +843,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
 const FormatButton = ({ label, shortcut, isActive, onClick }) => (
   <button
     onMouseDown={(e) => { e.preventDefault(); onClick(); }}
-    className={`relative px-6 py-3 rounded-sm font-black text-[9px] uppercase tracking-[0.2em] transition-all duration-500 border group ${isActive ? 'bg-arc-teal border-arc-teal text-black shadow-glow' : 'bg-transparent border-white/5 text-gray-600 hover:text-white hover:border-white/20'}`}
+    className={`relative px-6 py-3 rounded-sm font-black text-[9px] uppercase tracking-[0.2em] transition-all duration-500 border group ${isActive ? 'bg-arc-teal border-arc-teal text-black shadow-glow' : 'bg-transparent border-white/5 text-white/70 hover:text-arc-teal hover:border-white/20'}`}
   >
     <span className={`absolute top-1 left-1.5 text-[7px] font-black transition-opacity ${isActive ? 'opacity-50' : 'opacity-20 group-hover:opacity-100'}`}>{shortcut}</span>
     {label}

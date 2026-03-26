@@ -5,6 +5,7 @@ from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib import colors
 from io import BytesIO
+from datetime import datetime
 import requests
 import qrcode
 import logging
@@ -28,6 +29,12 @@ class PDFService:
         self.styles.add(ParagraphStyle(name='ScriptChar', fontSize=12, leading=14, fontName='Courier', leftIndent=2.0*inch, spaceBefore=6))
         self.styles.add(ParagraphStyle(name='ScriptDialogue', fontSize=12, leading=14, fontName='Courier', leftIndent=1.0*inch, rightIndent=1.0*inch, spaceAfter=6))
         self.styles.add(ParagraphStyle(name='ScriptParenthetical', fontSize=12, leading=14, fontName='Courier', leftIndent=1.5*inch, rightIndent=1.5*inch))
+        
+        # Industry Standard Title Page (Strict Courier)
+        self.styles.add(ParagraphStyle(name='IndustryTitle', fontSize=12, fontName='Courier-Bold', alignment=TA_CENTER, leading=14, spaceAfter=12))
+        self.styles.add(ParagraphStyle(name='IndustryStandard', fontSize=12, fontName='Courier', alignment=TA_CENTER, leading=14))
+        self.styles.add(ParagraphStyle(name='IndustryContact', fontSize=12, fontName='Courier', alignment=TA_LEFT, leading=14))
+        self.styles.add(ParagraphStyle(name='IndustryLegal', fontSize=10, fontName='Courier', alignment=TA_LEFT, leading=12))
 
     def _fetch_image(self, url: str):
         if not url or 'placehold.co' in url: return None
@@ -48,7 +55,32 @@ class PDFService:
         buf.seek(0)
         return buf
 
-    def compile_master_deck(self, project_data: Dict[str, Any], script_blocks: List[Dict[str, Any]] = None, include_sections: List[str] = None) -> BytesIO:
+    def _on_page(self, canvas, doc, watermark_text=None):
+        """Canvas-level drawing for every page (Watermarks and Page Numbers)."""
+        canvas.saveState()
+        
+        # 1. Watermark (Diagonal, Transparent)
+        if watermark_text:
+            canvas.setFont('Courier-Bold', 40)
+            canvas.setStrokeColor(colors.grey)
+            canvas.setFillColor(colors.grey)
+            canvas.setStrokeAlpha(0.1)
+            canvas.setFillAlpha(0.1)
+            canvas.translate(3*inch, 3*inch)
+            canvas.rotate(45)
+            canvas.drawCentredString(0, 0, watermark_text.upper())
+            canvas.setStrokeAlpha(1.0) # Reset
+            canvas.setFillAlpha(1.0)
+            
+        # 2. Page Number (Top Right, starting after title pages)
+        # Note: Professional scripts put numbers top right
+        if doc.page > 1:
+            canvas.setFont('Courier', 12)
+            canvas.drawRightString(7.75*inch, 10.5*inch, f"{doc.page - 1}.")
+            
+        canvas.restoreState()
+
+    def compile_master_deck(self, project_data: Dict[str, Any], script_blocks: List[Dict[str, Any]] = None, include_sections: List[str] = None, recipient: str = None) -> BytesIO:
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch, leftMargin=0.75*inch, rightMargin=0.75*inch)
         story = []
@@ -63,8 +95,21 @@ class PDFService:
         poster_url = project_data.get('poster_url')
         teaser_url = project_data.get('teaser_url')
         characters = project_data.get('characters', [])
+        
+        # Registration Metadata (Robust Extraction)
+        reg = project_data.get('registration') or {}
+        author_name = str(reg.get('author_name') or project_data.get('author') or 'Unnamed Writer')
+        contact_info = str(reg.get('contact_info') or '')
+        wga_number = str(reg.get('wga_number') or '')
+        
+        # Safe year extraction
+        try:
+            current_year = str(datetime.now().year)
+        except:
+            current_year = "2026"
+        copy_year = str(reg.get('copyright_year') or current_year)
 
-        # --- PAGE 1: COVER ---
+        # --- PAGE 1: VISUAL SOUL COVER ---
         if 'cover' in include_sections:
             story.append(Spacer(1, 1*inch))
             story.append(Paragraph(title, self.styles['ArcTitle']))
@@ -75,9 +120,35 @@ class PDFService:
             if poster_url:
                 p_img = self._fetch_image(poster_url)
                 if p_img:
-                    img = Image(p_img, width=4.5*inch, height=6.75*inch) # 2:3 ratio
+                    img = Image(p_img, width=4.5*inch, height=6*inch) # Normalized
                     img.hAlign = 'CENTER'
                     story.append(img)
+            
+            story.append(PageBreak())
+
+        # --- INDUSTRY TITLE PAGE (Always before script if script included) ---
+        if 'script' in include_sections:
+            # WGA (Top Right)
+            if wga_number:
+                story.append(Paragraph(f"WGAw Reg: {wga_number}", self.styles['IndustryContact']))
+            
+            story.append(Spacer(1, 3.5*inch))
+            story.append(Paragraph(f"<u>{title}</u>", self.styles['IndustryTitle']))
+            story.append(Spacer(1, 0.2*inch))
+            story.append(Paragraph("Written by", self.styles['IndustryStandard']))
+            story.append(Spacer(1, 0.1*inch))
+            story.append(Paragraph(author_name, self.styles['IndustryStandard']))
+            
+            story.append(Spacer(1, 4*inch))
+            
+            # Contact & Legal Footer
+            footer_data = [
+                [Paragraph(contact_info.replace('\n', '<br/>'), self.styles['IndustryContact']), 
+                 Paragraph(f"&copy; {copy_year} {author_name}.<br/>All Rights Reserved.", self.styles['IndustryLegal'])]
+            ]
+            footer_table = Table(footer_data, colWidths=[4*inch, 3*inch])
+            footer_table.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'BOTTOM')]))
+            story.append(footer_table)
             
             story.append(PageBreak())
 
@@ -169,6 +240,9 @@ class PDFService:
         if story and isinstance(story[-1], PageBreak):
             story.pop()
 
-        doc.build(story)
+        # Build with Page Callback for Watermarks/Numbers
+        doc.build(story, onLaterPages=lambda c, d: self._on_page(c, d, watermark_text=recipient), 
+                  onFirstPage=lambda c, d: self._on_page(c, d, watermark_text=recipient))
+        
         buffer.seek(0)
         return buffer

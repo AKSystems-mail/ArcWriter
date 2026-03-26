@@ -4,10 +4,11 @@ import BeatSheetForm from '../components/BeatSheetForm';
 import CharacterProfile from '../components/CharacterProfile';
 import MobilePitchDeck from '../components/MobilePitchDeck';
 import VisualsStudio from '../components/VisualsStudio';
+import PitchTracker from '../components/PitchTracker';
 import { useResponsive } from '../hooks/useResponsive';
 import { auth, db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { BookOpen, LogOut, ChevronLeft, CreditCard } from 'lucide-react';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { BookOpen, LogOut, ChevronLeft, CreditCard, Activity } from 'lucide-react';
 
 const Architect = () => {
     const location = useLocation();
@@ -16,9 +17,18 @@ const Architect = () => {
     const { isMobile } = useResponsive();
     const [projectData, setProjectData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [userProfile, setUserProfile] = useState(null);
 
     const projectId = params.projectId || location.state?.project_id || "default_project";
     const universeId = location.state?.universe_id || "default_universe"; 
+
+    useEffect(() => {
+        if (!auth.currentUser) return;
+        const unsub = onSnapshot(doc(db, 'users', auth.currentUser.uid), (doc) => {
+            setUserProfile(doc.data());
+        });
+        return () => unsub();
+    }, []);
 
     const fetchProject = async () => {
         try {
@@ -89,11 +99,11 @@ const Architect = () => {
                     <div className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate('/dashboard')}>
                         <img src="/ArcWriter_logo.png" alt="ArcWriter" className="h-8" />
                         <div className="h-4 w-px bg-gray-800"></div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-400 group-hover:text-arc-teal transition-colors">Studio</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white group-hover:text-arc-teal transition-colors">Studio</span>
                     </div>
                     <div className="h-4 w-px bg-gray-800"></div>
                     <div className="flex items-center gap-3">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-600 italic">Project</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-white/60 italic">Project</span>
                         <span className="text-xs font-black uppercase tracking-tight text-white">{projectData?.title || 'Initializing...'}</span>
                     </div>
                 </div>
@@ -108,13 +118,13 @@ const Architect = () => {
                     </button>
                     <button 
                         onClick={() => navigate(`/project/${projectId}/editor`, { state: { project_id: projectId, universe_id: universeId } })}
-                        className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 hover:text-white transition-all group"
+                        className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-white hover:text-arc-teal transition-all group"
                     >
                         <BookOpen className="w-3.5 h-3.5 text-arc-teal group-hover:scale-110 transition-transform" />
                         <span>Script Editor</span>
                     </button>
                     <div className="h-4 w-px bg-gray-800"></div>
-                    <button onClick={() => auth.signOut()} className="p-2 hover:bg-red-500/10 rounded-full text-gray-700 hover:text-red-500 transition-all">
+                    <button onClick={() => auth.signOut()} className="p-2 hover:bg-red-500/10 rounded-full text-white/60 hover:text-red-500 transition-all">
                         <LogOut className="w-4 h-4" />
                     </button>
                 </div>
@@ -127,20 +137,20 @@ const Architect = () => {
                         <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none mb-4">
                             The <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Blueprint</span>
                         </h1>
-                        <p className="text-gray-400 text-lg font-normal italic border-l border-white/10 pl-6 py-1">
+                        <p className="text-white/80 text-lg font-normal italic border-l border-white/10 pl-6 py-1">
                             Structural engineering for professional narrative assets.
                         </p>
                     </div>
                     <div className="hidden md:flex flex-col items-end gap-2 text-right">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-700">Studio Version</span>
-                        <span className="text-xs font-black text-gray-500">ARC-ENGINE v2.5.4</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Studio Version</span>
+                        <span className="text-xs font-black text-white/60">ARC-ENGINE v2.5.4</span>
                     </div>
                 </header>
 
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-40 gap-6">
                         <div className="w-12 h-12 border-2 border-white/5 border-t-arc-teal rounded-full animate-spin" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 animate-pulse">Accessing Project DNA...</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/50 animate-pulse">Accessing Project DNA...</span>
                     </div>
                 ) : (
                     <div className="space-y-24">
@@ -173,6 +183,27 @@ const Architect = () => {
                                 universeId={universeId}
                                 projectId={projectId}
                                 initialCharacters={projectData?.characters}
+                            />
+                        </section>
+
+                        <div className="h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+
+                        {/* Distribution & Intelligence */}
+                        <section className="relative pb-20">
+                            <div className="flex items-center gap-3 mb-12">
+                                <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] italic text-white/40">Section 05: Intelligence</span>
+                            </div>
+                            <div className="mb-12">
+                                <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter">
+                                    Pitch <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Tracker</span>
+                                </h2>
+                                <p className="text-white/60 mt-4 text-lg font-light italic">Monitor industry engagement and manage asset distribution.</p>
+                            </div>
+                            
+                            <PitchTracker 
+                                universeId={universeId} 
+                                projectId={projectId} 
+                                isSubscriber={userProfile?.subscription_status === 'active'} 
                             />
                         </section>
                     </div>

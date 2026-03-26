@@ -59,6 +59,7 @@ const Billing = () => {
             features: [
                 'Unlimited Logic & Critique',
                 '150 Studio Credits / mo',
+                'Pitch Tracker (Engagement Intelligence)',
                 'Time Machine (50 Snapshots)',
                 'High-Fidelity PDF Exports',
                 'Universe Continuity Engine'
@@ -76,6 +77,7 @@ const Billing = () => {
             description: 'Perfect for completing a heavy visual production.',
             features: [
                 '600 Credits (No expiration)',
+                'Full Intelligence Vault Access',
                 'Permanent Time Machine Unlock',
                 'Permanent PDF Unlock',
                 'Priority Rendering Queue',
@@ -117,13 +119,13 @@ const Billing = () => {
                             <Zap className="w-8 h-8 text-arc-orange" fill="currentColor" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mb-1">Current Balance</p>
-                            <h2 className="text-3xl font-black tabular-nums">{userProfile?.studio_credits?.toLocaleString() || '0'} <span className="text-sm font-light text-gray-600">Credits</span></h2>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-1">Current Balance</p>
+                            <h2 className="text-3xl font-black tabular-nums">{userProfile?.studio_credits?.toLocaleString() || '0'} <span className="text-sm font-light text-white/20">Credits</span></h2>
                         </div>
                     </div>
                     <div className="h-12 w-px bg-white/10 hidden md:block" />
                     <div className="text-center md:text-right">
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mb-1">Active Plan</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-1">Active Plan</p>
                         <h3 className="text-xl font-black uppercase text-arc-teal tracking-tighter italic">
                             {userProfile?.plan?.replace('_', ' ') || 'Explorer (Free)'}
                         </h3>
@@ -168,19 +170,19 @@ const Billing = () => {
 
                             <div className="mb-10">
                                 <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 italic">{plan.name}</h3>
-                                <p className="text-gray-500 text-sm font-light italic leading-relaxed">{plan.description}</p>
+                                <p className="text-white/40 text-sm font-light italic leading-relaxed">{plan.description}</p>
                             </div>
 
                             <div className="mb-10">
                                 <span className="text-5xl font-black tracking-tighter">{plan.price}</span>
-                                <span className="text-gray-600 font-light text-lg italic">{plan.period}</span>
+                                <span className="text-white/20 font-light text-lg italic">{plan.period}</span>
                             </div>
 
                             <div className="space-y-4 mb-12 flex-1">
                                 {plan.features.map((feat, i) => (
                                     <div key={i} className="flex items-center gap-3">
                                         <Check className="w-4 h-4 text-arc-teal shrink-0" />
-                                        <span className="text-xs text-gray-400 font-light uppercase tracking-widest">{feat}</span>
+                                        <span className="text-xs text-white/60 font-light uppercase tracking-widest">{feat}</span>
                                     </div>
                                 ))}
                             </div>

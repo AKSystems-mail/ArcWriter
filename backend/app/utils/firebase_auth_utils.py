@@ -97,16 +97,25 @@ async def verify_project_ownership(universe_id: str, project_id: str, user_id: s
     Helper to verify that the project exists and is owned by the user.
     Raises HTTPException if unauthorized.
     """
-    db = get_firestore_db()
-    project_ref = db.collection("universes").document(universe_id).collection("projects").document(project_id)
-    project_doc = project_ref.get()
-    
-    if not project_doc.exists:
-        raise HTTPException(status_code=404, detail="Project not found.")
+    try:
+        db = get_firestore_db()
+        print(f"DEBUG: Verifying ownership for universe={universe_id}, project={project_id}, user={user_id}")
+        project_ref = db.collection("universes").document(universe_id).collection("projects").document(project_id)
+        project_doc = project_ref.get()
         
-    data = project_doc.to_dict()
-    if data.get("owner_id") != user_id:
-        print(f"SECURITY ALERT: User {user_id} attempted unauthorized access to project {project_id}")
-        raise HTTPException(status_code=403, detail="Unauthorized access to this project.")
-    
-    return data
+        if not project_doc.exists:
+            print(f"DEBUG: Project {project_id} not found in Firestore.")
+            raise HTTPException(status_code=404, detail="Project not found.")
+            
+        data = project_doc.to_dict()
+        if data.get("owner_id") != user_id:
+            print(f"SECURITY ALERT: User {user_id} attempted unauthorized access to project {project_id} (Owned by {data.get('owner_id')})")
+            raise HTTPException(status_code=403, detail="Unauthorized access to this project.")
+        
+        return data
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        print(f"ERROR: verify_project_ownership failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
