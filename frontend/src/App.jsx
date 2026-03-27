@@ -18,6 +18,7 @@ import OnboardingWizard from './pages/OnboardingWizard';
 import ScriptEditorPage from './pages/ScriptEditorPage';
 import PitchDeckView from './pages/PitchDeckView';
 import PitchTrackerPage from './pages/PitchTrackerPage';
+import ManuscriptUpload from './pages/ManuscriptUpload';
 import NotFoundPage from './pages/NotFoundPage';
 import './index.css';
 
@@ -171,6 +172,14 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <PitchTrackerPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/upload-manuscript"
+                        element={
+                            <ProtectedRoute>
+                                <ManuscriptUpload />
                             </ProtectedRoute>
                         }
                     />

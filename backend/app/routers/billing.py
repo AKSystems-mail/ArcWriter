@@ -8,6 +8,10 @@ router = APIRouter(prefix="/api/billing", tags=["billing"])
 class CheckoutRequest(BaseModel):
     tier: str # 'WRITER_ROOM_MONTHLY' | 'WRITER_ROOM_ANNUAL' | 'STUDIO_PASS'
 
+class AdaptationCheckoutRequest(BaseModel):
+    project_id: str
+    universe_id: str
+
 @router.get("/health")
 async def billing_health():
     return {"status": "billing router is live"}
@@ -42,6 +46,20 @@ async def create_session(request: CheckoutRequest, user_id: str = Depends(get_cu
     """Creates a Stripe Checkout session for the requested tier."""
     from main import services
     url = await services.stripe_service.create_checkout_session(user_id, request.tier)
+    return {"url": url}
+
+@router.post("/create-adaptation-checkout")
+async def create_adaptation_checkout(user_id: str = Depends(get_current_user)):
+    """Creates a Stripe session for one-time manuscript adaptation credit."""
+    from main import services
+    url = await services.stripe_service.create_adaptation_checkout_session(user_id)
+    return {"url": url}
+
+@router.post("/create-portal-session")
+async def create_portal_session(user_id: str = Depends(get_current_user)):
+    """Creates a Stripe Customer Portal session for subscription management."""
+    from main import services
+    url = await services.stripe_service.create_customer_portal_session(user_id)
     return {"url": url}
 
 @router.post("/webhook")

@@ -68,7 +68,7 @@ async def analyze_file(file: UploadFile = File(...), user_id: str = Depends(get_
 
         logic_engine = LogicEngine()
         # THRESHOLD: Scripts are usually >= 3 pages. 
-        if page_count >= 3:
+        if page_count >= 3 and script_blocks and len(script_blocks) > 5:
              # Deep reverse engineer
              metadata = logic_engine.reverse_engineer_script(text)
              metadata["source_type"] = "script"

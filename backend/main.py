@@ -16,6 +16,9 @@ from firebase_functions import https_fn
 from a2wsgi import ASGIMiddleware
 from flask import Response as FlaskResponse
 import logging
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +92,12 @@ services = None
 def lazy_initialize():
     global _initialized, services
     if not _initialized:
+        # Check for critical environment variables
+        if not os.getenv("GEMINI_API_KEY"):
+            print("WARNING: GEMINI_API_KEY is not set in the environment.")
+        else:
+            print("INFO: GEMINI_API_KEY detected.")
+
         # Instantiate services here
         services = ServiceRegistry()
         
@@ -96,22 +105,23 @@ def lazy_initialize():
         from app.utils.firebase_auth_utils import initialize_firebase_admin
         initialize_firebase_admin()
         
-        # Defer router registration to avoid deployment discovery timeouts
-        from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing, share
-        app.include_router(onboarding.router)
-        app.include_router(users.router)
-        app.include_router(pitchdeck.router)
-        app.include_router(script.router)
-        app.include_router(bible.router)
-        app.include_router(manual.router)
-        app.include_router(public.router)
-        app.include_router(billing.router)
-        app.include_router(share.router)
-        
         _initialized = True
 
 # Arc Studio API - Initialized with Security Hardening
 app = FastAPI(title="Arc Studio API")
+
+# Register Routers at top level for uvicorn visibility
+from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing, share, projects
+app.include_router(onboarding.router)
+app.include_router(users.router)
+app.include_router(pitchdeck.router)
+app.include_router(script.router)
+app.include_router(bible.router)
+app.include_router(manual.router)
+app.include_router(public.router)
+app.include_router(billing.router)
+app.include_router(share.router)
+app.include_router(projects.router)
 
 # Enable CORS
 app.add_middleware(

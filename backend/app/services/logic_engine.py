@@ -259,6 +259,62 @@ class LogicEngine:
         """Reverse engineers a full project bible from a script."""
         return self.generate_project_metadata(f"EXTRACT FROM FULL SCRIPT:\n{script_text[:50000]}")
 
+    def adapt_manuscript(self, manuscript_text: str) -> Dict[str, Any]:
+        """
+        Premium Feature: Adapts a full novel manuscript into a Cinematic Blueprint.
+        Leverages deep reasoning to condense prose into a professional structural outline.
+        """
+        system_instruction = (
+            "You are an expert Hollywood Screenwriter specializing in book-to-film adaptations.\n"
+            "TASK: Analyze the provided manuscript and extract the core cinematic spine.\n\n"
+            "STRATEGIC MANDATES:\n"
+            "1. CINEMATIC SPINE: Identify the central conflict and character goal.\n"
+            "2. CHARACTER MERGING: Combine minor characters into 'Composite Characters' to optimize for screen time.\n"
+            "3. 15-BEAT STRUCTURE: Condense the entire plot into a strict 15-point Save the Cat Beat Sheet.\n"
+            "4. VISUAL CONSISTENCY: Provide detailed visual descriptions for the primary cast, including explicit racial/ethnic backgrounds.\n\n"
+            "Return JSON ONLY:\n"
+            "{\n"
+            "  'title': str, 'genre': str, 'logline': str, 'synopsis': str, \n"
+            "  'character_descriptions': [{ 'name': str, 'role': str, 'description': str }],\n"
+            "  'beat_sheet': { 'opening_image': str, ... (all 15 beats) }\n"
+            "}"
+        )
+        user_prompt = f"MANUSCRIPT TEXT:\n{manuscript_text[:100000]}" # Use first 100k chars for blueprint
+        
+        try:
+            return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+        except Exception as e:
+            logger.error(f"LogicEngine Manuscript Error: {e}")
+            raise RuntimeError(f"Adaptation Engine failed: {str(e)}")
+
+    def generate_scriptment(self, adaptation_data: Dict, manuscript_text: str) -> List[Dict[str, str]]:
+        """
+        Generates a 40-60 scene 'Scriptment' from a manuscript.
+        Strictly Scene Headings and Action Lines only - NO DIALOGUE.
+        """
+        system_instruction = (
+            "You are an expert screenwriter creating a 'Scriptment' (a structural draft without dialogue) from a novel.\n"
+            "TASK: Break the story down into 40 to 60 cinematic scenes based on the provided Master Blueprint.\n\n"
+            "STRICT RULES:\n"
+            "1. FORMAT: Return a list of blocks: { 'type': 'Scene Heading' | 'Action', 'text': str }.\n"
+            "2. CONTENT: Provide ONLY the Scene Heading (Slugline) and a 2-3 sentence Action Line summarizing the visual events.\n"
+            "3. NO DIALOGUE: Do not write dialogue. Leave space for the human writer.\n"
+            "4. SCOPE: Ensure the scenes cover the entire story from the Opening Image to the Final Image.\n\n"
+            "Return JSON: { 'blocks': [{...}, {...}] }"
+        )
+        user_prompt = (
+            f"MASTER BLUEPRINT:\n{json.dumps(adaptation_data)}\n\n"
+            f"MANUSCRIPT EXCERPT (for visual blocking):\n{manuscript_text[:50000]}\n\n"
+            "TASK: Generate the full 40-60 scene scriptment."
+        )
+        
+        try:
+            response = self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+            return response.get("blocks", []) if isinstance(response, dict) else []
+        except Exception as e:
+            logger.error(f"Scriptment Generation Error: {e}")
+            return [{"type": "Scene Heading", "text": "INT. STUDIO - DAY"}, {"type": "Action", "text": "The scriptment generation encountered an error. Please contact support."}]
+
     def distill_notes(self, notes_text: str) -> Dict[str, Any]:
         """Distills core themes and beats from notes."""
         return self.generate_project_metadata(f"EXTRACT FROM ROUGH NOTES:\n{notes_text[:20000]}")

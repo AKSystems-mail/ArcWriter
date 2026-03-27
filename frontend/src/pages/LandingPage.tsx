@@ -9,6 +9,9 @@ import {
   Compass,
   ArrowRight,
   Zap,
+  Twitter,
+  Linkedin,
+  Facebook,
 } from "lucide-react";
 import { auth } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -262,6 +265,48 @@ const LandingPage: React.FC = () => {
             {user ? "RETURN TO PROJECT" : "Initialize Your Masterpiece"}
           </button>
         </div>
+      </section>
+
+      {/* Spread the Word Section */}
+      <section className="py-20 bg-[#050505] border-t border-white/5 relative overflow-hidden">
+        <div className="max-w-4xl mx-auto px-8 text-center relative z-10">
+          <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] mb-8 block italic">Community & Growth</span>
+          <h3 className="text-2xl md:text-4xl font-black uppercase tracking-tighter mb-10 italic">Spread the Word</h3>
+          
+          <div className="flex flex-wrap justify-center gap-6">
+            <a 
+              href="https://twitter.com/intent/tweet?text=I'm%20writing%20my%20next%20script%20on%20ArcWriter.%20It's%20a%20Studio-in-a-Box%20that%20uses%20Game%20Theory%20to%20stress-test%20plot%20holes.%20Check%20it%20out!%20%F0%9F%8E%AC%E2%9C%8D%EF%B8%8F&url=https://arcwriter.us"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-3 px-8 py-4 bg-black border border-white/10 rounded-full hover:border-arc-teal/50 hover:bg-arc-teal/5 transition-all duration-500"
+            >
+              <Twitter className="w-4 h-4 text-white group-hover:text-arc-teal transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">Share on X</span>
+            </a>
+
+            <a 
+              href="https://www.linkedin.com/shareArticle?mini=true&url=https://arcwriter.us&title=ArcWriter%20-%20The%20Studio%20in%20a%20Box&summary=I'm%20using%20ArcWriter%20to%20structure%20and%20pitch%20my%20screenplays.%20Highly%20recommend%20checking%20it%20out."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-3 px-8 py-4 bg-black border border-white/10 rounded-full hover:border-arc-teal/50 hover:bg-arc-teal/5 transition-all duration-500"
+            >
+              <Linkedin className="w-4 h-4 text-white group-hover:text-arc-teal transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">LinkedIn</span>
+            </a>
+
+            <a 
+              href="https://www.facebook.com/sharer/sharer.php?u=https://arcwriter.us"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-3 px-8 py-4 bg-black border border-white/10 rounded-full hover:border-arc-teal/50 hover:bg-arc-teal/5 transition-all duration-500"
+            >
+              <Facebook className="w-4 h-4 text-white group-hover:text-arc-teal transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">Facebook</span>
+            </a>
+          </div>
+        </div>
+        {/* Subtle background element */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-arc-teal/5 rounded-full blur-[120px] pointer-events-none" />
       </section>
 
       {/* Minimal Footer */}

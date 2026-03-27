@@ -7,46 +7,68 @@ import { doc, onSnapshot } from 'firebase/firestore';
 
 const Billing = () => {
     const navigate = useNavigate();
-    const [userProfile, setUserProfile] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [isAnnual, setIsAnnual] = useState(false);
+    const [isAnnual, setIsAnnual] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+    const [userProfile, setUserProfile] = useState<any>(null);
 
     useEffect(() => {
         if (!auth.currentUser) return;
-        
-        // Real-time listener for credits and plan status
         const unsub = onSnapshot(doc(db, 'users', auth.currentUser.uid), (doc) => {
             setUserProfile(doc.data());
         });
-        
         return () => unsub();
     }, []);
 
     const handleSubscribe = async (tier) => {
-        setLoading(true);
+        setIsLoading(true);
         try {
             const response = await apiClient('/api/billing/create-session', {
                 method: 'POST',
                 body: JSON.stringify({ tier })
             });
+            if (!response.ok) throw new Error("Checkout failed");
             const { url } = await response.json();
-            window.location.href = url; // Redirect to Stripe
+            window.location.href = url;
         } catch (error) {
             console.error("Billing Error:", error);
-            alert("Failed to initiate checkout. Please try again.");
+            alert("Studio Error: Could not initiate secure checkout.");
         } finally {
-            setLoading(false);
+            setIsLoading(false);
+        }
+    };
+
+    const handleOpenPortal = async () => {
+        setIsLoading(true);
+        try {
+            const response = await apiClient('/api/billing/create-portal-session', {
+                method: 'POST'
+            });
+            if (!response.ok) throw new Error("Failed to open portal");
+            const { url } = await response.json();
+            window.location.href = url;
+        } catch (error) {
+            console.error("Portal Error:", error);
+            alert("Studio Error: Could not open billing portal.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const plans = [
         {
-            id: 'free',
+            id: 'explorer',
             name: 'Explorer',
             price: '$0',
-            description: 'Test the logic engine and build your first beat sheet.',
-            features: ['Public Beat Sheet Builder', '25 Starter Credits', 'Discourse Access'],
+            period: '/mo',
+            description: 'The foundation for narrative brainstorming.',
+            features: [
+                'Limited Logic & Critique',
+                '25 Studio Credits',
+                'Basic PDF Export',
+                '1 Active Universe'
+            ],
             cta: 'Current Plan',
+            tier: 'FREE',
             disabled: true,
             featured: false
         },
@@ -90,33 +112,15 @@ const Billing = () => {
         }
     ];
 
-    const handleBackNavigation = () => {
-        if (window.history.length > 2) {
-            navigate(-1);
-        } else {
-            navigate('/dashboard'); // Fallback to dashboard
-        }
-    };
-
     return (
-        <div className="min-h-screen bg-obsidian-black text-white py-20 px-8 relative">
-            {/* Top Navigation Back Button */}
-            <div className="absolute top-10 left-10 z-50">
-                <button 
-                    onClick={handleBackNavigation}
-                    className="group flex items-center gap-3 px-6 py-3 bg-white/5 border border-white/5 hover:border-white/20 rounded-sm transition-all text-gray-400 hover:text-white"
-                >
-                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Back to Studio</span>
-                </button>
-            </div>
-
-            <div className="max-w-6xl mx-auto">
-                {/* Status Bar */}
-                <div className="flex flex-col md:flex-row justify-between items-center bg-white/5 border border-white/10 rounded-sm p-8 mb-20">
-                    <div className="flex items-center gap-6 mb-6 md:mb-0">
-                        <div className="w-16 h-16 bg-arc-orange/10 rounded-full flex items-center justify-center border border-arc-orange/20">
-                            <Zap className="w-8 h-8 text-arc-orange" fill="currentColor" />
+        <div className="min-h-screen bg-black text-white selection:bg-arc-teal/30 selection:text-arc-teal">
+            <div className="max-w-7xl mx-auto px-8 py-20 animate-fade-in">
+                
+                {/* User Stats Bar */}
+                <div className="flex flex-col md:flex-row items-center justify-between bg-[#080808] border border-white/5 p-8 rounded-sm mb-20 shadow-2xl">
+                    <div className="flex items-center gap-8 mb-6 md:mb-0">
+                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                            <CreditCard className="w-6 h-6 text-white/40" />
                         </div>
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-1">Current Balance</p>
@@ -126,11 +130,32 @@ const Billing = () => {
                     <div className="h-12 w-px bg-white/10 hidden md:block" />
                     <div className="text-center md:text-right">
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-1">Active Plan</p>
-                        <h3 className="text-xl font-black uppercase text-arc-teal tracking-tighter italic">
+                        <h3 className="text-xl font-black uppercase text-arc-teal tracking-tighter italic mb-3">
                             {userProfile?.plan?.replace('_', ' ') || 'Explorer (Free)'}
                         </h3>
+                        {userProfile?.subscription_status === 'active' && (
+                            <button 
+                                onClick={handleOpenPortal}
+                                className="text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white border-b border-white/10 hover:border-white transition-all pb-0.5"
+                            >
+                                Manage Subscription
+                            </button>
+                        )}
                     </div>
                 </div>
+
+                {/* Grace Period Notification */}
+                {userProfile?.pending_cancellation && (
+                    <div className="mb-12 bg-arc-orange/5 border border-arc-orange/20 p-6 rounded-sm flex items-center gap-6 animate-pulse">
+                        <AlertCircle className="w-6 h-6 text-arc-orange" />
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-widest text-white">Subscription Ending Soon</p>
+                            <p className="text-[10px] text-white/60 uppercase tracking-widest mt-1">
+                                Your 'Writer's Room' access will remain active until {userProfile.next_billing_date ? new Date(userProfile.next_billing_date).toLocaleDateString() : 'the end of your period'}.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Header */}
                 <div className="text-center mb-16">
@@ -140,31 +165,28 @@ const Billing = () => {
                     </h1>
                     
                     {/* Toggle */}
-                    <div className="flex items-center justify-center gap-4 mt-12">
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${!isAnnual ? 'text-white' : 'text-gray-600'}`}>Monthly</span>
+                    <div className="flex items-center justify-center gap-6 mt-12">
+                        <span className={`text-xs font-black uppercase tracking-widest ${!isAnnual ? 'text-white' : 'text-white/40'}`}>Monthly</span>
                         <button 
                             onClick={() => setIsAnnual(!isAnnual)}
                             className="w-14 h-7 bg-white/10 rounded-full relative p-1 transition-colors hover:bg-white/20"
                         >
                             <div className={`w-5 h-5 bg-arc-teal rounded-full transition-transform duration-300 ${isAnnual ? 'translate-x-7' : 'translate-x-0'}`} />
                         </button>
-                        <div className="flex items-center gap-2">
-                            <span className={`text-[10px] font-black uppercase tracking-widest ${isAnnual ? 'text-white' : 'text-gray-600'}`}>Annual</span>
-                            <span className="bg-arc-orange/20 text-arc-orange text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">Save 20%</span>
+                        <div className="flex items-center gap-3">
+                            <span className={`text-xs font-black uppercase tracking-widest ${isAnnual ? 'text-white' : 'text-white/40'}`}>Annual</span>
+                            <span className="bg-arc-orange text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter italic shadow-lg">Save 20%</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Grid */}
+                {/* Plans Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {plans.map((plan) => (
-                        <div 
-                            key={plan.id}
-                            className={`relative bg-black border ${plan.featured ? 'border-arc-teal shadow-[0_0_50px_rgba(0,206,201,0.1)]' : 'border-white/5'} rounded-sm p-10 flex flex-col transition-all hover:border-white/20`}
-                        >
+                        <div key={plan.id} className={`relative flex flex-col p-12 rounded-sm border transition-all duration-500 bg-[#080808] ${plan.featured ? 'border-arc-teal/30 shadow-[0_0_100px_rgba(0,206,201,0.05)] scale-105 z-10' : 'border-white/5 hover:border-white/10'}`}>
                             {plan.featured && (
-                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-arc-teal text-black text-[9px] font-black uppercase tracking-[0.3em] px-4 py-1.5 rounded-full">
-                                    Most Popular
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-arc-teal text-black px-6 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.3em] shadow-glow">
+                                    Recommended
                                 </div>
                             )}
 
@@ -188,64 +210,24 @@ const Billing = () => {
                             </div>
 
                             <button
-                                onClick={() => !plan.disabled && handleSubscribe(plan.tier)}
-                                disabled={plan.disabled || loading}
-                                className={`w-full py-5 rounded-none font-black text-[10px] uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-3 ${
-                                    plan.featured 
-                                    ? 'bg-arc-teal text-white hover:bg-white hover:text-black shadow-xl' 
-                                    : 'bg-white/5 text-white hover:bg-white hover:text-black'
-                                } disabled:opacity-30`}
+                                onClick={() => handleSubscribe(plan.tier)}
+                                disabled={plan.disabled || isLoading}
+                                className={`w-full py-5 rounded-sm font-black text-[10px] uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-3 ${plan.featured ? 'bg-white text-black hover:bg-arc-teal hover:text-white' : 'bg-white/5 border border-white/10 text-white hover:bg-white hover:text-black hover:border-white'} disabled:opacity-50 disabled:cursor-default`}
                             >
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : plan.cta}
-                                {!plan.disabled && <ArrowRight className="w-4 h-4" />}
+                                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : plan.cta}
                             </button>
                         </div>
                     ))}
                 </div>
 
-                {/* Beta Code Redemption Section */}
-                <div className="mt-20 max-w-md mx-auto p-8 bg-white/5 border border-dashed border-white/10 rounded-sm text-center group hover:border-arc-teal/30 transition-all">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 mb-6">Authorized Beta Access</h4>
-                    <div className="flex gap-2">
-                        <input 
-                            id="beta-code-input"
-                            type="text" 
-                            placeholder="ENTER SECRET CODE" 
-                            className="bg-black border border-white/10 px-4 py-3 rounded-none text-xs font-black tracking-widest uppercase focus:outline-none focus:border-arc-teal w-full"
-                        />
-                        <button 
-                            onClick={async () => {
-                                const code = document.getElementById('beta-code-input').value;
-                                if(!code) return;
-                                try {
-                                    const response = await apiClient('/api/billing/redeem-beta', {
-                                        method: 'POST',
-                                        body: JSON.stringify({ code })
-                                    });
-                                    const data = await response.json();
-                                    if (response.ok) {
-                                        alert(data.message);
-                                        window.location.reload();
-                                    } else {
-                                        alert(data.detail || "Invalid Code");
-                                    }
-                                } catch (e) { alert("Redemption failed."); }
-                            }}
-                            className="bg-white text-black px-6 py-3 font-black text-[9px] uppercase tracking-widest hover:bg-arc-teal hover:text-white transition-all"
-                        >
-                            Redeem
-                        </button>
-                    </div>
-                    <p className="mt-4 text-[8px] text-gray-700 font-bold uppercase tracking-tighter italic">One-time claim for authorized studio testers.</p>
-                </div>
-
-                {/* Footer Security Note */}
-                <div className="mt-20 flex flex-col items-center gap-6 opacity-30">
-                    <div className="flex items-center gap-8">
-                        <Shield className="w-10 h-10" />
-                        <CreditCard className="w-10 h-10" />
-                    </div>
-                    <p className="text-[9px] font-black uppercase tracking-[0.5em] text-center max-w-md">
+                <div className="mt-32 text-center border-t border-white/5 pt-20">
+                    <button 
+                        onClick={() => navigate('/app')}
+                        className="inline-flex items-center gap-3 text-gray-600 hover:text-white transition-colors text-[10px] font-black uppercase tracking-[0.4em]"
+                    >
+                        <ArrowLeft className="w-4 h-4" /> Return to Studio
+                    </button>
+                    <p className="mt-8 text-gray-700 text-[10px] uppercase tracking-widest font-medium max-w-md mx-auto leading-relaxed shadow-md">
                         Secure checkout via Stripe. All generations are processed on encrypted compute clusters.
                     </p>
                 </div>
