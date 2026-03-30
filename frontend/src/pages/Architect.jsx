@@ -8,7 +8,7 @@ import PitchTracker from '../components/PitchTracker';
 import { useResponsive } from '../hooks/useResponsive';
 import { auth, db } from '../firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { BookOpen, LogOut, ChevronLeft, CreditCard, Activity } from 'lucide-react';
+import { BookOpen, LogOut, ChevronLeft, CreditCard, Activity, User } from 'lucide-react';
 
 const Architect = () => {
     const location = useLocation();
@@ -18,9 +18,14 @@ const Architect = () => {
     const [projectData, setProjectData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [userProfile, setUserProfile] = useState(null);
+    const characterSectionRef = React.useRef(null);
 
     const projectId = params.projectId || location.state?.project_id || "default_project";
     const universeId = location.state?.universe_id || "default_universe"; 
+
+    const scrollToCharacters = () => {
+        characterSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     useEffect(() => {
         if (!auth.currentUser) return;
@@ -29,6 +34,27 @@ const Architect = () => {
         });
         return () => unsub();
     }, []);
+
+    useEffect(() => {
+        const fetchContinuity = async () => {
+            if (projectData?.format === 'tv_series' && universeId) {
+                try {
+                    const token = await auth.currentUser?.getIdToken();
+                    const response = await fetch(`/api/projects/${universeId}/continuity`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        // We could use this to suggest characters or auto-add them
+                        console.log("Continuity Data Loaded:", data);
+                    }
+                } catch (err) {
+                    console.error("Continuity Error:", err);
+                }
+            }
+        };
+        if (projectData) fetchContinuity();
+    }, [projectData, universeId]);
 
     const fetchProject = async () => {
         try {
@@ -168,17 +194,30 @@ const Architect = () => {
 
                         {/* Narrative Structure */}
                         <section className="relative">
+                            <div className="flex justify-between items-center mb-8">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.5em] italic text-white/40">Section 03: Narrative Logic</span>
+                                </div>
+                                <button 
+                                    onClick={scrollToCharacters}
+                                    className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-arc-teal/20 border border-white/10 hover:border-arc-teal/30 rounded-sm transition-all group shadow-2xl"
+                                >
+                                    <User className="w-3.5 h-3.5 text-arc-teal group-hover:scale-110 transition-transform" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white group-hover:text-white transition-colors">Add / Edit Characters</span>
+                                </button>
+                            </div>
                             <BeatSheetForm
                                 initialBeats={projectData?.beat_sheet_data || projectData?.beat_sheet}
                                 universeId={universeId}
                                 projectId={projectId}
+                                format={projectData?.format || 'movie'}
                             />
                         </section>
 
                         <div className="h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent" />
 
                         {/* Personnel / Entities */}
-                        <section className="relative">
+                        <section ref={characterSectionRef} className="relative scroll-mt-32">
                             <CharacterProfile
                                 universeId={universeId}
                                 projectId={projectId}

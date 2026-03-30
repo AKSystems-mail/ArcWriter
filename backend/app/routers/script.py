@@ -26,11 +26,13 @@ class DialogueSuggestionRequest(BaseModel):
 class HookScanRequest(BaseModel):
     script_text: str
     genre: str
+    format: Optional[str] = "movie"
 
 class MacroAuditRequest(BaseModel):
     full_script: str
     universe_id: str
     project_id: str
+    format: Optional[str] = "movie"
 
 class SnapshotRequest(BaseModel):
     universe_id: str
@@ -194,7 +196,7 @@ async def macro_audit(request: MacroAuditRequest, user_id: str = Depends(get_cur
     try:
         manager = BibleManager(universe_name=request.universe_id, project_id=request.project_id)
         bible_context = manager.get_context_string()
-        result = logic_engine.audit_full_structure(request.full_script, bible_context)
+        result = logic_engine.audit_full_structure(request.full_script, bible_context, format=request.format)
         return result
     except Exception as e:
         print(f"Error in macro audit endpoint: {e}")
@@ -204,7 +206,7 @@ async def macro_audit(request: MacroAuditRequest, user_id: str = Depends(get_cur
 async def hook_scan(request: HookScanRequest, user_id: str = Depends(get_current_user)):
     logic_engine = LogicEngine()
     try:
-        result = logic_engine.scan_first_ten_pages(request.script_text, request.genre)
+        result = logic_engine.scan_first_ten_pages(request.script_text, request.genre, format=request.format)
         return result
     except Exception as e:
         print(f"Error in hook scan endpoint: {e}")

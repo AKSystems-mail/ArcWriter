@@ -15,6 +15,7 @@ import {
   Crown,
   Loader2,
   Shield,
+  Tv,
 } from "lucide-react";
 import { auth, db, storage } from "../firebase";
 import { apiClient } from "../api/client";
@@ -22,6 +23,7 @@ import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { doc, updateDoc } from "firebase/firestore";
 import { useSearchParams } from "react-router-dom";
 import ContextualHelp from "../components/ContextualHelp";
+import TVShowrunnerGuide from "../components/TVShowrunnerGuide";
 
 const ENABLE_ADAPTATION_MODE = false; // Premium feature enabled
 
@@ -32,6 +34,7 @@ const OnboardingWizard = () => {
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("Analyzing Narrative Core...");
   const [animateOut, setAnimateOut] = useState(false);
+  const [isTVGuideOpen, setIsTVGuideOpen] = useState(false);
   const fileInputRef = React.useRef(null);
 
   // Adaptation Engine State
@@ -41,8 +44,12 @@ const OnboardingWizard = () => {
 
   // State Machine
   const [data, setData] = useState({
-    mode: null, // 'explorer' | 'architect'
-    pitch: "",
+      mode: null,         // 'explorer' | 'architect'
+      format: 'movie',    // 'movie' | 'tv_series'
+      duration: '60m',    // '30m' | '60m'
+      series_premise: '',
+      pitch: '',
+
     universe_name: "",
     metadata: null,
     vibe: null,
@@ -242,10 +249,15 @@ const OnboardingWizard = () => {
     }
   };
 
-  const handleModeSelect = (mode) => {
-    setData((prev) => ({ ...prev, mode }));
-    nextStep();
+  const handleModeSelect = (mode, format = 'movie') => {
+      setData(prev => ({ 
+          ...prev, 
+          mode: format === 'tv_series' ? 'explorer' : mode, 
+          format 
+      }));
+      nextStep();
   };
+
 
   const handleGenerate = async () => {
     if (!data.pitch.trim()) return;
@@ -253,10 +265,16 @@ const OnboardingWizard = () => {
     setLoadingText("Analyzing Narrative Core...");
 
     try {
-      const response = await apiClient("/api/onboarding/initialize", {
-        method: "POST",
-        body: JSON.stringify({ pitch: data.pitch }),
-      });
+        const response = await apiClient('/api/onboarding/initialize', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                pitch: data.pitch,
+                format: data.format,
+                series_premise: data.series_premise,
+                episode_length: data.duration
+            })
+        });
+
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -368,8 +386,19 @@ const OnboardingWizard = () => {
 
   const renderStep1 = () => (
     <div
-      className={`w-full ${ENABLE_ADAPTATION_MODE ? "max-w-6xl" : "max-w-4xl"} mx-auto px-4 z-10`}
+      className={`w-full ${ENABLE_ADAPTATION_MODE ? "max-w-6xl" : "max-w-4xl"} mx-auto px-4 z-10 relative`}
     >
+      {/* TV Guide Trigger */}
+      <div className="flex justify-end mb-8">
+        <button 
+          onClick={() => handleModeSelect('explorer', 'tv_series')}
+          className="flex items-center gap-3 bg-white/5 hover:bg-arc-teal/20 border border-white/10 hover:border-arc-teal/30 px-6 py-3 rounded-sm transition-all group/tv"
+        >
+          <Tv className="w-4 h-4 text-arc-teal animate-pulse" />
+          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white group-hover/tv:text-arc-teal transition-colors">Series Production</span>
+        </button>
+      </div>
+
       <div className="text-center mb-20 max-w-3xl mx-auto animate-fade-in">
         <img
           src="/ArcWriter_logo.png"
@@ -510,6 +539,36 @@ const OnboardingWizard = () => {
         </div>
 
         <div className="flex flex-col gap-6">
+          {/* TV SERIES EXTRAS */}
+          {data.format === 'tv_series' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up">
+                  <div className="bg-[#080808] p-8 border border-white/5 rounded-sm">
+                      <label className="text-[10px] uppercase font-black tracking-widest text-white/40 mb-4 block italic">Episode Duration</label>
+                      <div className="flex gap-4">
+                          {['30m', '60m'].map(d => (
+                              <button
+                                  key={d}
+                                  onClick={() => setData(prev => ({ ...prev, duration: d }))}
+                                  className={`flex-1 py-4 rounded-sm font-black text-[9px] uppercase tracking-widest transition-all ${data.duration === d ? 'bg-white text-black shadow-glow' : 'bg-white/5 text-white/40 hover:text-white border border-white/5'}`}
+                              >
+                                  {d === '30m' ? 'Sitcom / Short' : 'Prestige / Drama'} ({d})
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+                  <div className="bg-[#080808] p-8 border border-white/5 rounded-sm">
+                      <label className="text-[10px] uppercase font-black tracking-widest text-white/40 mb-4 block italic">Series Premise (Optional)</label>
+                      <input
+                          type="text"
+                          value={data.series_premise}
+                          onChange={(e) => setData(prev => ({ ...prev, series_premise: e.target.value }))}
+                          placeholder="The overall goal of the show..."
+                          className="w-full bg-black border border-white/10 rounded-sm p-4 text-white focus:outline-none focus:border-arc-teal transition-all text-sm font-light italic"
+                      />
+                  </div>
+              </div>
+          )}
+
           <div className="relative group bg-[#080808] p-8 border border-white/5 rounded-sm shadow-2xl">
             <div className="flex justify-between items-center mb-4">
               <label className="text-[10px] uppercase font-black tracking-widest text-white/40 block">
@@ -972,6 +1031,9 @@ const OnboardingWizard = () => {
 
   return (
     <div className="fixed inset-0 bg-black bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-gray-900/40 via-black to-black flex flex-col items-center justify-start overflow-y-auto custom-scrollbar">
+      
+      <TVShowrunnerGuide isOpen={isTVGuideOpen} onClose={() => setIsTVGuideOpen(false)} />
+
       {/* 1. Full Screen Processing State (Post-Payment) */}
       {isProcessingAdaptation && (
         <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center p-12 text-center animate-fade-in">

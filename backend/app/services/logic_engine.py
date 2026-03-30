@@ -74,15 +74,31 @@ class LogicEngine:
             logger.error(f"LLM Generation Error: {e}")
             return [{"type": "Scene Heading", "text": "INT. ERROR - DAY"}]
 
-    def generate_project_metadata(self, pitch: str) -> Dict[str, Any]:
+    def generate_project_metadata(self, pitch: str, format: str = "movie", series_premise: str = "", episode_length: str = "60m") -> Dict[str, Any]:
         """Distills pitch into Project DNA (Genre, Logline, Beats, Characters)."""
+        
+        structure_instruction = "provide detailed text for all 15 Save the Cat beats."
+        beat_keys_hint = "'beat_sheet' (15 beats)"
+        format_context = f"FORMAT: {format.upper()}"
+        
+        if format == "tv_series":
+            structure_instruction = (
+                f"provide a standard {episode_length} TV Act Structure. Include: "
+                "Cold Open, Act 1, Act 2, Act 3, Act 4, Act 5, and Tag. "
+                "Focus on episodic momentum and the central dramatic question of the pilot."
+            )
+            beat_keys_hint = "'beat_sheet' (Cold Open, Act 1, Act 2, Act 3, Act 4, Act 5, Tag)"
+            if series_premise:
+                format_context += f"\nOVERALL SERIES PREMISE: {series_premise}"
+
         system_instruction = (
-            "You are a legendary Hollywood script consultant and character designer.\n\n"
+            "You are a legendary Hollywood script consultant and showrunner.\n\n"
+            f"{format_context}\n\n"
             "MANDATE: You MUST identify and invent names/descriptions for at least 4-6 primary characters.\n"
-            "MANDATE: Character descriptions MUST be visual and specific. Include: age, build, hair/eye color, style, and EXPLICIT ethnic/racial background (e.g., 'Black', 'South Asian', 'Latine', 'East Asian', 'Caucasian', etc.). This is critical for visual consistency.\n"
-            "MANDATE: You MUST provide detailed text for all 15 Save the Cat beats.\n\n"
+            "MANDATE: Character descriptions MUST be visual and specific. Include: age, build, hair/eye color, style, and EXPLICIT ethnic/racial background.\n"
+            f"MANDATE: You MUST {structure_instruction}\n\n"
             "Return a JSON object with keys: 'genre', 'logline', 'structure_suggestion', 'title', 'synopsis', "
-            "'character_descriptions' (list of {name, role, description}), and 'beat_sheet' (15 beats)."
+            f"'character_descriptions' (list of {{name, role, description}}), and {beat_keys_hint}."
         )
         user_prompt = f"Distill this project idea into a professional studio vision:\n\n{pitch[:15000]}"
         
@@ -173,11 +189,17 @@ class LogicEngine:
             logger.error(f"Error in suggest_dialogue: {e}")
             return []
 
-    def scan_first_ten_pages(self, script_text: str, genre: str) -> Dict[str, Any]:
+    def scan_first_ten_pages(self, script_text: str, genre: str, format: str = "movie") -> Dict[str, Any]:
         """Conducts a 'Gatekeeper Audit' of the first 10 pages with velocity analysis."""
+        executive_persona = "Senior Story Executive"
+        verdict_target = "Feature Potential"
+        if format == "tv_series":
+            executive_persona = "Showrunner & Network Head"
+            verdict_target = "Series Viability & Pilot Momentum"
+
         system_instruction = (
-            "You are a Senior Story Executive. Decide 'READ' or 'PASS' based on the first 10 pages.\n"
-            "MANDATE: Analyze the 'Hook Velocity' (how fast interest builds).\n"
+            f"You are a {executive_persona}. Decide 'READ' or 'PASS' based on the first 10 pages.\n"
+            f"MANDATE: Analyze the 'Hook Velocity' specifically for {verdict_target}.\n"
             "MANDATE: Return EXACTLY 10 integers in the 'velocity_curve' (one for each page).\n"
             "Return JSON: { \n"
             "  'gatekeeper_verdict': 'READ'|'PASS', \n"
@@ -195,14 +217,18 @@ class LogicEngine:
             logger.error(f"Error in hook scan: {e}")
             return {"gatekeeper_verdict": "PASS", "velocity_curve": [5] * 10}
 
-    def audit_full_structure(self, full_script: str, bible_context: str) -> Dict[str, Any]:
+    def audit_full_structure(self, full_script: str, bible_context: str, format: str = "movie") -> Dict[str, Any]:
         """Conducts a deep structural audit of the entire script."""
+        structure_type = "15-beat master structure"
+        if format == "tv_series":
+            structure_type = "7-point TV Act Structure (Cold Open, Acts 1-5, Tag)"
+
         system_instruction = (
             "You are a master script consultant. Analyze the full script for structural integrity.\n"
             "Focus specifically on:\n"
             "1. SETUP/PAYOFF (Chekhov's Gun): Is everything in Act 3 earned? Is anything missing from Act 1?\n"
             "2. CHARACTER ARCS: Do characters evolve consistently from start to finish?\n"
-            "3. BLUEPRINT ALIGNMENT: Does the script follow the 15-beat master structure provided?\n\n"
+            f"3. BLUEPRINT ALIGNMENT: Does the script follow the {structure_type} provided?\n\n"
             "Return JSON ONLY. STRICT JSON MANDATE: Escape all internal quotes within strings using backslashes.\n"
             "Return JSON: { 'structural_integrity_score': int, 'plothole_warnings': [str], 'pacing_verdict': str, 'full_audit_report': str }\n\n"
             "FORMATTING RULE: Provide 'full_audit_report' as a numbered list with empty lines between items."
@@ -255,9 +281,9 @@ class LogicEngine:
             logger.error(f"Resolution Scanner Error: {e}")
             return {"resolution_status": "Ambiguous", "loose_ends": ["Audit timed out."]}
 
-    def reverse_engineer_script(self, script_text: str) -> Dict[str, Any]:
+    def reverse_engineer_script(self, script_text: str, format: str = "movie") -> Dict[str, Any]:
         """Reverse engineers a full project bible from a script."""
-        return self.generate_project_metadata(f"EXTRACT FROM FULL SCRIPT:\n{script_text[:50000]}")
+        return self.generate_project_metadata(f"EXTRACT FROM FULL SCRIPT:\n{script_text[:50000]}", format=format)
 
     def adapt_manuscript(self, manuscript_text: str) -> Dict[str, Any]:
         """
@@ -287,19 +313,22 @@ class LogicEngine:
             logger.error(f"LogicEngine Manuscript Error: {e}")
             raise RuntimeError(f"Adaptation Engine failed: {str(e)}")
 
-    def generate_scriptment(self, adaptation_data: Dict, manuscript_text: str) -> List[Dict[str, str]]:
+    def generate_scriptment(self, adaptation_data: Dict, manuscript_text: str, format: str = "movie") -> List[Dict[str, str]]:
         """
-        Generates a 40-60 scene 'Scriptment' from a manuscript.
-        Strictly Scene Headings and Action Lines only - NO DIALOGUE.
+        Generates a 'Scriptment' from a manuscript.
         """
+        scene_count = "40 to 60"
+        if format == "tv_series":
+            scene_count = "25 to 35"
+
         system_instruction = (
-            "You are an expert screenwriter creating a 'Scriptment' (a structural draft without dialogue) from a novel.\n"
-            "TASK: Break the story down into 40 to 60 cinematic scenes based on the provided Master Blueprint.\n\n"
+            f"You are an expert screenwriter creating a 'Scriptment' from a novel.\n"
+            f"TASK: Break the story down into {scene_count} cinematic scenes based on the provided Master Blueprint.\n\n"
             "STRICT RULES:\n"
             "1. FORMAT: Return a list of blocks: { 'type': 'Scene Heading' | 'Action', 'text': str }.\n"
             "2. CONTENT: Provide ONLY the Scene Heading (Slugline) and a 2-3 sentence Action Line summarizing the visual events.\n"
             "3. NO DIALOGUE: Do not write dialogue. Leave space for the human writer.\n"
-            "4. SCOPE: Ensure the scenes cover the entire story from the Opening Image to the Final Image.\n\n"
+            "4. SCOPE: Ensure the scenes cover the entire story from start to finish.\n\n"
             "Return JSON: { 'blocks': [{...}, {...}] }"
         )
         user_prompt = (
@@ -315,9 +344,9 @@ class LogicEngine:
             logger.error(f"Scriptment Generation Error: {e}")
             return [{"type": "Scene Heading", "text": "INT. STUDIO - DAY"}, {"type": "Action", "text": "The scriptment generation encountered an error. Please contact support."}]
 
-    def distill_notes(self, notes_text: str) -> Dict[str, Any]:
+    def distill_notes(self, notes_text: str, format: str = "movie") -> Dict[str, Any]:
         """Distills core themes and beats from notes."""
-        return self.generate_project_metadata(f"EXTRACT FROM ROUGH NOTES:\n{notes_text[:20000]}")
+        return self.generate_project_metadata(f"EXTRACT FROM ROUGH NOTES:\n{notes_text[:20000]}", format=format)
 
     def public_structural_analysis(self, raw_input: str) -> Dict[str, Any]:
         """Special logic for the public lead magnet. Returns full sheet internally, but teaser externally."""

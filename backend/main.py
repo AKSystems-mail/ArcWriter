@@ -104,24 +104,24 @@ def lazy_initialize():
         # Move heavy imports here
         from app.utils.firebase_auth_utils import initialize_firebase_admin
         initialize_firebase_admin()
+
+        # Defer router registration to avoid deployment discovery timeouts
+        from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing, share, projects
+        app.include_router(onboarding.router)
+        app.include_router(users.router)
+        app.include_router(pitchdeck.router)
+        app.include_router(script.router)
+        app.include_router(bible.router)
+        app.include_router(manual.router)
+        app.include_router(public.router)
+        app.include_router(billing.router)
+        app.include_router(share.router)
+        app.include_router(projects.router)
         
         _initialized = True
 
 # Arc Studio API - Initialized with Security Hardening
 app = FastAPI(title="Arc Studio API")
-
-# Register Routers at top level for uvicorn visibility
-from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing, share, projects
-app.include_router(onboarding.router)
-app.include_router(users.router)
-app.include_router(pitchdeck.router)
-app.include_router(script.router)
-app.include_router(bible.router)
-app.include_router(manual.router)
-app.include_router(public.router)
-app.include_router(billing.router)
-app.include_router(share.router)
-app.include_router(projects.router)
 
 # Enable CORS
 app.add_middleware(
@@ -145,6 +145,7 @@ async def root():
 
 @app.get("/api/universes", response_model=List[Any])
 async def list_universes(user_id: str = Depends(get_current_user)):
+    lazy_initialize()
     # Local import for response model
     from pydantic import BaseModel
     class UniverseResponse(BaseModel):
@@ -169,6 +170,7 @@ class UpdateAnchorRequest(BaseModel):
 
 @app.post("/api/project/character/update_anchor")
 async def update_character_anchor(request: UpdateAnchorRequest, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
     db = get_firestore_db()
     try:
         project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
@@ -210,6 +212,7 @@ class ProjectResponse(BaseModel):
 
 @app.get("/api/project/{universe_name}/{project_id}", response_model=ProjectResponse)
 async def get_project_details(universe_name: str, project_id: str, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
     try:
         logger.info(f"Main: Fetching details for project {project_id} in universe {universe_name} for user {user_id}")
         project_config = await verify_project_ownership(universe_name, project_id, user_id)
@@ -247,6 +250,7 @@ class SceneRequest(BaseModel):
 
 @app.post("/api/critique")
 async def critique_scene(request: SceneRequest, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
     if not request.scene_text:
         raise HTTPException(status_code=400, detail="No scene text provided")
     
@@ -281,6 +285,7 @@ class AssetRequest(BaseModel):
 
 @app.post("/api/assets/generate")
 async def generate_asset(request: AssetRequest, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
     cost = 10 
     await services.user_service.deduct_credits(user_id, cost)
     
@@ -321,6 +326,7 @@ class RegenerateRequest(BaseModel):
 @app.post("/api/assets/regenerate")
 async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(get_current_user)):
     """Regenerates a specific asset (poster or character anchor). Billing occurs ONLY on success."""
+    lazy_initialize()
     try:
         logger.info(f"Regenerate Request: type={request.type}, character={request.character_name}")
         db = get_firestore_db()
@@ -406,6 +412,7 @@ class TeaserRequest(BaseModel):
 @app.post("/api/assets/generate_teaser")
 async def generate_teaser(request: TeaserRequest, user_id: str = Depends(get_current_user)):
     """Initializes a cinematic teaser render. Billing occurs ONLY on successful initialization."""
+    lazy_initialize()
     try:
         db = get_firestore_db()
         project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
@@ -436,6 +443,7 @@ async def generate_teaser(request: TeaserRequest, user_id: str = Depends(get_cur
 @app.get("/api/assets/teaser_status")
 async def get_teaser_status(operation_id: str, user_id: str = Depends(get_current_user)):
     """Checks the status of a long-running motion operation via query param."""
+    lazy_initialize()
     try:
         status = services.asset_studio.get_operation_status(operation_id)
         return status

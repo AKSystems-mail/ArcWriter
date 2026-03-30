@@ -59,5 +59,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+    // FEEDBACK COLLECTION
+    match /feedback/{feedbackId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if request.auth != null && 
+        (request.auth.uid == 'rezAaItMpOaLDRvnMkfX60Rrqoh1' || request.auth.uid == 'k4B9sTKY2FdrdlG3BdP4RhPt4g32');
+    }
   }
 }

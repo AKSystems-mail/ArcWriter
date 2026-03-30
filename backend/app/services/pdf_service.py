@@ -29,6 +29,7 @@ class PDFService:
         self.styles.add(ParagraphStyle(name='ScriptChar', fontSize=12, leading=14, fontName='Courier', leftIndent=2.0*inch, spaceBefore=6))
         self.styles.add(ParagraphStyle(name='ScriptDialogue', fontSize=12, leading=14, fontName='Courier', leftIndent=1.0*inch, rightIndent=1.0*inch, spaceAfter=6))
         self.styles.add(ParagraphStyle(name='ScriptParenthetical', fontSize=12, leading=14, fontName='Courier', leftIndent=1.5*inch, rightIndent=1.5*inch))
+        self.styles.add(ParagraphStyle(name='ScriptActBreak', fontSize=12, leading=14, fontName='Courier-Bold', alignment=TA_CENTER, spaceBefore=24, spaceAfter=24))
         
         # Industry Standard Title Page (Strict Courier)
         self.styles.add(ParagraphStyle(name='IndustryTitle', fontSize=12, fontName='Courier-Bold', alignment=TA_CENTER, leading=14, spaceAfter=12))
@@ -224,14 +225,16 @@ class PDFService:
                     
                     style_map = {
                         'slugline': 'ScriptSlug',
+                        'scene heading': 'ScriptSlug',
                         'action': 'ScriptAction',
                         'character': 'ScriptChar',
                         'dialogue': 'ScriptDialogue',
-                        'parenthetical': 'ScriptParenthetical'
+                        'parenthetical': 'ScriptParenthetical',
+                        'act break': 'ScriptActBreak'
                     }
                     
                     para_style = self.styles.get(style_map.get(b_type, 'ScriptAction'))
-                    if b_type == 'slugline': text = text.upper()
+                    if b_type == 'slugline' or b_type == 'act break': text = text.upper()
                     story.append(Paragraph(text, para_style))
             else:
                 story.append(Paragraph("Full script asset currently in production.", self.styles['ArcBody']))

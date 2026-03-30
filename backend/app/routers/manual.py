@@ -30,27 +30,19 @@ def add_page_number(canvas, doc):
     canvas.restoreState()
 
 def get_manual_path():
-    # Try multiple common locations to be very robust
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__))) # Root of backend/
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     paths = [
         os.path.join(base_dir, "Screenwriter_Guide.md"),
         "Screenwriter_Guide.md",
-        "backend/Screenwriter_Guide.md",
-        "../Screenwriter_Guide.md",
-        "/Users/akprod/dev/ArcWriter/backend/Screenwriter_Guide.md"
+        "backend/Screenwriter_Guide.md"
     ]
     for p in paths:
         if os.path.exists(p):
             return p
-    # If all fail, raise error instead of returning broken path
-    raise FileNotFoundError("Screenwriter_Guide.md not found in expected locations.")
+    raise FileNotFoundError("Screenwriter_Guide.md not found.")
 
 @router.get("/download")
 async def download_manual():
-    """
-    Generates and downloads 'The Screenwriter's Guide' in professional screenplay format.
-    Uses in-memory caching to eliminate generation latency for the user.
-    """
     global _cached_pdf_bytes, _last_md_mtime
     file_path = get_manual_path()
     try:
@@ -93,7 +85,7 @@ async def download_manual():
             if not stripped: continue
             indent = len(line) - len(line.lstrip())
             if indent >= 15:
-                if stripped in ['FADE IN:', 'FADE OUT.', 'CUT TO:', 'BACK TO:', 'FADE TO BLACK.', 'THE END', 'CHOOSE YOUR PATH:', 'IF ARCHITECT MODE:', 'IF EXPLORER MODE:', 'BACK TO STORY:']:
+                if stripped in ['FADE IN:', 'FADE OUT.', 'CUT TO:', 'BACK TO:', 'FADE TO BLACK.', 'THE END']:
                     story_elements.append(Paragraph(stripped, styles['ScriptSlug']))
                 else:
                     story_elements.append(Paragraph(stripped, styles['ScriptChar']))
@@ -118,54 +110,38 @@ async def download_manual():
 async def get_manual_section(section_id: str):
     """
     Returns a specific screenplay scene as JSON.
+    Uses fuzzy slugline matching to be highly robust.
     """
     try:
         file_path = get_manual_path()
         with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
         
-        search_key = section_id.upper()
-        logger.info(f"ManualSection: Fetching section '{search_key}'")
-        mapping = {
-            "LANDING": "LANDING PAGE",
-            "WIZARD": "WIZARD",
-            "STORY_DNA": "STORY DNA LAB",
-            "BLUEPRINT_VERIFICATION": "BLUEPRINT VERIFICATION",
-            "BLUEPRINT_VERIFICATION_ARCHITECT": "BLUEPRINT VERIFICATION - ARCHITECT",
-            "BLUEPRINT_VERIFICATION_EXPLORER": "BLUEPRINT VERIFICATION - EXPLORER",
-            "VISUAL_SOUL": "VISUAL SOUL",
-            "DIAGNOSTIC_LENS": "DIAGNOSTIC LENS",
-            "DASHBOARD": "DASHBOARD",
-            "BLUEPRINT": "BLUEPRINT PAGE",
-            "BLUEPRINT_PAGE": "BLUEPRINT PAGE",
-            "SCRIPT_EDITOR": "SCRIPT EDITOR",
-            "EDITOR": "SCRIPT EDITOR",
-            "BEAT_SHEET": "BLUEPRINT PAGE",
-            "INSIGHTS_SCENE": "STORY INSIGHTS - SCENE",
-            "INSIGHTS_MACRO": "STORY INSIGHTS - MACRO",
-            "INSIGHTS_HOOK": "STORY INSIGHTS - HOOK"
-        }
-        search_key = mapping.get(search_key, search_key)
-        
-        logger.info(f"ManualSection: Searching for '{search_key}' in {len(lines)} lines.")
+        search_key = section_id.upper().replace('_', ' ')
+        logger.info(f"ManualSection: Fuzzy searching for '{search_key}'")
 
         start_line_idx = -1
+        # Primary Pass: Look for the key inside a slugline (INT. or EXT.)
         for i, line in enumerate(lines):
-            stripped = line.strip()
+            stripped = line.strip().upper()
             if not stripped: continue
-            
             if stripped.startswith('INT.') or stripped.startswith('EXT.'):
-                # IMPROVED: Check for partial match or exact match to be more robust
-                # e.g. "SCRIPT EDITOR" will match "INT. THE SCRIPT EDITOR - NIGHT"
-                if search_key in stripped.upper():
+                if search_key in stripped:
                     start_line_idx = i
                     logger.info(f"ManualSection: Found match at line {i}: {stripped}")
                     break
         
+        # Fallback: Raw search
+        if start_line_idx == -1:
+            for i, line in enumerate(lines):
+                if search_key in line.strip().upper():
+                    start_line_idx = i
+                    break
+
         if start_line_idx == -1:
             raise HTTPException(status_code=404, detail=f"Help section '{section_id}' not found.")
 
-        # Collect until next slugline or transition
+        # Collect lines until next scene
         scene_lines = [lines[start_line_idx]]
         for i in range(start_line_idx + 1, len(lines)):
             line = lines[i]
@@ -175,7 +151,6 @@ async def get_manual_section(section_id: str):
                 break
             scene_lines.append(line)
 
-        # Parse collected lines
         result = {
             "slugline": scene_lines[0].strip(),
             "action": "",
@@ -186,19 +161,14 @@ async def get_manual_section(section_id: str):
         
         action_parts = []
         dialogue_parts = []
-        
         for line in scene_lines[1:]:
-            indent = len(line) - len(line.lstrip())
             stripped = line.strip()
             if not stripped: continue
-
-            # Robust parsing based on content patterns
-            if stripped.isupper() and len(stripped) > 1 and not stripped.startswith('(') and not stripped.startswith('INT.') and not stripped.startswith('EXT.'):
+            if stripped.isupper() and len(stripped) > 1 and not stripped.startswith('('):
                 result["character"] = stripped
             elif stripped.startswith('(') and stripped.endswith(')'):
                 result["parenthetical"] = stripped.strip('()')
-            elif result["character"] and (indent >= 8 or (not stripped.isupper())):
-                # If we have a character and the line is dialogue-ish
+            elif result["character"] and not stripped.isupper():
                 dialogue_parts.append(stripped)
             else:
                 action_parts.append(stripped)
@@ -208,5 +178,4 @@ async def get_manual_section(section_id: str):
         return result
     except Exception as e:
         if isinstance(e, HTTPException): raise e
-        logger.error(f"Failed to fetch help section {section_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

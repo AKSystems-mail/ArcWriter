@@ -19,6 +19,7 @@ import ScriptEditorPage from './pages/ScriptEditorPage';
 import PitchDeckView from './pages/PitchDeckView';
 import PitchTrackerPage from './pages/PitchTrackerPage';
 import ManuscriptUpload from './pages/ManuscriptUpload';
+import BugFeatureDashboard from './pages/BugFeatureDashboard';
 import NotFoundPage from './pages/NotFoundPage';
 import './index.css';
 
@@ -180,6 +181,14 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <ManuscriptUpload />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/bug-feature"
+                        element={
+                            <ProtectedRoute>
+                                <BugFeatureDashboard />
                             </ProtectedRoute>
                         }
                     />

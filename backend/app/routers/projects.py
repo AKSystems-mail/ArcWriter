@@ -11,6 +11,46 @@ router = APIRouter(
     tags=["projects"]
 )
 
+class UniversePremiseRequest(BaseModel):
+    series_premise: str
+
+@router.post("/{universe_id}/premise")
+async def update_universe_premise(universe_id: str, request: UniversePremiseRequest, user_id: str = Depends(get_current_user)):
+    db = get_firestore_db()
+    uni_ref = db.collection('universes').document(universe_id)
+    uni_doc = uni_ref.get()
+    
+    if not uni_doc.exists or uni_doc.to_dict().get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Permission denied")
+        
+    uni_ref.update({"series_premise": request.series_premise})
+    return {"status": "success"}
+
+@router.get("/{universe_id}/continuity")
+async def get_universe_continuity(universe_id: str, user_id: str = Depends(get_current_user)):
+    """Retrieves the series premise and the most recent character list from a universe."""
+    db = get_firestore_db()
+    uni_ref = db.collection('universes').document(universe_id)
+    uni_doc = uni_ref.get()
+    
+    if not uni_doc.exists or uni_doc.to_dict().get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Permission denied")
+        
+    uni_data = uni_doc.to_dict()
+    
+    # Get characters from the most recent project
+    recent_project = db.collection('universes').document(universe_id)\
+        .collection('projects').order_by('created_at', direction=firestore.Query.DESCENDING).limit(1).get()
+        
+    characters = []
+    if len(recent_project) > 0:
+        characters = recent_project[0].to_dict().get('characters', [])
+        
+    return {
+        "series_premise": uni_data.get("series_premise", ""),
+        "characters": characters
+    }
+
 class AdaptationProcessRequest(BaseModel):
     universe_name: Optional[str] = "My First Universe"
     raw_text: str

@@ -48,11 +48,22 @@ const STORY_CIRCLE_BEATS = [
   { name: 'Change', description: 'Having changed.' },
 ];
 
-const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
+const TV_ACT_STRUCTURE = [
+  { name: 'Cold Open', description: 'Hook the audience immediately. Set the tone and introduce the primary conflict of the episode.' },
+  { name: 'Act 1', description: 'The Set-up. Introduce the episode\'s goal and the obstacles standing in the way.' },
+  { name: 'Act 2', description: 'Complications arise. The stakes are raised as the protagonist\'s initial plan fails.' },
+  { name: 'Act 3', description: 'The Turning Point. A major shift in the story that leads to the climax.' },
+  { name: 'Act 4', description: 'The Climax. The highest point of tension where the main conflict is addressed.' },
+  { name: 'Act 5', description: 'The Resolution. The immediate aftermath of the climax.' },
+  { name: 'Tag', description: 'A final beat that provides a button on the story or a hook for the next episode.' },
+];
+
+const BeatSheetForm = ({ initialBeats, universeId, projectId, format = 'movie' }) => {
   const navigate = useNavigate();
   const [framework, setFramework] = useState('Save the Cat');
 
   const getActiveFrameworkBeats = () => {
+    if (format === 'tv_series') return TV_ACT_STRUCTURE;
     if (framework === 'Hero\'s Journey') return HEROS_JOURNEY_BEATS;
     if (framework === 'Story Circle') return STORY_CIRCLE_BEATS;
     return SAVE_THE_CAT_BEATS;
@@ -180,18 +191,20 @@ const BeatSheetForm = ({ initialBeats, universeId, projectId }) => {
                     <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-6">
                         Structural <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">Blueprint</span>
                     </h2>
-                    <div className="relative w-64">
-                        <select 
-                            value={framework}
-                            onChange={(e) => setFramework(e.target.value)}
-                            className="w-full bg-black text-arc-teal text-[10px] font-black uppercase tracking-[0.3em] border border-white/10 rounded-sm p-4 focus:border-arc-teal outline-none appearance-none cursor-pointer"
-                        >
-                            <option>Save the Cat</option>
-                            <option>Hero's Journey</option>
-                            <option>Story Circle</option>
-                        </select>
-                        <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 rotate-90 text-white/60 pointer-events-none" />
-                    </div>
+                    {format !== 'tv_series' && (
+                        <div className="relative w-64">
+                            <select 
+                                value={framework}
+                                onChange={(e) => setFramework(e.target.value)}
+                                className="w-full bg-black text-arc-teal text-[10px] font-black uppercase tracking-[0.3em] border border-white/10 rounded-sm p-4 focus:border-arc-teal outline-none appearance-none cursor-pointer"
+                            >
+                                <option>Save the Cat</option>
+                                <option>Hero's Journey</option>
+                                <option>Story Circle</option>
+                            </select>
+                            <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 rotate-90 text-white/60 pointer-events-none" />
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-8 bg-black/50 p-6 border border-white/5 rounded-sm">

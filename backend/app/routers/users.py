@@ -3,10 +3,83 @@ from pydantic import BaseModel
 from typing import Optional
 from app.utils.firebase_auth_utils import get_current_user, get_firestore_db
 
+from firebase_admin import firestore
+
 router = APIRouter(
     prefix="/api/user",
     tags=["users"]
 )
+
+class FeedbackRequest(BaseModel):
+    subject: str
+    body: str
+    type: str # 'bug' | 'feature'
+    metadata: Optional[dict] = None
+
+@router.post("/feedback")
+async def submit_feedback(request: FeedbackRequest, user_id: str = Depends(get_current_user)):
+    """
+    Two-Tier Feedback System:
+    - Bugs: Available to all users.
+    - Features: Restricted to 'active' subscribers (Writer's Room / Studio Pass).
+    """
+    db = get_firestore_db()
+    user_ref = db.collection('users').document(user_id)
+    user_doc = user_ref.get()
+    user_data = user_doc.to_dict() if user_doc.exists else {}
+    
+    is_paid = user_data.get('subscription_status') == 'active' or user_data.get('plan') == 'STUDIO_PASS'
+    
+    if request.type == 'feature' and not is_paid:
+        raise HTTPException(status_code=403, detail="VIP Feature Requests are reserved for Studio subscribers.")
+
+    feedback_data = {
+        "user_id": user_id,
+        "user_email": user_data.get('email'),
+        "type": request.type,
+        "subject": request.subject,
+        "body": request.body,
+        "status": "new",
+        "created_at": firestore.SERVER_TIMESTAMP,
+        "is_paid_user": is_paid,
+        "metadata": request.metadata or {}
+    }
+    
+    db.collection("feedback").add(feedback_data)
+    
+    # 2. Queue Email Notification for Founder
+    try:
+        email_content = f"""
+        New {request.type.upper()} Submitted:
+        
+        Subject: {request.subject}
+        User: {user_data.get('email')}
+        Paid Tier: {'Yes' if is_paid else 'No'}
+        
+        Details:
+        {request.body}
+        
+        ---
+        Manage at: https://arcwriter.us/bug-feature
+        """
+        
+        db.collection("mail_queue").add({
+            "to": "aksystems.mail@gmail.com",
+            "message": {
+                "subject": f"[{request.type.upper()}] Feedback from {user_data.get('email')}: {request.subject}",
+                "text": email_content,
+                "html": f"<pre style='font-family: monospace; white-space: pre-wrap;'>{email_content}</pre>"
+            },
+            "status": "pending",
+            "created_at": firestore.SERVER_TIMESTAMP
+        })
+    except Exception as e:
+        print(f"Mail Queue Error: {e}")
+
+    # LOG FOR NOTIFICATION
+    print(f"FEEDBACK SUBMITTED: [{request.type.upper()}] from {user_data.get('email')}")
+    
+    return {"status": "success", "message": "Feedback received. Thank you for building ArcWriter with us."}
 
 class UserMeResponse(BaseModel):
     id: str

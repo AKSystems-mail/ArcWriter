@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { collectionGroup, query, where, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
-import { Plus, Film, BookOpen, Clock, ChevronRight, Edit2, Trash2, RotateCcw, XCircle, Target, LogOut, CreditCard, Activity } from 'lucide-react';
+import { Plus, Film, BookOpen, Clock, ChevronRight, Edit2, Trash2, RotateCcw, XCircle, Target, LogOut, CreditCard, Activity, Sparkles, MessageSquare } from 'lucide-react';
 import ContextualHelp from '../components/ContextualHelp';
+import FeedbackModal from '../components/FeedbackModal';
 
 interface Project {
     id: string;
@@ -21,6 +22,8 @@ const Dashboard: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<'active' | 'archived'>('active');
+    const [userProfile, setUserProfile] = useState<any>(null);
+    const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | null>(null);
 
     useEffect(() => {
         const user = auth.currentUser;
@@ -28,6 +31,11 @@ const Dashboard: React.FC = () => {
             setLoading(false);
             return;
         }
+
+        // 1. Fetch user profile for tier check
+        const userUnsub = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+            setUserProfile(doc.data());
+        });
 
         const projectsQuery = query(
             collectionGroup(db, 'projects'),
@@ -138,7 +146,12 @@ const Dashboard: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-black text-white">
+        <div className="min-h-screen bg-black text-white flex flex-col">
+            <FeedbackModal 
+                isOpen={!!feedbackType} 
+                onClose={() => setFeedbackType(null)} 
+                type={feedbackType || 'bug'} 
+            />
             {/* Top Navigation */}
             <nav className="w-full z-[100] px-8 py-6 flex justify-between items-center bg-[#050505] border-b border-white/5">
                 <div className="flex items-center gap-6">
@@ -158,6 +171,28 @@ const Dashboard: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center gap-6">
+                    {/* ADMIN DASHBOARD (Founders only) */}
+                    {auth.currentUser && ['rezAaItMpOaLDRvnMkfX60Rrqoh1', 'k4B9sTKY2FdrdlG3BdP4RhPt4g32'].includes(auth.currentUser.uid) && (
+                        <button 
+                            onClick={() => navigate('/bug-feature')}
+                            className="flex items-center gap-2 px-4 py-2 bg-arc-orange text-white rounded-sm transition-all hover:bg-white hover:text-black group mr-2"
+                        >
+                            <Target className="w-3 h-3 group-hover:rotate-90 transition-transform" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Admin Console</span>
+                        </button>
+                    )}
+
+                    {/* VIP FEEDBACK (Subscribers only) */}
+                    {(userProfile?.subscription_status === 'active' || userProfile?.plan === 'STUDIO_PASS') && (
+                        <button 
+                            onClick={() => setFeedbackType('feature')}
+                            className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-sm transition-all hover:bg-arc-teal hover:text-white group mr-2"
+                        >
+                            <Sparkles className="w-3 h-3 group-hover:animate-pulse" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">VIP Support</span>
+                        </button>
+                    )}
+
                     <button 
                         onClick={() => navigate('/billing')}
                         className="flex items-center gap-2 px-4 py-2 hover:bg-arc-teal/10 rounded-full border border-arc-teal/20 transition-all text-arc-teal hover:text-white"
@@ -305,6 +340,20 @@ const Dashboard: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Subtle Footer for Bug Reports */}
+            <footer className="mt-auto py-12 px-12 border-t border-white/5 flex justify-between items-center bg-[#050505]">
+                <div className="flex items-center gap-4 opacity-20">
+                    <img src="/ArcWriter_logo.png" alt="ArcWriter" className="h-4 grayscale" />
+                    <span className="text-[8px] font-black uppercase tracking-[0.4em]">v2.5.4 Production Studio</span>
+                </div>
+                <button 
+                    onClick={() => setFeedbackType('bug')}
+                    className="text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-arc-orange transition-colors flex items-center gap-2 group"
+                >
+                    <MessageSquare className="w-3 h-3 group-hover:animate-bounce" /> Report a Glitch
+                </button>
+            </footer>
         </div>
     );
 };

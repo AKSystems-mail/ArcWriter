@@ -17,7 +17,8 @@ const StoryInsights = ({
   isSaving, 
   isSaved,
   isOpen,
-  onToggle
+  onToggle,
+  format = 'movie'
 }) => {
   const [activeTab, setActiveTab] = useState('scene'); // 'scene' | 'macro' | 'hook'
 

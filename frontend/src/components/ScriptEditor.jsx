@@ -105,6 +105,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
             logline: data.logline,
             genre: data.genre,
             vibe: data.vibe,
+            format: data.format || 'movie',
             beat_sheet: data.beat_sheet_data || data.beat_sheet
           });
           
@@ -277,8 +278,8 @@ const ScriptEditor = ({ universeId, projectId }) => {
     const handleGlobalKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && !isNaN(e.key)) {
         const num = parseInt(e.key);
-        const formats = ['Scene Heading', 'Action', 'Character', 'Dialogue', 'Parenthetical'];
-        if (num >= 1 && num <= 5) {
+        const formats = ['Scene Heading', 'Action', 'Character', 'Dialogue', 'Parenthetical', 'Act Break'];
+        if (num >= 1 && num <= 6) {
           e.preventDefault();
           handleFormatChange(formats[num - 1]);
         }
@@ -522,12 +523,14 @@ const ScriptEditor = ({ universeId, projectId }) => {
     try {
       const projectRef = getProjectRef();
       const projectSnap = await getDoc(projectRef);
-      const genre = projectSnap.exists() ? projectSnap.data().genre : "Drama";
+      const projectData = projectSnap.exists() ? projectSnap.data() : {};
+      const genre = projectData.genre || "Drama";
+      const format = projectData.format || "movie";
       const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/script/hook_scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ script_text: scriptText, genre }),
+        body: JSON.stringify({ script_text: scriptText, genre, format }),
       });
       if (!response.ok) throw new Error('Hook Scan Failed');
       const data = await response.json();
@@ -552,10 +555,16 @@ const ScriptEditor = ({ universeId, projectId }) => {
     const fullScriptText = blocks.map(block => block.text).join('\n');
     try {
       const token = await auth.currentUser?.getIdToken();
+      const format = projectMetadata?.format || "movie";
       const response = await fetch('/api/script/macro_audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ full_script: fullScriptText, universe_id: universeId, project_id: projectId }),
+        body: JSON.stringify({ 
+            full_script: fullScriptText, 
+            universe_id: universeId, 
+            project_id: projectId,
+            format: format
+        }),
       });
       if (!response.ok) throw new Error('Macro Audit Failed');
       const data = await response.json();
@@ -653,6 +662,8 @@ const ScriptEditor = ({ universeId, projectId }) => {
         <div className="absolute top-4 right-8 text-black/20 text-xs font-mono select-none">{pageIndex + 1}.</div>
         {pageBlocks.map((block) => {
           const { className } = formatLine(block.type, block.text);
+          const isActBreak = block.type === 'Act Break';
+          
           return (
             <div key={block.id} className="relative group/block">
               <textarea
@@ -665,8 +676,8 @@ const ScriptEditor = ({ universeId, projectId }) => {
                   setShowAutocomplete(false);
                   resizeBlock(block.id);
                 }}
-                className={`${className} script-block resize-none overflow-hidden bg-transparent focus:outline-none focus:bg-arc-teal/[0.03] transition-colors`}
-                placeholder={block.type === 'Scene Heading' ? 'INT. LOCATION - TIME' : ''}
+                className={`${className} ${isActBreak ? 'text-center font-bold' : ''} script-block resize-none overflow-hidden bg-transparent focus:outline-none focus:bg-arc-teal/[0.03] transition-colors`}
+                placeholder={block.type === 'Scene Heading' ? 'INT. LOCATION - TIME' : isActBreak ? 'END OF ACT ONE' : ''}
               />
               {showAutocomplete && focusedBlockId === block.id && (
                 <div className="absolute left-0 top-full z-[100] w-64 bg-gray-900 border border-arc-teal rounded-lg shadow-2xl overflow-hidden animate-fade-in">
@@ -761,6 +772,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
             <FormatButton label="Character" shortcut="3" isActive={activeFormat === 'Character'} onClick={() => handleFormatChange('Character')} />
             <FormatButton label="Dialogue" shortcut="4" isActive={activeFormat === 'Dialogue'} onClick={() => handleFormatChange('Dialogue')} />
             <FormatButton label="Parenthetical" shortcut="5" isActive={activeFormat === 'Parenthetical'} onClick={() => handleFormatChange('Parenthetical')} />
+            <FormatButton label="Act Break" shortcut="6" isActive={activeFormat === 'Act Break'} onClick={() => handleFormatChange('Act Break')} />
           </div>
 
           <div className="relative">
@@ -826,6 +838,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
         isSaved={isSaved}
         isOpen={isInsightsDrawerOpen}
         onToggle={() => setIsInsightsDrawerOpen(!isInsightsDrawerOpen)}
+        format={projectMetadata?.format || 'movie'}
       />
 
       <HistorySidebar 

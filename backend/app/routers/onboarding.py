@@ -20,6 +20,9 @@ router = APIRouter(
 
 class PitchRequest(BaseModel):
     pitch: str
+    format: Optional[str] = "movie"
+    series_premise: Optional[str] = ""
+    episode_length: Optional[str] = "60m"
 
 class PitchAnalysisResponse(BaseModel):
     genre: str
@@ -33,10 +36,15 @@ class PitchAnalysisResponse(BaseModel):
 
 @router.post("/initialize")
 async def initialize_project(request: PitchRequest, user_id: str = Depends(get_current_user)):
-    print(f"[{user_id}] Initializing project from pitch...")
+    print(f"[{user_id}] Initializing project from pitch ({request.format})...")
     try:
         logic_engine = LogicEngine()
-        metadata = logic_engine.generate_project_metadata(request.pitch)
+        metadata = logic_engine.generate_project_metadata(
+            request.pitch, 
+            format=request.format,
+            series_premise=request.series_premise,
+            episode_length=request.episode_length
+        )
         return metadata
     except Exception as e:
         import traceback
@@ -93,6 +101,8 @@ class SetupRequest(BaseModel):
     vibe: Optional[str] = "Cinematic"
     persona: str
     mode: str = "architect"
+    format: Optional[str] = "movie"
+    episode_length: Optional[str] = "60m"
     user_id: Optional[str] = None
     is_script: bool = False
     script_content: Optional[List[Dict[str, Any]]] = None
@@ -207,6 +217,8 @@ async def finalize_onboarding(request: SetupRequest, background_tasks: Backgroun
             "vibe": request.vibe,
             "persona": request.persona,
             "mode": request.mode,
+            "format": request.format,
+            "episode_length": request.episode_length,
             "beat_sheet": final_beat_sheet,
             "beat_sheet_data": final_beat_sheet,
             "synopsis": synopsis,
