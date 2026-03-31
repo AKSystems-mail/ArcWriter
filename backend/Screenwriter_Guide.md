@@ -169,6 +169,24 @@ streaming service.
 Anna selects her latest project. She clicks the orange 
 target icon: THE BLUEPRINT.
 
+INT. TV SHOWRUNNER'S GUIDE - CONTINUOUS
+
+                    SYSTEM
+          ArcWriter is TV-ready, Anna. To 
+          build a series, treat the 
+          "Universe" as your Series Bible.
+
+                    ANNA
+          And each episode?
+
+                    SYSTEM
+          Each episode is a new Project 
+          within that same Universe. 
+          Maintain consistency by specifying 
+          your format (e.g., 30-min Sitcom) 
+          in the Story DNA notes. Use 
+          Explorer Mode for episodic pacing.
+
 INT. THE BLUEPRINT PAGE - CONTINUOUS
 
 This is the war room. 

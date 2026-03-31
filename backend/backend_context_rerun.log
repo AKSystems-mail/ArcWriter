@@ -1,8 +1,0 @@
-/home/akprod/.gemini/antigravity/scratch/arc/backend/app/services/bible_manager.py:75: SyntaxWarning: "\s" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\s"? A raw string is also an option.
-  match = re.search(f"(^{header_pattern}.*$)([\s\S]*?)(?=^#|\Z)", full_content, re.MULTILINE)
-INFO:     Started server process [191291]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)
-Loaded Personas: ['studio_exec', 'auteur', 'script_doctor']
-INFO:     127.0.0.1:37214 - "POST /api/bible/context HTTP/1.1" 200 OK

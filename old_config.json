@@ -1,4 +1,0 @@
-i  This command retrieves your Runtime Config values (accessed via functions.config()) and exports them as a Secret Manager secret.
-
-i  Fetching your existing functions.config() from arc-studio-box...
-✔  Your functions.config() is empty. Nothing to do.

@@ -30,15 +30,23 @@ def add_page_number(canvas, doc):
     canvas.restoreState()
 
 def get_manual_path():
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    # Try multiple common locations to be very robust
     paths = [
-        os.path.join(base_dir, "Screenwriter_Guide.md"),
         "Screenwriter_Guide.md",
-        "backend/Screenwriter_Guide.md"
+        "backend/Screenwriter_Guide.md",
+        "../Screenwriter_Guide.md",
+        "app/routers/../../Screenwriter_Guide.md"
     ]
     for p in paths:
         if os.path.exists(p):
+            # print(f"DEBUG: Found Manual at {os.path.abspath(p)}")
             return p
+    
+    # Absolute path fallback
+    abs_path = os.path.join(os.path.dirname(__file__), "..", "..", "Screenwriter_Guide.md")
+    if os.path.exists(abs_path):
+        return abs_path
+
     raise FileNotFoundError("Screenwriter_Guide.md not found.")
 
 @router.get("/download")
@@ -51,7 +59,7 @@ async def download_manual():
             return StreamingResponse(io.BytesIO(_cached_pdf_bytes), media_type="application/pdf",
                 headers={"Content-Disposition": "attachment; filename=\"ArcWriter_Screenwriters_Guide.pdf\""})
 
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             markdown_content = f.read()
 
         buffer = io.BytesIO()
@@ -112,42 +120,47 @@ async def get_manual_section(section_id: str):
     Returns a specific screenplay scene as JSON.
     Uses fuzzy slugline matching to be highly robust.
     """
+    logger.info(f"ManualSection: Request for '{section_id}'")
     try:
         file_path = get_manual_path()
         with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
         
-        search_key = section_id.upper().replace('_', ' ')
-        logger.info(f"ManualSection: Fuzzy searching for '{search_key}'")
+        # Format the key for matching (e.g. STORY_DNA -> STORY DNA)
+        search_key = section_id.upper().replace('_', ' ').strip()
 
         start_line_idx = -1
         # Primary Pass: Look for the key inside a slugline (INT. or EXT.)
         for i, line in enumerate(lines):
             stripped = line.strip().upper()
             if not stripped: continue
+            
             if stripped.startswith('INT.') or stripped.startswith('EXT.'):
                 if search_key in stripped:
                     start_line_idx = i
-                    logger.info(f"ManualSection: Found match at line {i}: {stripped}")
+                    logger.info(f"ManualSection: Found match for '{search_key}' at line {i}")
                     break
         
-        # Fallback: Raw search
+        # Fallback: Raw search anywhere in the file
         if start_line_idx == -1:
             for i, line in enumerate(lines):
                 if search_key in line.strip().upper():
                     start_line_idx = i
+                    logger.info(f"ManualSection: Found fallback match for '{search_key}' at line {i}")
                     break
 
         if start_line_idx == -1:
+            logger.warning(f"ManualSection: Help section '{section_id}' NOT FOUND.")
             raise HTTPException(status_code=404, detail=f"Help section '{section_id}' not found.")
 
-        # Collect lines until next scene
+        # Collect lines until next scene slugline or transition
         scene_lines = [lines[start_line_idx]]
         for i in range(start_line_idx + 1, len(lines)):
             line = lines[i]
             stripped = line.strip()
             if not stripped: continue
-            if stripped.startswith('INT.') or stripped.startswith('EXT.') or stripped in ['FADE OUT.', 'CUT TO:', 'FADE TO BLACK.', 'FADE IN:']:
+            # Stop if we hit a new scene or a major transition
+            if stripped.startswith('INT.') or stripped.startswith('EXT.') or stripped in ['FADE OUT.', 'CUT TO:', 'FADE TO BLACK.', 'FADE IN:', 'THE END']:
                 break
             scene_lines.append(line)
 
@@ -164,7 +177,10 @@ async def get_manual_section(section_id: str):
         for line in scene_lines[1:]:
             stripped = line.strip()
             if not stripped: continue
-            if stripped.isupper() and len(stripped) > 1 and not stripped.startswith('('):
+            
+            # Simple indentation-based heuristic for screenplay format
+            # In the MD file, character names are often indented or all-caps
+            if stripped.isupper() and len(stripped) > 1 and not stripped.startswith('(') and not stripped.startswith('INT.') and not stripped.startswith('EXT.'):
                 result["character"] = stripped
             elif stripped.startswith('(') and stripped.endswith(')'):
                 result["parenthetical"] = stripped.strip('()')
@@ -178,4 +194,5 @@ async def get_manual_section(section_id: str):
         return result
     except Exception as e:
         if isinstance(e, HTTPException): raise e
+        logger.error(f"Manual Section Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

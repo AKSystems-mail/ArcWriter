@@ -22,7 +22,7 @@ class StripeService:
             "WRITER_ROOM_ANNUAL": (os.getenv("STRIPE_PRICE_WR_ANNUAL") or "").strip(),
             "STUDIO_PASS": (os.getenv("STRIPE_PRICE_STUDIO_PASS") or "").strip(),
             "TOP_UP": (os.getenv("STRIPE_PRICE_TOP_UP") or "").strip(),
-            "MANUSCRIPT_ADAPTATION": (os.getenv("STRIPE_PRICE_ADAPTATION") or "prod_UDWxOPaAE7ZclT").strip()
+            "MANUSCRIPT_ADAPTATION": (os.getenv("STRIPE_PRICE_ADAPTATION") or "price_1TF5u1Q6LC1Uq9P30tdNaiPW").strip()
         }
         
         # Validation for required price IDs

@@ -104,24 +104,24 @@ def lazy_initialize():
         # Move heavy imports here
         from app.utils.firebase_auth_utils import initialize_firebase_admin
         initialize_firebase_admin()
-
-        # Defer router registration to avoid deployment discovery timeouts
-        from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing, share, projects
-        app.include_router(onboarding.router)
-        app.include_router(users.router)
-        app.include_router(pitchdeck.router)
-        app.include_router(script.router)
-        app.include_router(bible.router)
-        app.include_router(manual.router)
-        app.include_router(public.router)
-        app.include_router(billing.router)
-        app.include_router(share.router)
-        app.include_router(projects.router)
         
         _initialized = True
 
 # Arc Studio API - Initialized with Security Hardening
 app = FastAPI(title="Arc Studio API")
+
+# Register Routers at top level for visibility
+from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing, share, projects
+app.include_router(onboarding.router)
+app.include_router(users.router)
+app.include_router(pitchdeck.router)
+app.include_router(script.router)
+app.include_router(bible.router)
+app.include_router(manual.router)
+app.include_router(public.router)
+app.include_router(billing.router)
+app.include_router(share.router)
+app.include_router(projects.router)
 
 # Enable CORS
 app.add_middleware(

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ImageIcon, User, RefreshCw, Sparkles, CheckCircle2, Layout, UserCircle, Zap, Shield, Share2 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { storage, db, auth } from '../firebase';
-import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, onSnapshot, getDoc } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import PricingModal from './PricingModal';
 import ScriptIdentityModal from './ScriptIdentityModal';
 import ShareProjectModal from './ShareProjectModal';
@@ -198,22 +199,17 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
     };
 
     const pollTeaserStatus = async (opId) => {
-        console.log("Art Dept: Starting poll for operation:", opId);
         setMessage("Motion Dept: Rendering Cinematic Asset... (Est. 2-3 mins. You can safely navigate away; we'll sync the result automatically.)");
         
         const interval = setInterval(async () => {
             try {
-                console.log("Art Dept: Polling status for:", opId);
                 // Use query parameter and cache-buster to ensure fresh status
                 const response = await apiClient(`/api/assets/teaser_status?operation_id=${encodeURIComponent(opId)}&t=${Date.now()}`);
                 
                 if (!response.ok) {
-                    const errorBody = await response.text();
-                    console.error(`Art Dept: Teaser status poll failed (${response.status}):`, errorBody);
                     throw new Error(`Server error: ${response.status}`);
                 }
                 const status = await response.json();
-                console.log("Art Dept: Polling result:", status);
 
                 // Check for terminal error state from backend
                 if (status.status === 'error') {
@@ -237,9 +233,6 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                         setTimeout(() => setError(''), 8000);
                     }
                     setRegenerating(null);
-                } else {
-                    // Still working
-                    console.log("Art Dept: Still rendering teaser...");
                 }
             } catch (err) {
                 console.warn("Poll failed, retrying...", err);
@@ -482,7 +475,6 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
                                                 onPlay={() => {
                                                     // Note: VisualsStudio is for the writer, but we can track their plays too
                                                     // or just leave it for the public PitchDeckView.
-                                                    console.log("Teaser playback started");
                                                 }}
                                             />
                                             {/* Discrete Control for Teaser */}
@@ -578,4 +570,3 @@ const VisualsStudio = ({ projectData, universeId, projectId, onRefresh }) => {
 };
 
 export default VisualsStudio;
-

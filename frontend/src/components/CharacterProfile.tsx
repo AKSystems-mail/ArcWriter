@@ -172,7 +172,7 @@ const CharacterProfile: React.FC<CharacterProfileProps> = ({ universeId, project
             });
             
             if (response.ok) {
-                console.log(`Art Dept: Anchor locked for ${name}`);
+                // Anchor updated
             }
         } catch (error) {
             console.error("Error locking anchor:", error);

@@ -98,7 +98,6 @@ const ProjectHeader = ({ universeId, projectId, projectTitle, moodImageSrc }) =>
 
       if (percentage === 100 && !isConfettiExploding) {
         setIsConfettiExploding(true);
-        console.log("Confetti time! Pitch Deck is 100% complete!");
         // Trigger confetti animation here
         // If using a library: <ConfettiExplosion />
       } else if (percentage < 100) {

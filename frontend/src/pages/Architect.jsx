@@ -46,7 +46,6 @@ const Architect = () => {
                     if (response.ok) {
                         const data = await response.json();
                         // We could use this to suggest characters or auto-add them
-                        console.log("Continuity Data Loaded:", data);
                     }
                 } catch (err) {
                     console.error("Continuity Error:", err);

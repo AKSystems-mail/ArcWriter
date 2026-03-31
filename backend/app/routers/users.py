@@ -74,11 +74,8 @@ async def submit_feedback(request: FeedbackRequest, user_id: str = Depends(get_c
             "created_at": firestore.SERVER_TIMESTAMP
         })
     except Exception as e:
-        print(f"Mail Queue Error: {e}")
+        logger.error(f"Mail Queue Error: {e}")
 
-    # LOG FOR NOTIFICATION
-    print(f"FEEDBACK SUBMITTED: [{request.type.upper()}] from {user_data.get('email')}")
-    
     return {"status": "success", "message": "Feedback received. Thank you for building ArcWriter with us."}
 
 class UserMeResponse(BaseModel):

@@ -9,7 +9,7 @@ const Billing = () => {
     const navigate = useNavigate();
     const [isAnnual, setIsAnnual] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
-    const [userProfile, setUserProfile] = useState<any>(null);
+    const [userProfile, setUserProfile] = useState(null);
 
     useEffect(() => {
         if (!auth.currentUser) return;
@@ -175,7 +175,7 @@ const Billing = () => {
                         </button>
                         <div className="flex items-center gap-3">
                             <span className={`text-xs font-black uppercase tracking-widest ${isAnnual ? 'text-white' : 'text-white/40'}`}>Annual</span>
-                            <span className="bg-arc-orange text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter italic shadow-lg">Save 20%</span>
+                            <span className="bg-arc-orange text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter italic shadow-lg">Save $48/yr</span>
                         </div>
                     </div>
                 </div>
