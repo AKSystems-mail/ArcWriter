@@ -189,6 +189,32 @@ const PitchDeckView = () => {
             {/* 2. THE CONTENT BODY */}
             <div className="max-w-5xl mx-auto px-6 py-24 space-y-32">
                 
+                {/* Poster / Key Art Section */}
+                {pitchData.poster_url && (
+                    <section className="animate-fade-in">
+                        <div className="flex items-center gap-4 mb-12">
+                            <div className="h-px flex-1 bg-white/10" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-600">The Visual Identity</span>
+                            <div className="h-px flex-1 bg-white/10" />
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <h2 className="text-4xl font-black uppercase tracking-tighter mb-8 italic text-center">Official Key Art</h2>
+                            <div className="relative group max-w-2xl w-full aspect-[2/3] bg-black border border-white/5 overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                                <img 
+                                    src={pitchData.poster_url} 
+                                    alt="Official Poster" 
+                                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]" />
+                                <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full flex items-center gap-2">
+                                    <Shield className="w-3 h-3 text-arc-teal" />
+                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/70">Studio Certified Asset</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
                 {/* Synopsis Section */}
                 <section className="animate-fade-in">
                     <div className="flex items-center gap-4 mb-12">
@@ -343,37 +369,86 @@ const PitchDeckView = () => {
                     </div>
 
                     {/* Script Page Area */}
-                    <div className="max-w-3xl mx-auto py-20 px-12 md:px-24 min-h-screen bg-white shadow-2xl relative">
+                    <div className="max-w-4xl mx-auto py-20 px-6 md:px-12 min-h-screen bg-gray-100/50">
                         
-                        {/* Dynamic Watermark Overlay (Repeated) */}
+                        {/* Dynamic Watermark Overlay (Global Fixed) */}
                         {pitchData.recipient && (
-                            <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center overflow-hidden opacity-[0.03] select-none">
+                            <div className="fixed inset-0 pointer-events-none z-[10000] flex items-center justify-center overflow-hidden opacity-[0.03] select-none">
                                 <div className="text-[12vw] font-black uppercase tracking-tighter -rotate-45 whitespace-nowrap">
                                     EXCLUSIVELY FOR {pitchData.recipient}
                                 </div>
                             </div>
                         )}
 
-                        <div className="space-y-4 text-[13pt] leading-[1.1]">
-                            {scriptBlocks?.length > 0 ? scriptBlocks.map((block, idx) => {
-                                const type = block.type?.toLowerCase() || 'action';
-                                let style = "mb-4 ";
-                                
-                                if (type === 'slugline' || type === 'scene heading') style += "font-bold uppercase mt-8";
-                                else if (type === 'character') style += "w-1/2 mx-auto text-center mt-6 uppercase";
-                                else if (type === 'parenthetical') style += "w-1/3 mx-auto text-center text-[11pt]";
-                                else if (type === 'dialogue') style += "w-3/4 mx-auto text-center mb-6";
-                                
-                                return (
-                                    <div key={idx} className={style}>
-                                        {block.text}
+                        <div className="flex flex-col items-center gap-12">
+                            {(() => {
+                                if (!scriptBlocks || scriptBlocks.length === 0) {
+                                    return (
+                                        <div className="w-full max-w-3xl bg-white shadow-2xl p-24 text-center text-gray-300 italic">
+                                            Script manuscript is still in production.
+                                        </div>
+                                    );
+                                }
+
+                                const TARGET_UNITS_PER_PAGE = 40;
+                                const pages = [];
+                                let currentPage = [];
+                                let currentUnits = 0;
+
+                                scriptBlocks.forEach((block) => {
+                                    const text = block.text || "";
+                                    let charsPerLine = 60;
+                                    let unitWeight = 1;
+
+                                    const type = block.type?.toLowerCase();
+                                    if (type === 'scene heading' || type === 'slugline') unitWeight = 2;
+                                    if (type === 'character') unitWeight = 1;
+                                    if (type === 'parenthetical') charsPerLine = 25;
+                                    if (type === 'dialogue') {
+                                        charsPerLine = 35;
+                                        unitWeight = 0;
+                                    }
+                                    if (type === 'act break') unitWeight = 3;
+
+                                    const estimatedLines = Math.max(1, Math.ceil(text.length / charsPerLine));
+                                    const totalBlockUnits = estimatedLines + unitWeight;
+
+                                    if (currentUnits + totalBlockUnits > TARGET_UNITS_PER_PAGE && currentPage.length > 0) {
+                                        pages.push(currentPage);
+                                        currentPage = [];
+                                        currentUnits = 0;
+                                    }
+                                    
+                                    currentPage.push(block);
+                                    currentUnits += totalBlockUnits;
+                                });
+                                if (currentPage.length > 0) pages.push(currentPage);
+
+                                return pages.map((pageBlocks, pageIndex) => (
+                                    <div key={pageIndex} className="w-full max-w-3xl bg-white shadow-2xl p-12 md:p-20 relative min-h-[1000px]">
+                                        {/* Page Number */}
+                                        <div className="absolute top-8 right-12 text-gray-300 text-sm font-mono">{pageIndex + 1}.</div>
+                                        
+                                        <div className="space-y-4 text-[13pt] leading-[1.1]">
+                                            {pageBlocks.map((block, idx) => {
+                                                const type = block.type?.toLowerCase() || 'action';
+                                                let style = "mb-4 ";
+                                                
+                                                if (type === 'slugline' || type === 'scene heading') style += "font-bold uppercase mt-8";
+                                                else if (type === 'character') style += "w-1/2 mx-auto text-center mt-6 uppercase";
+                                                else if (type === 'parenthetical') style += "w-1/3 mx-auto text-center text-[11pt]";
+                                                else if (type === 'dialogue') style += "w-3/4 mx-auto text-center mb-6";
+                                                
+                                                return (
+                                                    <div key={idx} className={style}>
+                                                        {block.text}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                );
-                            }) : (
-                                <div className="py-40 text-center text-gray-300 italic">
-                                    Script manuscript is still in production.
-                                </div>
-                            )}
+                                ));
+                            })()}
                         </div>
                     </div>
                 </div>

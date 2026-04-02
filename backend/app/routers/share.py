@@ -14,6 +14,11 @@ router = APIRouter(
     tags=["share"]
 )
 
+def generate_secure_hash(length=12):
+    """Generates a random alphanumeric string for the share link."""
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
 class ShareCreateRequest(BaseModel):
     universe_id: str
     project_id: str
@@ -52,7 +57,7 @@ async def create_share_link(request: ShareCreateRequest, user_id: str = Depends(
 
         # Hash password if provided
         password_hash = None
-        if request.password:
+        if request.password and request.password.strip():
             password_hash = hashlib.sha256(request.password.encode()).hexdigest()
 
         share_data = {

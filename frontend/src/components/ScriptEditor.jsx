@@ -6,6 +6,7 @@ import StoryInsights from './StoryInsights';
 import SourceMaterialDrawer from './SourceMaterialDrawer';
 import HistorySidebar from './HistorySidebar';
 import PricingModal from './PricingModal';
+import MilestoneModal from './MilestoneModal';
 import ContextualHelp from './ContextualHelp';
 import { db, auth } from '../firebase';
 import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
@@ -32,6 +33,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const [isSourceDrawerOpen, setIsSourceDrawerOpen] = useState(false);
   const [isInsightsDrawerOpen, setIsInsightsDrawerOpen] = useState(true);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
   const [snapshots, setSnapshots] = useState([]);
   const [sourceContent, setSourceContent] = useState('');
   const [isGeneratingScene, setIsGeneratingScene] = useState(false);
@@ -148,8 +150,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
   };
 
   const handleSaveMilestone = () => {
-    const name = window.prompt("Name this milestone (e.g. 'First Draft', 'The Pivot'):");
-    if (name) saveSnapshot(name);
+    setIsMilestoneModalOpen(true);
   };
 
   const handleRestoreSnapshot = async (snapId) => {
@@ -636,26 +637,38 @@ const ScriptEditor = ({ universeId, projectId }) => {
   }, [blocks, focusedBlockId, isSaved, saveScriptToFirestore, universeId, projectId]);
 
   const renderPages = () => {
-    const LINES_PER_PAGE = 40; 
+    const TARGET_UNITS_PER_PAGE = 40; 
     const pages = [];
     let currentPage = [];
-    let currentLines = 0;
+    let currentUnits = 0;
+
     blocks.forEach((block, index) => {
       const text = block.text || "";
       let charsPerLine = 60;
-      if (block.type === 'Dialogue') charsPerLine = 35;
-      if (block.type === 'Parenthetical') charsPerLine = 20;
-      if (block.type === 'Character') charsPerLine = 35;
+      let unitWeight = 1; // Default for Action
+
+      if (block.type === 'Scene Heading') unitWeight = 2; // Sluglines have space before
+      if (block.type === 'Character') unitWeight = 1;
+      if (block.type === 'Parenthetical') charsPerLine = 25;
+      if (block.type === 'Dialogue') {
+          charsPerLine = 35;
+          unitWeight = 0; // Dialogue weight is purely its line count
+      }
+      if (block.type === 'Act Break') unitWeight = 3;
+
       const estimatedLines = Math.max(1, Math.ceil(text.length / charsPerLine));
-      const spacing = (block.type === 'Character' || block.type === 'Parenthetical') ? 0 : 1;
-      if (currentLines + estimatedLines + spacing > LINES_PER_PAGE) {
+      const totalBlockUnits = estimatedLines + unitWeight;
+
+      if (currentUnits + totalBlockUnits > TARGET_UNITS_PER_PAGE && currentPage.length > 0) {
         pages.push(currentPage);
         currentPage = [];
-        currentLines = 0;
+        currentUnits = 0;
       }
+      
       currentPage.push({ ...block, index });
-      currentLines += estimatedLines + spacing;
+      currentUnits += totalBlockUnits;
     });
+
     if (currentPage.length > 0) pages.push(currentPage);
     return pages.map((pageBlocks, pageIndex) => (
       <div key={pageIndex} className="script-page relative mb-8 shadow-2xl border-b-2 border-dashed border-gray-200">
@@ -707,6 +720,11 @@ const ScriptEditor = ({ universeId, projectId }) => {
       <PricingModal 
         isOpen={isPricingModalOpen} 
         onClose={() => setIsPricingModalOpen(false)} 
+      />
+      <MilestoneModal
+        isOpen={isMilestoneModalOpen}
+        onClose={() => setIsMilestoneModalOpen(false)}
+        onConfirm={(name) => saveSnapshot(name)}
       />
       <SourceMaterialDrawer isOpen={isSourceDrawerOpen} onToggle={() => setIsSourceDrawerOpen(!isSourceDrawerOpen)} content={sourceContent} onInsert={handleInsertSourceMaterial} />
       

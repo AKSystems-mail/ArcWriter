@@ -219,9 +219,33 @@ class PDFService:
             story.append(Spacer(1, 0.2*inch))
 
             if script_blocks:
+                TARGET_UNITS_PER_PAGE = 40
+                current_units = 0
+                
                 for block in script_blocks:
                     b_type = block.get('type', 'action').lower()
                     text = block.get('text', '').strip()
+                    
+                    # Logic-based line weight calculation (matching frontend)
+                    chars_per_line = 60
+                    unit_weight = 1 # Default for Action
+                    
+                    if b_type == 'scene heading' or b_type == 'slugline': unit_weight = 2
+                    if b_type == 'character': unit_weight = 1
+                    if b_type == 'parenthetical': chars_per_line = 25
+                    if b_type == 'dialogue':
+                        chars_per_line = 35
+                        unit_weight = 0
+                    if b_type == 'act break': unit_weight = 3
+                    
+                    import math
+                    estimated_lines = max(1, math.ceil(len(text) / chars_per_line))
+                    total_block_units = estimated_lines + unit_weight
+                    
+                    # Check if we need a page break BEFORE adding this block
+                    if current_units + total_block_units > TARGET_UNITS_PER_PAGE:
+                        story.append(PageBreak())
+                        current_units = 0
                     
                     style_map = {
                         'slugline': 'ScriptSlug',
@@ -236,6 +260,7 @@ class PDFService:
                     para_style = self.styles.get(style_map.get(b_type, 'ScriptAction'))
                     if b_type == 'slugline' or b_type == 'act break': text = text.upper()
                     story.append(Paragraph(text, para_style))
+                    current_units += total_block_units
             else:
                 story.append(Paragraph("Full script asset currently in production.", self.styles['ArcBody']))
 

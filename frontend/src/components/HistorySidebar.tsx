@@ -41,12 +41,15 @@ const HistorySidebar = ({ isOpen, onToggle, snapshots, onRestore, onSaveMileston
                                 <div className="flex items-center gap-2 text-arc-teal">
                                     <Clock className="w-3 h-3" />
                                     <span className="text-[8px] font-black uppercase tracking-widest">
-                                        {snap.created_at ? new Date(snap.created_at.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                                        {(() => {
+                                            if (!snap.created_at) return 'Just now';
+                                            const d = snap.created_at.seconds 
+                                                ? new Date(snap.created_at.seconds * 1000) 
+                                                : new Date(snap.created_at);
+                                            return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                                        })()}
                                     </span>
                                 </div>
-                                <span className="text-[7px] text-gray-700 font-black uppercase tracking-tighter">
-                                    {snap.created_at ? new Date(snap.created_at.seconds * 1000).toLocaleDateString() : ''}
-                                </span>
                             </div>
                             
                             <h4 className="text-xs font-bold text-gray-300 mb-4 line-clamp-1 group-hover:text-white transition-colors uppercase tracking-tight italic">

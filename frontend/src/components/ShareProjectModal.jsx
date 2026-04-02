@@ -91,6 +91,7 @@ const ShareProjectModal = ({ isOpen, onClose, universeId, projectId, projectTitl
                                     value={config.password}
                                     onChange={(e) => setConfig({...config, password: e.target.value})}
                                     placeholder="Optional"
+                                    autoComplete="new-password"
                                     className="w-full bg-white/5 border border-white/10 rounded-sm px-4 py-3 text-sm text-white focus:outline-none focus:border-arc-teal transition-colors font-mono"
                                 />
                             </div>

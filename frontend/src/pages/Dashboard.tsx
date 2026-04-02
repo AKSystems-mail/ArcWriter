@@ -218,7 +218,7 @@ const Dashboard: React.FC = () => {
                             <ContextualHelp sectionId="DASHBOARD" />
                         </div>
                         <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-[1.1] py-2">
-                            {view === 'active' ? <>Active <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600 pr-4">Assets</span></> : <>Cutting <br /><span className="text-red-500">Room Floor</span></>}
+                            {view === 'active' ? <>Active <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600 pr-4">Projects</span></> : <>Cutting <br /><span className="text-red-500">Room Floor</span></>}
                         </h1>
                     </div>
                     
@@ -244,7 +244,7 @@ const Dashboard: React.FC = () => {
                 {filteredProjects.length === 0 ? (
                     <div className="bg-gray-900/20 border border-dashed border-white/10 rounded-lg py-40 flex flex-col items-center justify-center text-center px-6">
                         <Film className="w-16 h-16 text-gray-800 mb-8" />
-                        <h2 className="text-3xl font-bold mb-4 opacity-50 uppercase tracking-tighter">{view === 'active' ? "No active assets." : "The floor is clean."}</h2>
+                        <h2 className="text-3xl font-bold mb-4 opacity-50 uppercase tracking-tighter">{view === 'active' ? "No active projects." : "The floor is clean."}</h2>
                         <p className="text-gray-600 max-w-sm text-sm uppercase tracking-widest font-bold">
                             {view === 'active' ? "Initialize your perfect pitch to see it here." : "No projects are currently marked for deletion."}
                         </p>

@@ -39,7 +39,6 @@ def get_manual_path():
     ]
     for p in paths:
         if os.path.exists(p):
-            # print(f"DEBUG: Found Manual at {os.path.abspath(p)}")
             return p
     
     # Absolute path fallback
@@ -51,6 +50,13 @@ def get_manual_path():
 
 @router.get("/download")
 async def download_manual():
+    """
+    Generates and downloads 'The Screenwriter's Guide' in professional screenplay format.
+    Uses in-memory caching to eliminate generation latency for the user.
+    """
+    from main import lazy_initialize
+    lazy_initialize()
+    
     global _cached_pdf_bytes, _last_md_mtime
     file_path = get_manual_path()
     try:
@@ -120,7 +126,9 @@ async def get_manual_section(section_id: str):
     Returns a specific screenplay scene as JSON.
     Uses fuzzy slugline matching to be highly robust.
     """
-    logger.info(f"ManualSection: Request for '{section_id}'")
+    from main import lazy_initialize
+    lazy_initialize()
+
     try:
         file_path = get_manual_path()
         with open(file_path, "r", encoding="utf-8") as f:
@@ -128,6 +136,7 @@ async def get_manual_section(section_id: str):
         
         # Format the key for matching (e.g. STORY_DNA -> STORY DNA)
         search_key = section_id.upper().replace('_', ' ').strip()
+        logger.info(f"ManualSection: Request for '{search_key}'")
 
         start_line_idx = -1
         # Primary Pass: Look for the key inside a slugline (INT. or EXT.)
@@ -178,8 +187,6 @@ async def get_manual_section(section_id: str):
             stripped = line.strip()
             if not stripped: continue
             
-            # Simple indentation-based heuristic for screenplay format
-            # In the MD file, character names are often indented or all-caps
             if stripped.isupper() and len(stripped) > 1 and not stripped.startswith('(') and not stripped.startswith('INT.') and not stripped.startswith('EXT.'):
                 result["character"] = stripped
             elif stripped.startswith('(') and stripped.endswith(')'):
