@@ -145,7 +145,13 @@ const PitchTracker = ({ universeId, projectId, isSubscriber }) => {
                                                         {share.recipient || 'Anonymous Link'}
                                                     </p>
                                                     <p className="text-[8px] text-white/20 uppercase tracking-widest mt-1">
-                                                        Sent: {share.created_at ? new Date(share.created_at._seconds * 1000).toLocaleDateString() : 'Just now'}
+                                                        Sent: {(() => {
+                                                            if (!share.created_at) return 'Just now';
+                                                            const d = share.created_at._seconds 
+                                                                ? new Date(share.created_at._seconds * 1000) 
+                                                                : new Date(share.created_at);
+                                                            return d.toLocaleDateString();
+                                                        })()}
                                                     </p>
                                                 </div>
                                             </div>
