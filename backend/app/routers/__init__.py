@@ -1,1 +1,11 @@
-# Package marker for routers
+from . import onboarding
+from . import users
+from . import pitchdeck
+from . import script
+from . import bible
+from . import manual
+from . import public
+from . import billing
+from . import share
+from . import projects
+from . import public_coverage

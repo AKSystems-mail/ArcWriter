@@ -20,6 +20,7 @@ import PitchDeckView from './pages/PitchDeckView';
 import PitchTrackerPage from './pages/PitchTrackerPage';
 import ManuscriptUpload from './pages/ManuscriptUpload';
 import BugFeatureDashboard from './pages/BugFeatureDashboard';
+import PublicCoverage from './pages/PublicCoverage';
 import NotFoundPage from './pages/NotFoundPage';
 import './index.css';
 
@@ -192,6 +193,7 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
+                    <Route path="/coverage" element={<PublicCoverage />} />
                     <Route
                         path="/project/:projectId/beat-sheet"
                         element={

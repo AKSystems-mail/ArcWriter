@@ -459,4 +459,31 @@ class LogicEngine:
             logger.error(f"Error generating one-sentence summary: {e}")
             # Fallback to a truncated version of the original text
             return (full_text[:100] + '...') if len(full_text) > 100 else full_text
+
+    def generate_professional_coverage(self, script_text: str) -> Dict[str, Any]:
+        """
+        Generates industry-standard script coverage from a full script or substantial excerpt.
+        Uses a high-authority Studio Executive persona.
+        """
+        system_instruction = (
+            "You are a Senior Development Executive at a major Hollywood studio.\n"
+            "Your task is to provide objective, professional 'Script Coverage'.\n\n"
+            "JUDGMENT CRITERIA:\n"
+            "1. CONCEPT: Is it high-concept (sellable) or execution-dependent?\n"
+            "2. LOGIC: Does the narrative structure withstand scrutiny? Identify any 'fridge logic' gaps.\n"
+            "3. CHARACTER: Are the arcs earned? Do motivations drive the plot, or does the plot drive the characters?\n"
+            "4. DIALOGUE: Is it cinematic, subtextual, and distinct for each character?\n\n"
+            "TONE: Professional, objective, and authoritative. Do not provide empty encouragement. If the logic fails, explain why clearly.\n\n"
+            "Return JSON ONLY. Keys: 'verdict' (PASS|CONSIDER|RECOMMEND), 'scores' (dict with concept, logic, character, dialogue 1-10), "
+            "'synopsis' (3-paragraph summary), 'analysis' (dict with strengths: list, weaknesses: list), 'executive_summary' (2-paragraph detailed verdict)."
+        )
+        
+        user_prompt = f"Perform a full studio coverage audit on the following script text:\n\n{script_text[:100000]}"
+        
+        try:
+            # Using 1.5 Flash for the public lead magnet to keep costs low ($0.30/report)
+            return self.llm.generate_json(prompt=user_prompt, system_instruction=system_instruction)
+        except Exception as e:
+            logger.error(f"Coverage Generation Failed: {e}")
+            raise e
         

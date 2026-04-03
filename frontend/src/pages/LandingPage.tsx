@@ -224,14 +224,14 @@ const LandingPage: React.FC = () => {
 
           <div id="visualization" className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/5 border border-white/5 scroll-mt-32">
             <FeatureCard
+              icon={<ShieldCheck className="w-6 h-6" />}
+              title="The Fortress Protocol"
+              desc="Every script export is protected by dynamic diagonal watermarking and professional industry-standard title pages. Share your vision with confidence, knowing your IP is secure."
+            />
+            <FeatureCard
               icon={<Zap className="w-6 h-6" />}
               title="Cure the Sagging Middle"
               desc="Diagnose pacing issues and inject tension where it matters most. Identify static scenes and low stakes instantly without tearing the whole script apart."
-            />
-            <FeatureCard
-              icon={<Layers className="w-6 h-6" />}
-              title="The Silent Partner"
-              desc="Get the brutal honesty your friends won't give you. Objective, unbiased feedback on your story structure and character motivations, available 24/7."
             />
             <FeatureCard
               icon={<Compass className="w-6 h-6" />}
@@ -239,6 +239,64 @@ const LandingPage: React.FC = () => {
               desc="Great storytelling is architecture. Track your narrative threads to ensure every setup has a payoff and every Chekhov’s Gun is fired."
             />
           </div>
+        </div>
+      </section>
+
+      {/* NEW: Script Coverage Lead Magnet Section */}
+      <section className="py-40 px-8 md:px-24 bg-black relative overflow-hidden">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-24">
+            <div className="flex-1 order-2 lg:order-1">
+                <div className="aspect-[4/5] bg-[#080808] border border-white/5 rounded-sm p-12 shadow-2xl relative group">
+                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-arc-teal to-transparent opacity-50"></div>
+                    
+                    <div className="flex justify-between items-start mb-12">
+                        <span className="text-arc-teal text-[10px] font-black uppercase tracking-[0.4em] italic border-b border-arc-teal/20 pb-2">Internal Studio Report</span>
+                        <div className="bg-green-500/10 border border-green-500/20 px-4 py-1.5 rounded-full text-green-500 text-[9px] font-black uppercase tracking-widest">Recommended</div>
+                    </div>
+
+                    <div className="space-y-8 mb-12 opacity-40">
+                        <div className="h-4 w-3/4 bg-white/10 rounded-full" />
+                        <div className="h-4 w-full bg-white/10 rounded-full" />
+                        <div className="h-4 w-1/2 bg-white/10 rounded-full" />
+                        <div className="grid grid-cols-2 gap-4 mt-12">
+                            <div className="h-20 bg-white/5 rounded-sm" />
+                            <div className="h-20 bg-white/5 rounded-sm" />
+                        </div>
+                    </div>
+
+                    <div className="text-center bg-black/60 backdrop-blur-sm border border-white/10 p-10 rounded-sm shadow-glow group-hover:scale-105 transition-transform duration-700">
+                        <Cpu className="w-10 h-10 text-arc-teal mx-auto mb-6 animate-pulse" />
+                        <h3 className="text-2xl font-black uppercase tracking-tighter italic mb-4 text-white">Logic Analysis Complete.</h3>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest leading-relaxed">Studio-grade coverage in 60 seconds.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 order-1 lg:order-2">
+                <span className="bg-arc-orange text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.2em] mb-8 inline-block animate-bounce shadow-glow">Limited Launch Special</span>
+                <h2 className="text-5xl md:text-8xl font-black uppercase tracking-tighter mb-10 leading-none">
+                    Professional <br />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-gray-600 pr-4">Script Coverage.</span>
+                </h2>
+                <p className="text-xl text-gray-500 leading-relaxed max-w-lg mb-12 font-light italic">
+                    Stop guessing. Get an objective, ruthless, and professional 5-page coverage report on your script. We identify the logic gaps that kill pitches.
+                </p>
+                
+                <div className="flex flex-col gap-6">
+                    <button 
+                        onClick={() => navigate('/coverage')}
+                        className="group bg-white hover:bg-arc-teal text-black hover:text-white font-black py-8 px-12 rounded-sm transition-all shadow-2xl flex items-center justify-between"
+                    >
+                        <span className="text-sm uppercase tracking-[0.4em]">Get Instant Coverage</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] line-through text-gray-400 mr-2">$29.00</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-arc-orange">Free</span>
+                            <ArrowRight className="w-5 h-5 ml-4 group-hover:translate-x-2 transition-transform" />
+                        </div>
+                    </button>
+                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 text-center">1 Free Report Per Account | Limited Offer</p>
+                </div>
+            </div>
         </div>
       </section>
 

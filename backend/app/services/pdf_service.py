@@ -274,3 +274,81 @@ class PDFService:
         
         buffer.seek(0)
         return buffer
+
+    def generate_coverage_report(self, report_data: Dict[str, Any], script_title: str) -> BytesIO:
+        """Generates a professional studio-standard coverage report."""
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.75*inch, bottomMargin=0.75*inch, leftMargin=1*inch, rightMargin=1*inch)
+        story = []
+
+        # --- HEADER ---
+        story.append(Paragraph("STUDIO COVERAGE REPORT", self.styles['ArcSubHeading']))
+        story.append(Paragraph(script_title.upper(), self.styles['ArcTitle']))
+        story.append(Spacer(1, 0.3*inch))
+
+        # --- THE VERDICT BOX ---
+        verdict = report_data.get('verdict', 'PASS').upper()
+        v_color = colors.red if verdict == 'PASS' else colors.orange if verdict == 'CONSIDER' else colors.green
+        
+        verdict_data = [[
+            Paragraph("OFFICIAL VERDICT", self.styles['ArcSubHeading']),
+            Paragraph(f"<font color='{v_color}'><b>{verdict}</b></font>", self.styles['ArcHeading'])
+        ]]
+        v_table = Table(verdict_data, colWidths=[2.5*inch, 3.5*inch])
+        v_table.setStyle(TableStyle([
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('PADDING', (0,0), (-1,-1), 12)
+        ]))
+        story.append(v_table)
+        story.append(Spacer(1, 0.4*inch))
+
+        # --- THE GRID ---
+        story.append(Paragraph("TECHNICAL ANALYSIS", self.styles['ArcSubHeading']))
+        scores = report_data.get('scores', {})
+        grid_data = [["CATEGORY", "SCORE"]]
+        for cat, score in scores.items():
+            grid_data.append([cat.upper(), f"{score}/10"])
+        
+        g_table = Table(grid_data, colWidths=[3*inch, 1*inch])
+        g_table.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('ALIGN', (1,0), (1,-1), 'CENTER')
+        ]))
+        story.append(g_table)
+        story.append(Spacer(1, 0.5*inch))
+
+        # --- SYNOPSIS ---
+        story.append(Paragraph("SYNOPSIS", self.styles['ArcSubHeading']))
+        syn = report_data.get('synopsis', '')
+        for p in syn.split('\n\n'):
+            story.append(Paragraph(p.strip(), self.styles['ArcBody']))
+            story.append(Spacer(1, 0.15*inch))
+        
+        story.append(PageBreak())
+
+        # --- ANALYSIS ---
+        story.append(Paragraph("EXECUTIVE ANALYSIS", self.styles['ArcSubHeading']))
+        analysis = report_data.get('analysis', {})
+        
+        story.append(Paragraph("<b>CORE STRENGTHS:</b>", self.styles['ArcBody']))
+        for s in analysis.get('strengths', []):
+            story.append(Paragraph(f"• {s}", self.styles['ArcBody']))
+        story.append(Spacer(1, 0.2*inch))
+
+        story.append(Paragraph("<b>CRITICAL WEAKNESSES:</b>", self.styles['ArcBody']))
+        for w in analysis.get('weaknesses', []):
+            story.append(Paragraph(f"• {w}", self.styles['ArcBody']))
+        story.append(Spacer(1, 0.4*inch))
+
+        # --- EXECUTIVE SUMMARY ---
+        story.append(Paragraph("EXECUTIVE SUMMARY", self.styles['ArcSubHeading']))
+        exec_sum = report_data.get('executive_summary', '')
+        for p in exec_sum.split('\n\n'):
+            story.append(Paragraph(p.strip(), self.styles['ArcBody']))
+            story.append(Spacer(1, 0.15*inch))
+
+        doc.build(story)
+        buffer.seek(0)
+        return buffer

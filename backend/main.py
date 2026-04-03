@@ -1,40 +1,32 @@
-from fastapi import FastAPI, HTTPException, status, Depends, Header, Request, BackgroundTasks
+# Arc Studio Box - Master Studio API
+import os
+import logging
+from typing import List, Optional, Dict, Any
+from fastapi import FastAPI, Depends, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-import uuid
-import json
-import os
-import shutil
-import requests
-import traceback
-from fastapi.responses import StreamingResponse
-from google.oauth2 import service_account
-import stripe
 from firebase_functions import https_fn
-from a2wsgi import ASGIMiddleware
-from flask import Response as FlaskResponse
-import logging
-from dotenv import load_dotenv
 
-load_dotenv()
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("main")
 
-logger = logging.getLogger(__name__)
-
-# Utility imports for endpoints
-from app.utils.firebase_auth_utils import get_current_user, get_firestore_db, verify_project_ownership
-
-# Lazy Service Registry
+# Dependency Management - Registry for heavy AI and Billing services
 class ServiceRegistry:
     def __init__(self):
-        self._logic_engine = None
-        self._rag_service = None
-        self._asset_studio = None
-        self._deck_assembler = None
-        self._pdf_service = None
         self._user_service = None
         self._stripe_service = None
+        self._logic_engine = None
+        self._asset_studio = None
+        self._rag_service = None
+        self._pdf_service = None
+
+    @property
+    def user_service(self):
+        if self._user_service is None:
+            from app.services.user_service import UserService
+            self._user_service = UserService()
+        return self._user_service
 
     @property
     def logic_engine(self):
@@ -44,25 +36,18 @@ class ServiceRegistry:
         return self._logic_engine
 
     @property
-    def rag_service(self):
-        if self._rag_service is None:
-            from app.services.rag_service import RagService
-            self._rag_service = RagService()
-        return self._rag_service
-
-    @property
     def asset_studio(self):
         if self._asset_studio is None:
             from app.services.asset_studio import AssetStudio
-            self._asset_studio = AssetStudio()
+            self._asset_studio = AssetStudio(self.user_service)
         return self._asset_studio
 
     @property
-    def deck_assembler(self):
-        if self._deck_assembler is None:
-            from app.services.deck_assembler import PitchDeckAssembler
-            self._deck_assembler = PitchDeckAssembler()
-        return self._deck_assembler
+    def rag_service(self):
+        if self._rag_service is None:
+            from app.services.rag_service import RAGService
+            self._rag_service = RAGService()
+        return self._rag_service
 
     @property
     def pdf_service(self):
@@ -70,13 +55,6 @@ class ServiceRegistry:
             from app.services.pdf_service import PDFService
             self._pdf_service = PDFService()
         return self._pdf_service
-
-    @property
-    def user_service(self):
-        if self._user_service is None:
-            from app.services.user_service import UserService
-            self._user_service = UserService()
-        return self._user_service
 
     @property
     def stripe_service(self):
@@ -105,23 +83,24 @@ def lazy_initialize():
         from app.utils.firebase_auth_utils import initialize_firebase_admin
         initialize_firebase_admin()
         
+        # Register Routers inside the initialization flow
+        from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing, share, projects, public_coverage
+        app.include_router(onboarding.router)
+        app.include_router(users.router)
+        app.include_router(pitchdeck.router)
+        app.include_router(script.router)
+        app.include_router(bible.router)
+        app.include_router(manual.router)
+        app.include_router(public.router)
+        app.include_router(billing.router)
+        app.include_router(share.router)
+        app.include_router(projects.router)
+        app.include_router(public_coverage.router)
+        
         _initialized = True
 
 # Arc Studio API - Initialized with Security Hardening
 app = FastAPI(title="Arc Studio API")
-
-# Register Routers at top level for visibility
-from app.routers import onboarding, users, pitchdeck, script, bible, manual, public, billing, share, projects
-app.include_router(onboarding.router)
-app.include_router(users.router)
-app.include_router(pitchdeck.router)
-app.include_router(script.router)
-app.include_router(bible.router)
-app.include_router(manual.router)
-app.include_router(public.router)
-app.include_router(billing.router)
-app.include_router(share.router)
-app.include_router(projects.router)
 
 # Enable CORS
 app.add_middleware(
@@ -139,28 +118,157 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.utils.firebase_auth_utils import get_current_user, get_firestore_db, verify_project_ownership
+
 @app.get("/")
 async def root():
+    lazy_initialize()
     return {"message": "Hello World - Arc Studio API (FastAPI) is live"}
+
+# --- Wrapped Core Endpoints ---
+# Note: For production stability, routers are registered in lazy_initialize()
+# but these top-level endpoints ensure uvicorn can find the main handlers.
 
 @app.get("/api/universes", response_model=List[Any])
 async def list_universes(user_id: str = Depends(get_current_user)):
     lazy_initialize()
-    # Local import for response model
     from pydantic import BaseModel
     class UniverseResponse(BaseModel):
         name: str
     
-    lazy_initialize()
     db = get_firestore_db()
-    universes_ref = db.collection("universes").where("owner_id", "==", user_id)
-    universes = []
-    for doc in universes_ref.stream():
-        data = doc.to_dict()
-        universes.append(UniverseResponse(name=data.get("name", doc.id)))
-    if not universes:
-        universes.append(UniverseResponse(name="My First Universe"))
-    return universes
+    docs = db.collection("universes").where("owner_id", "==", user_id).stream()
+    return [{"name": doc.id} for doc in docs]
+
+class ProjectResponse(BaseModel):
+    id: str
+    name: str
+    title: Optional[str] = None
+    logline: Optional[str] = None
+    genre: Optional[str] = None
+    vibe: Optional[str] = None
+    poster_url: Optional[str] = None
+    teaser_url: Optional[str] = None
+    created_at: Optional[Any] = None
+    insights: Optional[Dict[str, Any]] = None
+    beat_sheet_data: Optional[Dict[str, Any]] = None
+    source_material: Optional[str] = None
+    format: Optional[str] = "movie"
+
+@app.get("/api/project/{universe_name}/{project_id}", response_model=ProjectResponse)
+async def get_project_details(universe_name: str, project_id: str, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
+    try:
+        project_config = await verify_project_ownership(universe_name, project_id, user_id)
+        return project_config
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class AssetRequest(BaseModel):
+    type: str # 'poster' | 'character'
+    prompt: Optional[str] = None
+    character_name: Optional[str] = None
+    universe_id: Optional[str] = None
+    project_id: Optional[str] = None
+
+@app.post("/api/assets/generate")
+async def generate_asset(request: AssetRequest, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
+    cost = 10 
+    await services.user_service.deduct_credits(user_id, cost)
+    
+    if request.type == 'poster':
+        tagline = await services.logic_engine.generate_one_liner(request.prompt)
+        image_data = services.asset_studio.generate_poster(request.prompt, tagline)
+        return {"b64_data": image_data, "tagline": tagline}
+    else:
+        variants = services.asset_studio.generate_character_variants(request.character_name, request.prompt)
+        return {"variants": variants}
+
+class RegenerateRequest(BaseModel):
+    universe_id: str
+    project_id: str
+    type: str # 'poster' | 'character'
+    character_name: Optional[str] = None
+
+@app.post("/api/assets/regenerate")
+async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
+    try:
+        db = get_firestore_db()
+        project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
+        project_doc = project_ref.get()
+        if not project_doc.exists:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        project_data = project_doc.to_dict()
+        prompt = project_data.get("logline", "")
+        if request.type == 'character':
+            chars = project_data.get("characters", [])
+            char = next((c for c in chars if c['name'] == request.character_name), None)
+            prompt = char['description'] if char else prompt
+
+        # Charge before generating
+        await services.user_service.deduct_credits(user_id, 25)
+
+        if request.type == 'poster':
+            tagline = await services.logic_engine.generate_one_liner(project_data.get("synopsis", prompt))
+            image_data = services.asset_studio.generate_poster(prompt, tagline)
+            return {"b64_data": image_data, "tagline": tagline}
+        else:
+            variants = services.asset_studio.generate_character_variants(request.character_name, prompt)
+            return {"variants": variants}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class TeaserRequest(BaseModel):
+    universe_id: str
+    project_id: str
+
+@app.post("/api/assets/generate_teaser")
+async def generate_teaser(request: TeaserRequest, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
+    try:
+        db = get_firestore_db()
+        project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
+        project_doc = project_ref.get()
+        if not project_doc.exists:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        project_data = project_doc.to_dict()
+        prompt = f"{project_data.get('title')}: {project_data.get('logline')}. Visual style: {project_data.get('vibe')}"
+        
+        await services.user_service.deduct_credits(user_id, 50)
+        operation_id = services.asset_studio.generate_teaser_async(prompt)
+        return {"operation_id": operation_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/assets/teaser_status")
+async def get_teaser_status(operation_id: str, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
+    try:
+        status = services.asset_studio.get_operation_status(operation_id)
+        return status
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class SceneRequest(BaseModel):
+    scene_text: str
+    persona: str = "Standard"
+    universe_name: Optional[str] = "default" 
+    project_id: Optional[str] = "default" 
+
+@app.post("/api/critique")
+async def critique_scene(request: SceneRequest, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
+    if not request.scene_text:
+        raise HTTPException(status_code=400, detail="No scene text provided")
+    
+    from app.services.bible_manager import BibleManager
+    bible_manager = BibleManager(universe_name=request.universe_name, project_id=request.project_id) 
+    result = services.logic_engine.critique_scene(request.scene_text, request.persona, bible_manager)
+    return result
 
 class UpdateAnchorRequest(BaseModel):
     universe_id: str
@@ -175,313 +283,48 @@ async def update_character_anchor(request: UpdateAnchorRequest, user_id: str = D
     try:
         project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
         project_doc = project_ref.get()
+        if not project_doc.exists: raise HTTPException(status_code=404)
         
-        if not project_doc.exists:
-            raise HTTPException(status_code=404, detail="Project not found")
-            
-        data = project_doc.to_dict()
-        characters = data.get("characters", [])
+        characters = project_doc.to_dict().get("characters", [])
+        for c in characters:
+            if c['name'] == request.character_name:
+                c['anchor_url'] = request.anchor_url
         
-        # Update the specific character's anchor
-        updated_characters = []
-        for char in characters:
-            if char.get("name") == request.character_name:
-                char["anchor_url"] = request.anchor_url
-            updated_characters.append(char)
-            
-        project_ref.update({"characters": updated_characters})
-        return {"status": "success", "message": f"Anchor locked for {request.character_name}"}
+        project_ref.update({"characters": characters})
+        return {"status": "success"}
     except Exception as e:
-        logger.error(f"Failed to lock anchor: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# --- Project Management Endpoints ---
-class ProjectResponse(BaseModel):
-    id: str
-    name: str
-    title: Optional[str] = None
-    logline: Optional[str] = None
-    genre: Optional[str] = None
-    poster_url: Optional[str] = None
-    teaser_url: Optional[str] = None
-    bible_content: Optional[str] = None
-    created_at: Optional[Any] = None
-    characters: Optional[List[Dict[str, Any]]] = None
-    beat_sheet_data: Optional[Dict[str, Any]] = None
-    source_material: Optional[str] = None
-
-@app.get("/api/project/{universe_name}/{project_id}", response_model=ProjectResponse)
-async def get_project_details(universe_name: str, project_id: str, user_id: str = Depends(get_current_user)):
-    lazy_initialize()
-    try:
-        logger.info(f"Main: Fetching details for project {project_id} in universe {universe_name} for user {user_id}")
-        project_config = await verify_project_ownership(universe_name, project_id, user_id)
-        
-        # Ensure created_at is serializable
-        ca = project_config.get('created_at')
-        ca_str = ca.isoformat() if ca and hasattr(ca, 'isoformat') else str(ca) if ca else None
-
-        return ProjectResponse(
-            id=project_id,
-            name=project_config.get('title', project_id),
-            title=project_config.get('title', project_id),
-            logline=project_config.get('logline'),
-            genre=project_config.get('genre'),
-            poster_url=project_config.get('poster_url'),
-            teaser_url=project_config.get('teaser_url'),
-            bible_content=project_config.get('bible_content'),
-            created_at=ca_str,
-            characters=project_config.get('characters'),
-            beat_sheet_data=project_config.get('beat_sheet_data'),
-            source_material=project_config.get('source_material')
-        )
-    except Exception as e:
-        logger.error(f"Main: get_project_details failed for {project_id}: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-# --- Scene & Critique Endpoints ---
-class SceneRequest(BaseModel):
-    scene_text: str
-    persona: Optional[str] = "market_viability"
-    universe_name: Optional[str] = "default" 
-    project_id: Optional[str] = "default" 
-
-@app.post("/api/critique")
-async def critique_scene(request: SceneRequest, user_id: str = Depends(get_current_user)):
-    lazy_initialize()
-    if not request.scene_text:
-        raise HTTPException(status_code=400, detail="No scene text provided")
-    
-    from app.services.bible_manager import BibleManager
-    bible_manager = BibleManager(universe_name=request.universe_name, project_id=request.project_id) 
-    bible_context = bible_manager.get_context_string()
-
-    critique_result = services.logic_engine.critique_scene(
-        scene_text=request.scene_text, 
-        persona_prompt=request.persona, 
-        bible_context=bible_context
-    )
-    return {
-        "critique": critique_result["critique"], 
-        "score": critique_result["score"], 
-        "persona_used": request.persona,
-        "tension_curve": critique_result.get("tension_curve"),
-        "analysis_details": critique_result.get("analysis_details")
-    }
-
-# --- Asset Generation ---
-class AssetRequest(BaseModel):
-    type: str 
-    description: Optional[str] = None
-    title: Optional[str] = None
-    style: Optional[str] = None
-    tagline: Optional[str] = None
-    genre: Optional[str] = None
-    universe_id: Optional[str] = None
-    project_id: Optional[str] = None
-    characters: Optional[List[Dict[str, Any]]] = None
-
-@app.post("/api/assets/generate")
-async def generate_asset(request: AssetRequest, user_id: str = Depends(get_current_user)):
-    lazy_initialize()
-    cost = 10 
-    await services.user_service.deduct_credits(user_id, cost)
-    
-    if request.type == 'poster':
-        # New: Generate a one-sentence summary for the tagline from the full logline/synopsis
-        one_sentence_summary = services.logic_engine.generate_one_sentence_summary(request.tagline or "")
-
-        base64_data = services.asset_studio.generate_poster(
-            title=request.title or "Untitled",
-            tagline=one_sentence_summary,
-            genre=request.genre or "Drama",
-            style=request.style,
-            characters=request.characters
-        )
-        if not base64_data:
-            raise HTTPException(status_code=500, detail="Generation failed")
-        return {"b64_data": base64_data}
-        
-    elif request.type == 'character_concepts':
-        # Step 8: System returns 4 headshots
-        variants = services.asset_studio.generate_character_anchor(
-            description=request.description or "",
-            style=request.style
-        )
-        if not variants:
-            raise HTTPException(status_code=500, detail="Character generation failed")
-        
-        return {"variants": variants}
-        
-    return {"error": "Invalid type"}
-
-class RegenerateRequest(BaseModel):
-    universe_id: str
-    project_id: str
-    type: str # 'poster' | 'character'
-    character_name: Optional[str] = None
-
-@app.post("/api/assets/regenerate")
-async def regenerate_asset(request: RegenerateRequest, user_id: str = Depends(get_current_user)):
-    """Regenerates a specific asset (poster or character anchor). Billing occurs ONLY on success."""
-    lazy_initialize()
-    try:
-        logger.info(f"Regenerate Request: type={request.type}, character={request.character_name}")
-        db = get_firestore_db()
-        project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
-        project_doc = project_ref.get()
-        
-        if not project_doc.exists:
-            raise HTTPException(status_code=404, detail="Project not found")
-        
-        data = project_doc.to_dict()
-        
-        if request.type == 'poster':
-            logger.info(f"Regenerating Poster for project {request.project_id}")
-            # Step 9: Consistent Poster Logic
-            # 1. Look for locked anchors in the character list
-            characters = data.get("characters", [])
-            image_references = []
-            for char in characters:
-                anchor_url = char.get("anchor_url")
-                if anchor_url and 'placehold.co' not in anchor_url:
-                    # Fetch image and convert to B64 for reference
-                    try:
-                        logger.info(f"Fetching anchor for {char.get('name')}: {anchor_url}")
-                        resp = requests.get(anchor_url, timeout=10)
-                        if resp.ok:
-                            image_references.append(base64.b64encode(resp.content).decode('utf-8'))
-                    except Exception as e:
-                        logger.warning(f"Failed to fetch anchor for {char.get('name')}: {e}")
-
-            base64_data = services.asset_studio.generate_poster(
-                title=data.get("title", "Untitled"),
-                tagline=data.get("logline", ""),
-                genre=data.get("genre", "Drama"),
-                style=data.get("vibe", "Cinematic"),
-                image_references=image_references,
-                characters=characters
-            )
-            if not base64_data: 
-                logger.error("Poster generation failed (returned None)")
-                raise HTTPException(status_code=500, detail="Poster generation failed")
-            
-            # SUCCESS: Deduct credits now
-            await services.user_service.deduct_credits(user_id, 25)
-            return {"b64_data": base64_data}
-            
-        elif request.type == 'character' and request.character_name:
-            logger.info(f"Regenerating Character Anchor: {request.character_name}")
-            characters = data.get("characters", [])
-            char_data = next((c for c in characters if c.get("name") == request.character_name), None)
-            
-            if not char_data:
-                logger.error(f"Character {request.character_name} not found")
-                raise HTTPException(status_code=404, detail="Character not found")
-                
-            # Step 8 Sync: Regeneration also returns 4 variants for selection
-            logger.info(f"Calling generate_character_anchor for {request.character_name}")
-            variants = services.asset_studio.generate_character_anchor(
-                description=char_data.get("description", ""),
-                style=data.get("vibe", "Cinematic")
-            )
-            if not variants: 
-                logger.error("Character anchor generation failed (returned empty)")
-                raise HTTPException(status_code=500, detail="Character anchor generation failed")
-            
-            # SUCCESS: Deduct credits now
-            await services.user_service.deduct_credits(user_id, 25)
-            logger.info(f"Successfully generated {len(variants)} variants")
-            return {"variants": variants}
-            
-        return {"error": "Invalid regeneration type"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        import traceback
-        logger.error(f"Regenerate Asset Failure: {e}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-class TeaserRequest(BaseModel):
-    universe_id: str
-    project_id: str
-
-@app.post("/api/assets/generate_teaser")
-async def generate_teaser(request: TeaserRequest, user_id: str = Depends(get_current_user)):
-    """Initializes a cinematic teaser render. Billing occurs ONLY on successful initialization."""
-    lazy_initialize()
-    try:
-        db = get_firestore_db()
-        project_ref = db.collection("universes").document(request.universe_id).collection("projects").document(request.project_id)
-        project_doc = project_ref.get()
-        if not project_doc.exists:
-            raise HTTPException(status_code=404, detail="Project not found")
-        
-        data = project_doc.to_dict()
-        prompt = f"Cinematic scene from a {data.get('genre')} film. {data.get('logline')}. Visual vibe: {data.get('vibe')}."
-        
-        # Async Pivot: Get operation object immediately
-        logger.info(f"Initializing Teaser: Genre={data.get('genre')}, Prompt={prompt}")
-        operation_id = services.asset_studio.generate_teaser(prompt=prompt, genre=data.get('genre', 'Sci-Fi'))
-        if not operation_id:
-            raise HTTPException(status_code=500, detail="Failed to initialize motion render")
-            
-        # SUCCESS: Deduct credits only if the motion operation was successfully created
-        await services.user_service.deduct_credits(user_id, 50)
-        logger.info(f"Teaser Operation Created: {operation_id}")
-        return {"operation_id": operation_id}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Teaser Initialization Failure: {e}")
-        logger.error(f"Exception traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/assets/teaser_status")
-async def get_teaser_status(operation_id: str, user_id: str = Depends(get_current_user)):
-    """Checks the status of a long-running motion operation via query param."""
-    lazy_initialize()
-    try:
-        status = services.asset_studio.get_operation_status(operation_id)
-        return status
-    except Exception as e:
-        logger.error(f"Status Check Failure: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Export as Firebase Function
 @https_fn.on_request(
     region="us-central1",
-    memory=4096, 
-    timeout_sec=540, # Max timeout for feature-length script analysis
-    min_instances=0,
-    invoker="public",
-    secrets=[
-        "GEMINI_API_KEY", 
-        "STRIPE_SECRET_KEY", 
-        "STRIPE_WEBHOOK_SECRET",
-        "STRIPE_PRICE_WR_MONTHLY",
-        "STRIPE_PRICE_WR_ANNUAL",
-        "STRIPE_PRICE_STUDIO_PASS",
-        "STRIPE_PRICE_TOP_UP",
-        "BREVO_API_KEY",
-        "BREVO_LIST_ID",
-        "BREVO_REGISTERED_LIST_ID",
-        "BETA_SECRET_CODE"
-    ]
+    memory=4096,
+    timeout_sec=300,
+    min_instances=0
 )
 def api(req: https_fn.Request) -> https_fn.Response:
-    # Ensure app is initialized before handling request
-    lazy_initialize()
+    from asgiref.sync import async_to_sync
+    import json
     
-    # Quick health check for Cloud Run
-    if req.path == "/health":
-        return FlaskResponse("OK", status=200)
-    return FlaskResponse.from_app(ASGIMiddleware(app), req.environ)
-
-if __name__ == "__main__":
-    import uvicorn
-    lazy_initialize()
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    # Simple bridge for function execution
+    async def process():
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        
+        # Build method and headers
+        method = req.method
+        headers = {k: v for k, v in req.headers.items()}
+        path = req.path
+        if req.query_string:
+            path += f"?{req.query_string.decode()}"
+            
+        body = req.get_data()
+        response = client.request(method, path, headers=headers, content=body)
+        
+        return https_fn.Response(
+            response.content,
+            status=response.status_code,
+            headers=dict(response.headers)
+        )
+        
+    return async_to_sync(process)()
