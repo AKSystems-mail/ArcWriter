@@ -29,9 +29,14 @@ Thumbs.db
 
 # Project specific
 backend/universes/
+backend/*.log
+backend/serviceAccountKey.json
 *.txt
 !requirements.txt
 !all_files.txt
 !README.md
 !GEMINI.md
 !*deploy_log*.txt
+conductor/
+old_config.json
+context7

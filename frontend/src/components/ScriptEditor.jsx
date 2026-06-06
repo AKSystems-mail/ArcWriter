@@ -41,6 +41,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
   const blockRefs = useRef({});
+  const saveTimerRef = useRef(null);
 
   // Autocomplete State
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
@@ -268,7 +269,7 @@ const ScriptEditor = ({ universeId, projectId }) => {
   useEffect(() => {
     const timer = setTimeout(resizeAllBlocks, 50);
     return () => clearTimeout(timer);
-  }, [blocks, resizeAllBlocks]);
+  }, [resizeAllBlocks]);
 
   useEffect(() => {
     window.addEventListener('resize', resizeAllBlocks);
@@ -282,21 +283,24 @@ const ScriptEditor = ({ universeId, projectId }) => {
         const formats = ['Scene Heading', 'Action', 'Character', 'Dialogue', 'Parenthetical', 'Act Break'];
         if (num >= 1 && num <= 6) {
           e.preventDefault();
-          handleFormatChange(formats[num - 1]);
+          handleFormatChangeRef.current(formats[num - 1]);
         }
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [focusedBlockId, blocks]);
+  }, []);
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
       if (JSON.stringify(blocks) !== JSON.stringify(lastSavedBlocksRef.current)) {
         saveScriptToFirestore(blocks);
       }
-    }, 5000);
-    return () => clearInterval(intervalId);
+    }, 2000);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
   }, [blocks, saveScriptToFirestore]);
 
   const updateBlock = (id, updates) => {
@@ -305,9 +309,17 @@ const ScriptEditor = ({ universeId, projectId }) => {
   };
 
   const handleTextChange = (id, text, type) => {
+    const el = blockRefs.current[id];
+    const selStart = el?.selectionStart ?? text.length;
+    const selEnd = el?.selectionEnd ?? text.length;
     const { text: formattedText } = formatLine(type, text);
     updateBlock(id, { text: formattedText });
     resizeBlock(id);
+    requestAnimationFrame(() => {
+      if (blockRefs.current[id]) {
+        blockRefs.current[id].setSelectionRange(selStart, selEnd);
+      }
+    });
 
     if (type === 'Character' || type === 'Scene Heading') {
       const query = text.toUpperCase();
@@ -378,17 +390,50 @@ const ScriptEditor = ({ universeId, projectId }) => {
         if (blockRefs.current[newBlock.id]) blockRefs.current[newBlock.id].focus();
       }, 0);
     }
+    if (e.key === 'Backspace' && blocks[index].text !== '' && e.target.selectionStart === 0 && index > 0) {
+      e.preventDefault();
+      const prevBlock = blocks[index - 1];
+      const currentBlock = blocks[index];
+      const newBlocks = blocks.map((b, i) => {
+        if (i === index - 1) {
+          return { ...b, text: b.text + currentBlock.text };
+        }
+        return b;
+      }).filter((b, i) => i !== index);
+      setBlocks(newBlocks);
+      setIsSaved(false);
+      setTimeout(() => {
+        if (blockRefs.current[prevBlock.id]) {
+          blockRefs.current[prevBlock.id].focus();
+          const cursorPos = prevBlock.text.length;
+          blockRefs.current[prevBlock.id].setSelectionRange(cursorPos, cursorPos);
+        }
+      }, 0);
+    }
     if (e.key === 'Backspace' && blocks[index].text === '' && blocks.length > 1) {
       e.preventDefault();
-      const prevBlockId = blocks[index - 1]?.id;
       const newBlocks = blocks.filter(b => b.id !== blocks[index].id);
       setBlocks(newBlocks);
       setIsSaved(false);
       setTimeout(() => {
-        if (prevBlockId && blockRefs.current[prevBlockId]) {
-          blockRefs.current[prevBlockId].focus();
-          const length = blockRefs.current[prevBlockId].value.length;
-          blockRefs.current[prevBlockId].setSelectionRange(length, length);
+        const targetId = index > 0 ? blocks[index - 1].id : newBlocks[0].id;
+        if (targetId && blockRefs.current[targetId]) {
+          blockRefs.current[targetId].focus();
+          const length = blockRefs.current[targetId].value.length;
+          blockRefs.current[targetId].setSelectionRange(length, length);
+        }
+      }, 0);
+    }
+    if (e.key === 'Delete' && blocks[index].text === '' && blocks.length > 1) {
+      e.preventDefault();
+      const nextBlockId = blocks[index + 1]?.id;
+      const newBlocks = blocks.filter(b => b.id !== blocks[index].id);
+      setBlocks(newBlocks);
+      setIsSaved(false);
+      setTimeout(() => {
+        const targetId = nextBlockId || newBlocks[newBlocks.length - 1].id;
+        if (targetId && blockRefs.current[targetId]) {
+          blockRefs.current[targetId].focus();
         }
       }, 0);
     }
@@ -407,6 +452,9 @@ const ScriptEditor = ({ universeId, projectId }) => {
       setTimeout(() => resizeBlock(focusedBlockId), 0);
     }
   };
+
+  const handleFormatChangeRef = useRef(handleFormatChange);
+  handleFormatChangeRef.current = handleFormatChange;
 
   const handleInsertSourceMaterial = (text) => {
     const newBlock = { id: generateId(), type: 'Action', text: text };

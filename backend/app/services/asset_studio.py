@@ -12,8 +12,26 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
+def check_and_clean_gemini_url():
+    base_url = os.getenv("GOOGLE_GEMINI_BASE_URL")
+    if base_url:
+        import urllib.parse
+        import socket
+        try:
+            parsed = urllib.parse.urlparse(base_url)
+            host = parsed.hostname or "localhost"
+            port = parsed.port or 80
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.5)
+                s.connect((host, port))
+            logger.info(f"AssetStudio: GOOGLE_GEMINI_BASE_URL is active on {host}:{port}")
+        except Exception:
+            logger.warning(f"AssetStudio: GOOGLE_GEMINI_BASE_URL ({base_url}) is not reachable. Unsetting to use default Google API.")
+            os.environ.pop("GOOGLE_GEMINI_BASE_URL", None)
+
 class AssetStudio:
     def __init__(self):
+        check_and_clean_gemini_url()
         self.client = None
         self._initialize_client()
 

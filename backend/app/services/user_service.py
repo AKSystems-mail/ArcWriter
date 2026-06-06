@@ -5,8 +5,6 @@ from app.utils.firebase_auth_utils import get_firestore_db
 from firebase_admin import firestore
 from typing import Optional
 from datetime import datetime, timedelta
-import sib_api_v3_sdk
-from sib_api_v3_sdk.rest import ApiException
 import os
 
 class UserService:
@@ -120,6 +118,8 @@ class UserService:
         if not brevo_key: return
 
         try:
+            import sib_api_v3_sdk
+            from sib_api_v3_sdk.rest import ApiException
             configuration = sib_api_v3_sdk.Configuration()
             configuration.api_key['api-key'] = brevo_key
             api_instance = sib_api_v3_sdk.ContactsApi(sib_api_v3_sdk.ApiClient(configuration))

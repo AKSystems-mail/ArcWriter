@@ -4,8 +4,6 @@ from typing import Optional, List, Dict, Any
 import uuid
 import io
 import os
-import sib_api_v3_sdk
-from sib_api_v3_sdk.rest import ApiException
 from datetime import datetime
 from app.utils.firebase_auth_utils import get_firestore_db
 from app.services.script_parser import parse_pdf_to_editor_format
@@ -96,6 +94,8 @@ async def capture_lead(request: LeadRequest):
         
         if brevo_key and list_id:
             try:
+                import sib_api_v3_sdk
+                from sib_api_v3_sdk.rest import ApiException
                 configuration = sib_api_v3_sdk.Configuration()
                 configuration.api_key['api-key'] = brevo_key
                 api_instance = sib_api_v3_sdk.ContactsApi(sib_api_v3_sdk.ApiClient(configuration))
