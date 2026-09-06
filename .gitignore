@@ -40,3 +40,5 @@ backend/serviceAccountKey.json
 conductor/
 old_config.json
 context7
+# Frontend env (local only)
+frontend/.env.production
