@@ -122,8 +122,16 @@ from app.utils.firebase_auth_utils import get_current_user, get_firestore_db, ve
 
 @app.get("/")
 async def root():
-    lazy_initialize()
-    return {"message": "Hello World - Arc Studio API (FastAPI) is live"}
+    try:
+        lazy_initialize()
+        return {"message": "Hello World - Arc Studio API (FastAPI) is live"}
+    except Exception as e:
+        import traceback
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e), "trace": traceback.format_exc()[-2000:]},
+        )
 
 # --- Wrapped Core Endpoints ---
 # Note: For production stability, routers are registered in lazy_initialize()
@@ -309,7 +317,7 @@ def api(req: https_fn.Request) -> https_fn.Response:
     # Simple bridge for function execution
     async def process():
         from fastapi.testclient import TestClient
-        client = TestClient(app)
+        client = TestClient(app, raise_server_exceptions=False)
         
         # Build method and headers
         method = req.method
@@ -319,7 +327,15 @@ def api(req: https_fn.Request) -> https_fn.Response:
             path += f"?{req.query_string.decode()}"
             
         body = req.get_data()
-        response = client.request(method, path, headers=headers, content=body)
+        try:
+            response = client.request(method, path, headers=headers, content=body)
+        except Exception as e:
+            import traceback
+            return https_fn.Response(
+                traceback.format_exc(),
+                status=500,
+                headers={"Content-Type": "text/plain"},
+            )
         
         return https_fn.Response(
             response.content,

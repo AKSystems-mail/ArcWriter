@@ -1,5 +1,10 @@
 # GEMINI.md
 
+## Model Status (September 2, 2026) — POST-DEPRECATION AUDIT
+- **Image Engine**: `gemini-3.1-flash-image` (Nano Banana 2) via `generate_content` + `image_config` for posters and character anchors. **Migrated from Imagen 4.0** (`imagen-4.0-generate-001`), which shut down 2026-08-17. Aspect ratios preserved (3:4 posters, 1:1 anchors).
+- **Motion Engine**: `veo-3.1-fast-generate-preview` via `google-genai` SDK for 8-second teasers with native audio. **Migrated from Veo 3.0 Standard** (`veo-3.0-generate-001`), which shut down 2026-06-30. Fast tier chosen for cost ($0.15/sec vs $0.40/sec standard); 8s teaser ≈ $1.20.
+- **Text/LLM Engine**: `gemini-3.5-flash` for all analysis (Macro Audit, Scene Diagnostic, Hook Scan, JSON generation). **Migrated from Gemini 2.5 Flash**, which shuts down 2026-10-20.
+
 ## Project Status (March 10, 2026) - PRODUCTION HARDENED & VISUAL UPGRADE
 - **Visual Engine Upgrade COMPLETE**: 
     - Switched to **Gemini 3.1 Flash Image Preview** for posters and character anchors.
@@ -30,8 +35,9 @@
     - **Credits**: Standardized to **25 Starter Credits** across the entire stack.
 
 ## Technical Architecture
-- **Motion Engine**: Veo 3.0 Standard (`veo-3.0-generate-001`) via `google-genai` SDK.
-- **Image Engine**: Gemini 3.1 Flash Image Preview.
+- **Motion Engine**: Veo 3.1 Fast (`veo-3.1-fast-generate-preview`) via `google-genai` SDK.
+- **Image Engine**: Gemini 3.1 Flash Image (`gemini-3.1-flash-image`, Nano Banana 2).
+- **Text Engine**: Gemini 3.5 Flash (`gemini-3.5-flash`).
 - **Async Strategy**: Backend returns `operation_id`; positional argument syntax implemented for `operations.get()`.
 - **Auth**: Production-ready 1st-party domain setup (`arcwriter.us`).
 
@@ -46,4 +52,4 @@
 ## Next Steps
 - Implement 'Page Break' visual lines in the Editor for the 40-line pagination standard.
 - Audit and remove remaining development `console.log` statements.
-- Monitor Veo 3.0 quota usage for the "Studio Pass" (600 credits) tier.
+- Monitor Veo 3.1 Fast quota usage for the "Studio Pass" (600 credits) tier.

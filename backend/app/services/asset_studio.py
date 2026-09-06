@@ -74,24 +74,24 @@ class AssetStudio:
         )
 
         try:
-            # For Imagen 4, we use the specialized generate_images method
-            # Note: image_references (edit/masking) requires a different workflow in Imagen 4,
-            # so for now we focus on text-to-image generation which is the primary use case here.
-            response = self.client.models.generate_images(
-                model='imagen-4.0-generate-001',
-                prompt=prompt,
-                config=types.GenerateImagesConfig(
-                    number_of_images=1,
-                    aspect_ratio='3:4',
-                    safety_filter_level='block_low_and_above',
-                    person_generation='allow_adult'
-                )
+            # Gemini 3.1 Flash Image (Nano Banana 2) uses generate_content with
+            # image modality — NOT Imagen's generate_images (Imagen 4 shut down
+            # 2026-08-17). Aspect ratio via image_config.
+            response = self.client.models.generate_content(
+                model='gemini-3.1-flash-image',
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_modalities=['image'],
+                    image_config=types.ImageConfig(
+                        aspect_ratio='3:4',
+                    ),
+                ),
             )
 
-            if response.generated_images:
-                img = response.generated_images[0]
-                return base64.b64encode(img.image.image_bytes).decode('utf-8')
-            
+            for part in response.candidates[0].content.parts:
+                if part.inline_data is not None:
+                    return base64.b64encode(part.inline_data.data).decode('utf-8')
+
             return None
         except Exception as e:
             logger.error(f"AssetStudio: Error in generate_poster: {e}")
@@ -113,19 +113,19 @@ class AssetStudio:
         
         def generate_single_variant(i):
             try:
-                response = self.client.models.generate_images(
-                    model='imagen-4.0-generate-001',
-                    prompt=prompt,
-                    config=types.GenerateImagesConfig(
-                        number_of_images=1,
-                        aspect_ratio='1:1',
-                        safety_filter_level='block_low_and_above',
-                        person_generation='allow_adult'
-                    )
+                response = self.client.models.generate_content(
+                    model='gemini-3.1-flash-image',
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_modalities=['image'],
+                        image_config=types.ImageConfig(
+                            aspect_ratio='1:1',
+                        ),
+                    ),
                 )
-                if response.generated_images:
-                    img = response.generated_images[0]
-                    return base64.b64encode(img.image.image_bytes).decode('utf-8')
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data is not None:
+                        return base64.b64encode(part.inline_data.data).decode('utf-8')
             except Exception as e:
                 logger.error(f"AssetStudio: Variant {i+1} failed: {e}")
             return None
@@ -160,13 +160,13 @@ class AssetStudio:
         enhanced_prompt = f"Professional cinematic motion shot, 8k, highly detailed: {prompt}. {audio_footer}"
         
         try:
-            logger.info(f"AssetStudio: Initializing Motion Render with model 'veo-3.0-generate-001'")
+            logger.info(f"AssetStudio: Initializing Motion Render with model 'veo-3.1-fast-generate-preview'")
             logger.info(f"AssetStudio: Prompt: {enhanced_prompt}")
             
             # Using correct generate_videos method for Veo
-            # Start video generation - Standard model for production quality
+            # Start video generation - Fast model for cost efficiency (veo-3.0 shut down 2026-06-30)
             operation = self.client.models.generate_videos(
-                model='veo-3.0-generate-001',
+                model='veo-3.1-fast-generate-preview',
                 prompt=enhanced_prompt,
                 config=types.GenerateVideosConfig(
                     aspect_ratio=aspect_ratio,

@@ -13,6 +13,7 @@ python-multipart
 pypdf
 pdfplumber
 a2wsgi
+asgiref
 requests
 qrcode[pil]
 email-validator

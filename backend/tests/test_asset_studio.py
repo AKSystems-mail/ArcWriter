@@ -41,38 +41,38 @@ class TestAssetStudio(unittest.TestCase):
         
         self.assertIsNone(result)
 
-    def test_generate_poster_calls_imagen_with_correct_config(self):
+    def test_generate_poster_calls_gemini_flash_image_with_correct_config(self):
         mock_response = MagicMock()
-        mock_image = MagicMock()
-        mock_image.image.image_bytes = b"test-image-data"
-        mock_response.generated_images = [mock_image]
-        self.studio.client.models.generate_images.return_value = mock_response
+        mock_part = MagicMock()
+        mock_part.inline_data.data = b"test-image-data"
+        mock_response.candidates[0].content.parts = [mock_part]
+        self.studio.client.models.generate_content.return_value = mock_response
         
         result = self.studio.generate_poster("Test Title", "Sci-Fi", "Cinematic")
         
-        # Verify generate_images call
-        args, kwargs = self.studio.client.models.generate_images.call_args
-        self.assertEqual(kwargs['model'], 'imagen-4.0-generate-001')
-        self.assertIn("Test Title", kwargs['prompt'])
+        # Verify generate_content call
+        args, kwargs = self.studio.client.models.generate_content.call_args
+        self.assertEqual(kwargs['model'], 'gemini-3.1-flash-image')
+        self.assertIn("Test Title", kwargs['contents'])
         config = kwargs['config']
-        self.assertEqual(config.aspect_ratio, '3:4')
+        self.assertEqual(config.image_config.aspect_ratio, '3:4')
         self.assertIsNotNone(result)
 
-    def test_generate_character_anchor_calls_imagen_with_correct_config(self):
+    def test_generate_character_anchor_calls_gemini_flash_image_with_correct_config(self):
         mock_response = MagicMock()
-        mock_image = MagicMock()
-        mock_image.image.image_bytes = b"test-image-data"
-        mock_response.generated_images = [mock_image]
-        self.studio.client.models.generate_images.return_value = mock_response
+        mock_part = MagicMock()
+        mock_part.inline_data.data = b"test-image-data"
+        mock_response.candidates[0].content.parts = [mock_part]
+        self.studio.client.models.generate_content.return_value = mock_response
         
         result = self.studio.generate_character_anchor("A mysterious hero")
         
-        # Verify generate_images call
-        args, kwargs = self.studio.client.models.generate_images.call_args
-        self.assertEqual(kwargs['model'], 'imagen-4.0-generate-001')
-        self.assertIn("A mysterious hero", kwargs['prompt'])
+        # Verify generate_content call
+        args, kwargs = self.studio.client.models.generate_content.call_args
+        self.assertEqual(kwargs['model'], 'gemini-3.1-flash-image')
+        self.assertIn("A mysterious hero", kwargs['contents'])
         config = kwargs['config']
-        self.assertEqual(config.aspect_ratio, '1:1')
+        self.assertEqual(config.image_config.aspect_ratio, '1:1')
         self.assertGreater(len(result), 0)
 
     def test_get_operation_status_retrieves_video_uri(self):
