@@ -303,6 +303,12 @@ async def update_character_anchor(request: UpdateAnchorRequest, user_id: str = D
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Register routers at import, not on first request. FastAPI matches routes before running a
+# handler, so a cold start used to 404 every router-defined path until some other request
+# happened to trigger lazy_initialize(). Placed after the inline routes to preserve their
+# precedence. The per-handler lazy_initialize() calls below are now no-ops.
+lazy_initialize()
+
 # Export as Firebase Function
 @https_fn.on_request(
     region="us-central1",
