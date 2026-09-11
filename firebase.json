@@ -52,7 +52,11 @@
         "venv",
         ".git",
         "firebase-debug.log",
-        "firebase-debug.*.log"
+        "firebase-debug.*.log",
+        "serviceAccountKey.json",
+        "**/serviceAccountKey.json",
+        ".env",
+        ".env.*"
       ],
       "runtime": "python311"
     }

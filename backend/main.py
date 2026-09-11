@@ -172,6 +172,67 @@ async def get_project_details(universe_name: str, project_id: str, user_id: str 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class CreateUniverseRequest(BaseModel):
+    universe_name: str
+
+@app.post("/api/universe/create")
+async def create_universe(request: CreateUniverseRequest, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
+    from firebase_admin import firestore
+    name = request.universe_name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Universe name cannot be empty")
+    db = get_firestore_db()
+    # Universe documents are keyed by name — list_universes/verify_project_ownership both assume this.
+    ref = db.collection("universes").document(name)
+    if ref.get().exists:
+        raise HTTPException(status_code=409, detail="A universe with that name already exists")
+    ref.set({"owner_id": user_id, "created_at": firestore.SERVER_TIMESTAMP})
+    return {"name": name}
+
+@app.get("/api/universe/{universe_name}/projects", response_model=List[Any])
+async def list_universe_projects(universe_name: str, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
+    db = get_firestore_db()
+    universe = db.collection("universes").document(universe_name).get()
+    if not universe.exists:
+        raise HTTPException(status_code=404, detail="Universe not found")
+    if universe.to_dict().get("owner_id") != user_id:
+        raise HTTPException(status_code=403, detail="Unauthorized access to this universe")
+    docs = db.collection("universes").document(universe_name).collection("projects").stream()
+    return [{"id": d.id, "name": d.to_dict().get("name", d.id)} for d in docs]
+
+class CreateProjectRequest(BaseModel):
+    project_name: str
+
+@app.post("/api/universe/{universe_name}/project/create")
+async def create_project(
+    universe_name: str,
+    request: CreateProjectRequest,
+    user_id: str = Depends(get_current_user),
+):
+    lazy_initialize()
+    from firebase_admin import firestore
+    db = get_firestore_db()
+    universe_ref = db.collection("universes").document(universe_name)
+    universe = universe_ref.get()
+    if not universe.exists:
+        raise HTTPException(status_code=404, detail="Universe not found")
+    if universe.to_dict().get("owner_id") != user_id:
+        raise HTTPException(status_code=403, detail="Unauthorized access to this universe")
+    name = request.project_name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Project name cannot be empty")
+    ref = universe_ref.collection("projects").document()
+    ref.set({
+        "name": name,
+        "title": name,
+        "owner_id": user_id,  # verify_project_ownership gates on this
+        "format": "movie",
+        "created_at": firestore.SERVER_TIMESTAMP,
+    })
+    return {"id": ref.id, "name": name}
+
 class AssetRequest(BaseModel):
     type: str # 'poster' | 'character'
     prompt: Optional[str] = None
@@ -258,6 +319,15 @@ async def get_teaser_status(operation_id: str, user_id: str = Depends(get_curren
     try:
         status = services.asset_studio.get_operation_status(operation_id)
         return status
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Path-param twin of teaser_status — the dashboard polls /check_video_status/{jobId}.
+@app.get("/api/assets/check_video_status/{job_id}")
+async def check_video_status(job_id: str, user_id: str = Depends(get_current_user)):
+    lazy_initialize()
+    try:
+        return services.asset_studio.get_operation_status(job_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
